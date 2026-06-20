@@ -1,0 +1,2 @@
+[functions.ghl-webhook]
+verify_jwt = false
