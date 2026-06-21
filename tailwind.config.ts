@@ -9,18 +9,28 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Brandbook Sabiduría Empresarial — Deep Terracotta (#7E301F = brand-600)
         brand: {
-          50:  '#fdf2f2',
-          100: '#fce4e4',
-          200: '#f9c0c0',
-          300: '#f28f8f',
-          400: '#e85a5a',
-          500: '#C4503F',
-          600: '#9B2C2C',
-          700: '#7A1F1F',
-          800: '#5C1515',
-          900: '#3D0D0D',
-          950: '#220808',
+          50:  '#FBF1EC',
+          100: '#F3DDD3',
+          200: '#E8C0B0',
+          300: '#D98E72',
+          400: '#C0654A',
+          500: '#9B4030',
+          600: '#7E301F',
+          700: '#6B2818',
+          800: '#571F12',
+          900: '#3D160C',
+          950: '#2A0E07',
+        },
+        // Brandbook — Warm Amber
+        accent: {
+          DEFAULT: '#DA7D41',
+          hover:   '#C56C34',
+        },
+        // Brandbook — Sand Beige
+        sand: {
+          DEFAULT: '#EAAD74',
         },
         cream: {
           DEFAULT: '#F2E8D5',

@@ -71,7 +71,7 @@ export default async function DashboardPage() {
             <p className="text-4xl font-bold text-cream">{progressPercent}<span className="text-xl text-cream-muted">%</span></p>
           </div>
           <div className="w-16 h-16 rounded-full flex items-center justify-center"
-            style={{ background: `conic-gradient(#9B2C2C ${progressPercent * 3.6}deg, #2E2028 0deg)` }}>
+            style={{ background: `conic-gradient(#7E301F ${progressPercent * 3.6}deg, #2E2028 0deg)` }}>
             <div className="w-12 h-12 rounded-full bg-surface-850 flex items-center justify-center">
               <TrendingUp size={18} className="text-brand-400" />
             </div>

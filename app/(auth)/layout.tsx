@@ -12,7 +12,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       >
         {/* Textura sutil */}
         <div className="absolute inset-0 opacity-5"
-          style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #C4503F 0%, transparent 70%)' }}
+          style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #7E301F 0%, transparent 70%)' }}
         />
 
         <div className="relative z-10 flex items-center gap-3">

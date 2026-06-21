@@ -14,8 +14,8 @@ export default function Logo({ size = 32, className = '' }: LogoProps) {
     >
       <defs>
         <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#F2E8D5" />
-          <stop offset="100%" stopColor="#C4503F" />
+          <stop offset="0%" stopColor="#EAAD74" />
+          <stop offset="100%" stopColor="#7E301F" />
         </linearGradient>
       </defs>
       <g stroke="url(#logoGrad)" strokeWidth="70" strokeLinecap="round" fill="none">
