@@ -26,7 +26,7 @@ El proyecto **compila** (`npm run build` ✓) y **corre** (`npm run dev` ✓ en
 
 | Fase | Estado | Notas |
 |------|--------|-------|
-| **0 — Supabase** | ✅ Casi | Proyecto creado, schema corrido, URLs configuradas. **Falta:** ver §4 (el DB tiene la RLS parcial de León, no la completa de Sebastián). |
+| **0 — Supabase** | ✅ Completo | Proyecto creado, schema corrido, URLs configuradas, **RLS activa en todas las tablas** (confirmado por León en Supabase, 2026-06-20). |
 | **1 — Setup Next.js** | ✅ Completo | Base de Sebastián (Next 15, Tailwind v3, Supabase clients, middleware). |
 | **2 — Branding** | ✅ Completo | Colores del brandbook (#7E301F / #DA7D41 / #EAAD74) portados a `tailwind.config.ts`, `Logo.tsx` y 2 hexes hardcodeados. Tema oscuro conservado. |
 | **3 — Auth** | ✅ Completo* | login, activate, forgot-password, reset-password — todos reales y conectados a Supabase. *Ver §3 caveat sobre `activate` y SMTP. |
@@ -70,21 +70,23 @@ El proyecto **compila** (`npm run build` ✓) y **corre** (`npm run dev` ✓ en
 
 ## 4. Siguiente paso exacto para retomar
 
-**Prioridad 1 — Alinear la base de datos con el schema de Sebastián.**
-El DB de Supabase tiene la RLS **parcial** que corrió León en Fase 0 (no activó
-RLS en `products`/`modules`/`lessons`). El schema de Sebastián
-(`supabase/schema.sql`) es idempotente y más completo (RLS en esas 3 tablas).
-→ **Acción:** copiar todo `supabase/schema.sql` y correrlo en el SQL Editor de
-Supabase. Es seguro re-ejecutarlo (usa `IF NOT EXISTS` / `DROP POLICY IF EXISTS`).
+> La RLS ya quedó activa en todas las tablas (lo hizo León el 2026-06-20), así
+> que el DB está alineado. El siguiente paso es **crear datos mínimos para probar
+> la plataforma end-to-end.**
 
-**Prioridad 2 — Crear datos mínimos para probar:**
-- Poner `role='admin'` a tu profile en Supabase.
-- Crear el bucket `content` (privado).
+**Prioridad 1 — Crear datos mínimos para probar:**
+- Poner `role='admin'` a tu profile en Supabase (para entrar al área admin).
+- Crear el bucket `content` (privado) en Supabase Storage.
 - Insertar 1 producto con 1–2 módulos y lecciones (video/doc/checklist) para
   ver dashboard, roadmap y module/[id] con datos reales.
+- Probar el flujo: crear un cliente desde `admin/clients/create` → revisar que
+  llegue la invitación → activar cuenta → ver dashboard.
 
-**Prioridad 3 —** decidir con Sebastián: gestión de contenido por UI (CRUD) vs
+**Prioridad 2 —** decidir con Sebastián: gestión de contenido por UI (CRUD) vs
 seguir cargando por SQL; y NPS del cliente.
+
+**Prioridad 3 —** configurar SMTP custom en Supabase (necesario para emails de
+invitación/reset en producción) y pegar las plantillas de `../email-templates/`.
 
 ---
 
