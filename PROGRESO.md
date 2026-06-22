@@ -165,6 +165,11 @@ Detalle, responsables e impacto en `PENDIENTES.md`.
   `.env.example` versionado es la plantilla.
 - **Desviaciones del plan** documentadas en `DECISIONES.md` (webhook = Edge
   Function, no API route).
+- **Reproducir el entorno desde cero** (ej. Sebastián en su propia base): correr
+  en el SQL Editor `supabase/schema.sql` (estructura + RLS + trigger + products +
+  bucket) y luego `supabase/seed.sql` (módulos/lecciones de prueba + plantillas
+  comentadas para crear admin y cliente). Los datos NO viajan en git — el push
+  solo mueve código; cada quien corre los scripts en su Supabase.
 - **Comandos:** `npm run dev` (localhost:3000), `npm run build`, `npm run start`.
 - **Pantallas públicas para revisar sin login:** `/login`, `/forgot-password`,
   `/reset-password`, `/activate`.
