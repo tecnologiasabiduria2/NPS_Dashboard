@@ -54,6 +54,28 @@
 - **Pendiente:** portar estas policies a `sql/rls-policies.sql` y al schema
   idempotente para que no se pierdan en un re-setup.
 
+### 4. Deploy (Fase 8): systemd en vez de PM2; `/root/applications` en vez de `/var/www`
+- **Plan original (`deploy.sh` de Sebastián):** build `standalone`, subir por
+  `rsync` a `/var/www/ventra-platform` y correr la app con **PM2**
+  (`pm2 start server.js --name ventra-platform`, puerto 3001).
+- **Implementación real (2026-06-22):** el VPS **no tenía PM2 instalado**, y sus
+  otras apps Next.js (ej. `diana-dashboard-front`) corren como **servicios
+  systemd**. Para seguir el patrón real del servidor (no uno inexistente) se
+  desplegó así:
+  - Código por **`git clone`** del repo público → `/root/applications/ventra`
+    (no `/var/www`, que es el esquema de las demás apps del box).
+  - Build normal (`npm ci && npm run build`), **no** `standalone`.
+  - Proceso = **servicio systemd** `ventra-platform.service` (copiado del de
+    Diana), `Restart=always`, `enabled`, `EnvironmentFile=.env`, `PORT=3001`.
+  - nginx reverse-proxy + **Certbot/Let's Encrypt** (igual que `dashboard.*`).
+- **Resultado idéntico al planeado:** misma URL (`https://vip.sabiduriaempresarial.com`),
+  mismo puerto (3001), misma app. Solo cambió el *mecanismo* (systemd/git vs PM2/rsync).
+- **Implicación para futuros deploys:** `deploy.sh` quedó **desalineado** con la
+  realidad (asume PM2/rsync/standalone). Para actualizar la app en prod hoy el
+  flujo es: `git -C /root/applications/ventra pull && npm ci && npm run build &&
+  systemctl restart ventra-platform`. Conviene reescribir `deploy.sh` con este
+  flujo o marcarlo obsoleto (deuda menor).
+
 ---
 
 ## Integración del 2026-06-20 (base Sebastián + trabajo de León)
