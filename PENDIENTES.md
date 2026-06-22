@@ -3,7 +3,7 @@
 > Registro único de todo lo que está **bloqueado, sin definir o por confirmar**
 > hasta este punto de la implementación. Consolida lo disperso en
 > `ARCHITECTURE.md §14`, `DECISIONES.md`, `PROGRESO.md §5` y lo descubierto en QA.
-> Última actualización: **2026-06-21**.
+> Última actualización: **2026-06-22**.
 >
 > Leyenda de responsable: 🟥 Sebastián · 🟦 Diana · 🟩 León (accionable solo).
 
@@ -14,7 +14,7 @@
 | # | Tema | Responsable | Qué se necesita | Qué bloquea | Impacto si no llega |
 |---|------|-------------|------------------|-------------|---------------------|
 | A1 | **SMTP custom en Supabase** | 🟥 | Credenciales SMTP (host/usuario/clave del dominio) | Plantillas branded de email (`email-templates/`) + emails reales de invitación/reset | Los correos usan el SMTP default de Supabase (muy limitado, casi no envía a terceros). Bloquea probar auth por email en prod. |
-| A2 | **NPS — frecuencia** | 🟥🟦 | Cada cuántos días aparece el NPS al cliente, y la alternancia de los 2 tipos | Construir pantalla NPS del cliente (pantalla 8) | No se puede construir el flujo NPS del cliente. |
+| A2 | **NPS — triggers** ✅ REDEFINIDO (2026-06-22) | 🟥🟦 | ~~Cada cuántos días~~ **Decisión tomada:** el NPS se dispara por **dos triggers** que alimentan el **mismo** sistema (no dos NPS distintos): **(1) post-sesión en vivo** — pregunta puntual tras cada clase; **(2) semanal** — pregunta macro de seguimiento cada **7 días**. Pendiente menor: confirmar si el trigger semanal **alterna** `mejora_sesion` / `interes_ascension` o siempre usa uno. | Construir pantalla NPS del cliente (pantalla 8) + lógica de elegibilidad | Ya no bloquea el diseño del modelo; sí bloquea implementación hasta tener tablas de sesiones en vivo. |
 | A3 | **Stripe Secret Key** | 🟥 | `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` | `/api/webhooks/stripe` (marcado "futuro") | Ninguno para el MVP — no hay código Stripe aún. |
 | A4 | **GHL API key + webhook secret** | 🟥 | `GHL_API_KEY`, `GHL_WEBHOOK_SECRET` + workflow configurado en GHL | Probar webhooks GHL (Fase 4) y sync inverso (Fase 7) contra GHL real | Webhooks y sync quedan construidos pero **sin probar de verdad**. |
 | A5 | **Contenido real (Fathom IDs + PDFs)** | 🟦 | Fathom share IDs reales y los PDFs/documentos de los módulos | Que video y descarga funcionen "de verdad" | Hoy hay placeholders: el video no reproduce y la descarga da 404. La demo igual es navegable. |
@@ -60,9 +60,21 @@
 
 ## E. Fuera del MVP (Fase 2/3 del ARCHITECTURE — registrar, no hacer aún)
 
-- NPS integrado completo (cliente + reportes) — pantalla 8 + 15.
+- NPS integrado completo (cliente + reportes) — pantalla 8 + 15 — **en curso** (triggers definidos en A2; ya no es Fase 2 pura).
 - Workshop y Desafío con contenido bloqueado + lógica de ascensión.
 - Notificaciones WhatsApp (Meta Cloud API) — requiere `META_WHATSAPP_TOKEN`, `META_PHONE_NUMBER_ID`.
 - Marketplace interno de ascensión.
 - Replicación para empresa de turismo / inmobiliaria (multi-tenant).
 - Integración directa de Stripe (`/api/webhooks/stripe`).
+
+---
+
+## F. Extensión — Sesiones en vivo (reunión Diana/Sebastián, 2026-06-22)
+
+| # | Tema | Responsable | Detalle |
+|---|------|-------------|---------|
+| F1 | **Modelo de datos sesiones + asistencia** | 🟩 | Diseño acordado en este turno (ver propuesta abajo). Implementar en `supabase/schema.sql` + RLS. |
+| F2 | **Dashboard — Próximo evento (pantalla 5)** | 🟩 | Reutilizar sección existente del dashboard; query próxima sesión del `product_id` activo; link interno de join. |
+| F3 | **Ruta join + redirect Zoom** | 🟩 | `/api/sessions/[id]/join`: registra asistencia (idempotente) → 302 a `zoom_url`. |
+| F4 | **Seed beta sesiones** | 🟦🟩 | Diana simula con filas en `live_sessions` (horario/link editables en BD). |
+| F5 | **Admin CRUD horarios** | 🟩 | v1 beta: SQL/Table Editor; v2 opcional: UI en admin. |
