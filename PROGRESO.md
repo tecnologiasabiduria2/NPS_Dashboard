@@ -1,7 +1,7 @@
 # PROGRESO — Plataforma Ventra / Sabiduría Empresarial
 
 > **Para retomar:** dile a Claude Code *"lee PROGRESO.md y seguimos"*.
-> Última actualización: **2026-06-21** (datos mínimos de prueba creados).
+> Última actualización: **2026-06-21** (cierre de sesión: QA local + fixes + commit `0076840`).
 > Repo: `github.com/tecnologiasabiduria2/NPS_Dashboard` (rama `main`).
 
 ---
@@ -26,16 +26,16 @@ El proyecto **compila** (`npm run build` ✓) y **corre** (`npm run dev` ✓ en
 
 | Fase | Estado | Notas |
 |------|--------|-------|
-| **0 — Supabase** | ✅ Completo | Proyecto creado, schema corrido, URLs configuradas, **RLS activa en todas las tablas** (confirmado por León en Supabase, 2026-06-20). |
+| **0 — Supabase** | ✅ Completo | Proyecto, schema, bucket `content` (privado), seed de prueba. RLS activa + **policies de contenido corregidas 2026-06-21** (ver `DECISIONES.md` §3). Pendiente: SMTP custom. |
 | **1 — Setup Next.js** | ✅ Completo | Base de Sebastián (Next 15, Tailwind v3, Supabase clients, middleware). |
 | **2 — Branding** | ✅ Completo | Colores del brandbook (#7E301F / #DA7D41 / #EAAD74) portados a `tailwind.config.ts`, `Logo.tsx` y 2 hexes hardcodeados. Tema oscuro conservado. |
 | **3 — Auth** | ✅ Completo* | login, activate, forgot-password, reset-password — todos reales y conectados a Supabase. *Ver §3 caveat sobre `activate` y SMTP. |
 | **4 — Webhooks GHL** | ✅ Completo | `webhooks/ghl` (alta/reactivación) + `webhooks/ghl/deactivate` + Edge Function `supabase/functions/ghl-webhook/`. Ver `DECISIONES.md` (Edge Function vs API route). |
 | **5 — Área cliente** | ✅ Casi | dashboard, roadmap, module/[id] (video+docs+checklist), profile, access-expired — **todos reales**. **Falta:** NPS del cliente (pantalla 8). |
-| **6 — Área admin** | ✅ Casi | dashboard (KPIs+alertas), clients (lista), clients/[id] (detalle+editar acceso), clients/create (alta manual), map, nps (resultados). **Falta:** gestión de contenido es solo-lectura (ver §3). |
+| **6 — Área admin** | ✅ Casi | dashboard (KPIs+alertas), clients (lista), clients/[id] (detalle + editar acceso + **agregar notas de coaching**, 2026-06-21), clients/create (alta manual), map, nps (resultados). **Falta:** gestión de contenido es solo-lectura (ver §3). |
 | **7 — Sync inverso → GHL** | ❌ No hecho | No existe la función de sync diario progreso→GHL ni el cron. `lib/ghl/api.ts` tiene `updateContactFields()` pero nada la llama en schedule. |
 | **8 — Deploy VPS** | ❌ No hecho | Existe `deploy.sh`, pero nginx/PM2/SSL en el VPS no están configurados. Nunca se ha desplegado. |
-| **9 — Pruebas** | ❌ Pendiente | Falta el checklist de pruebas end-to-end. |
+| **9 — Pruebas** | 🟡 Parcial | QA local hecho (2026-06-21): cliente + admin OK, 2 bugs corregidos (fechas DATE, progreso por entregables). **Falta:** e2e formal, integración real (webhook/email) y verificar redirect `access-expired` (C5). |
 
 ---
 
@@ -80,11 +80,19 @@ El proyecto **compila** (`npm run build` ✓) y **corre** (`npm run dev` ✓ en
 
 ## 4. Siguiente paso exacto para retomar
 
-> RLS activa (2026-06-20) y **datos mínimos de prueba ya creados (2026-06-21):**
-> admin, bucket `content` y 2 módulos + 8 lecciones en Sabiduría. Lo que falta
-> para cerrar el end-to-end es **probar la vista del cliente**.
+> **Sesión del 2026-06-21 cerrada.** Prioridad 1 (datos de prueba + QA local)
+> COMPLETA: el MVP es navegable end-to-end en local, cliente y admin.
+> 📋 Todo lo abierto (bloqueadores, preguntas, decisiones) está en `PENDIENTES.md`.
 
-**Prioridad 1 — Crear datos mínimos para probar:**
+### ▶ Próximo paso para mañana
+1. **Deploy a VPS (Fase 8)** — mayor impacto y accionable sin terceros. Antes:
+   confirmar SSH a `root@142.93.7.13` y DNS de `vip.sabiduriaempresarial.com` (`PENDIENTES.md` C4).
+2. **Si no se hace deploy:** construir el sync inverso → GHL (Fase 7); se prueba
+   luego con la GHL key.
+3. **Verificación de QA pendiente:** confirmar el redirect a `/access-expired`
+   cuando `user_access.status='inactive'` (quedó sin probar visualmente — `PENDIENTES.md` C5).
+
+### Hecho en la sesión 2026-06-21:
 - ✅ Poner `role='admin'` a tu profile en Supabase (hecho).
 - ✅ Crear el bucket `content` (privado) en Supabase Storage (hecho).
 - ✅ Insertar módulos y lecciones (video/doc/checklist) en Sabiduría (hecho).
@@ -126,11 +134,9 @@ El proyecto **compila** (`npm run build` ✓) y **corre** (`npm run dev` ✓ en
 - ⬜ (opcional) Subir un PDF real a `content/module-1/plantilla-flujo-caja.pdf`
   y poner Fathom share IDs reales para que video y descarga funcionen de verdad.
 
-**Prioridad 2 —** decidir con Sebastián: gestión de contenido por UI (CRUD) vs
-seguir cargando por SQL; y NPS del cliente.
-
-**Prioridad 3 —** configurar SMTP custom en Supabase (necesario para emails de
-invitación/reset en producción) y pegar las plantillas de `../email-templates/`.
+**Pendientes de terceros** (Sebastián/Diana): SMTP custom, NPS (frecuencia),
+GHL API key, contenido real (Fathom IDs + PDFs), decisión de CRUD de contenido.
+Detalle, responsables e impacto en `PENDIENTES.md`.
 
 ---
 

@@ -42,8 +42,9 @@
 |---|------|-------------|---------|
 | C1 | **Flujo `activate` con invitación real** | 🟩 | El código no llama `exchangeCodeForSession` explícitamente (confía en el manejo automático del token). Según el tipo de link del email podría requerir ajuste. Validar con una invitación real (depende de A1 + deploy). |
 | C2 | ✅ **Pipeline de documentos (Storage → signed URL)** | 🟩 | **RESUELTO (2026-06-21).** PDF de prueba subido a `content/module-1/plantilla-flujo-caja.pdf`; la descarga vía `/api/download` (signed URL 60s) funciona. |
-| C3 | **Checklist de pruebas e2e (PLAN-LEON paso 45)** | 🟩 | Falta el pase formal: auth, cliente, admin, webhook. Parte ya cubierta en el QA del 2026-06-21. |
+| C3 | **Checklist de pruebas e2e (PLAN-LEON paso 45)** | 🟩 | QA local del 2026-06-21 cubrió auth, cliente y admin (2 bugs corregidos). **Falta:** pase e2e formal completo + lo que necesita servicios reales (invitación por email, webhook GHL). |
 | C4 | **Acceso SSH + DNS antes del deploy** | 🟩 | Confirmar que `ssh root@142.93.7.13` funciona y que `vip.sabiduriaempresarial.com` resuelve, antes de empezar la Fase 8. |
+| C5 | **Redirect a `/access-expired`** | 🟩 | Verificar visualmente que un cliente con `user_access.status='inactive'` es redirigido a `/access-expired`. La lógica está en el layout del cliente; quedó sin probar en el QA del 2026-06-21. |
 
 ---
 
