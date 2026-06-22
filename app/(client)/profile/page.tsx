@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { formatDateOnly } from '@/lib/format'
 import { redirect } from 'next/navigation'
 
 export default async function ProfilePage() {
@@ -56,7 +57,7 @@ export default async function ProfilePage() {
             <div>
               <p className="text-xs text-zinc-500">Acceso hasta</p>
               <p className="text-zinc-100">
-                {new Date(access.access_until).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}
+                {formatDateOnly(access.access_until, { year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
           )}

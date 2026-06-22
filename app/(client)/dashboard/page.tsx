@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ArrowRight, BookOpen, Clock, TrendingUp } from 'lucide-react'
+import { formatDateOnly } from '@/lib/format'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -24,6 +25,7 @@ export default async function DashboardPage() {
       .select('id, modules!inner(product_id)')
       .eq('modules.product_id', access.product_id)
       .eq('is_published', true)
+      .eq('type', 'checklist_item')
     totalCount = lessons?.length ?? 0
     const ids = lessons?.map(l => l.id) ?? []
     if (ids.length > 0) {
@@ -56,7 +58,7 @@ export default async function DashboardPage() {
             <div className="text-right">
               <p className="text-xs text-cream-muted">Acceso hasta</p>
               <p className="text-sm text-cream font-medium">
-                {new Date(access.access_until).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })}
+                {formatDateOnly(access.access_until, { day: 'numeric', month: 'long' })}
               </p>
             </div>
           )}
@@ -81,7 +83,7 @@ export default async function DashboardPage() {
           <div className="bg-gradient-to-r from-brand-700 to-brand-500 h-1.5 rounded-full transition-all duration-700"
             style={{ width: `${progressPercent}%` }} />
         </div>
-        <p className="text-xs text-cream-muted mt-2">{completedCount} de {totalCount} lecciones completadas</p>
+        <p className="text-xs text-cream-muted mt-2">{completedCount} de {totalCount} entregables completados</p>
       </div>
 
       {/* Stats */}
@@ -107,7 +109,7 @@ export default async function DashboardPage() {
             <p className="text-xs text-cream-muted uppercase tracking-wide">Completadas</p>
           </div>
           <p className="text-2xl font-bold text-cream">{completedCount}</p>
-          <p className="text-xs text-cream-muted">de {totalCount} lecciones</p>
+          <p className="text-xs text-cream-muted">de {totalCount} entregables</p>
         </div>
 
         <div className="card-sm">

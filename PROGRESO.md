@@ -1,7 +1,7 @@
 # PROGRESO — Plataforma Ventra / Sabiduría Empresarial
 
 > **Para retomar:** dile a Claude Code *"lee PROGRESO.md y seguimos"*.
-> Última actualización: **2026-06-20** (cierre de sesión).
+> Última actualización: **2026-06-21** (datos mínimos de prueba creados).
 > Repo: `github.com/tecnologiasabiduria2/NPS_Dashboard` (rama `main`).
 
 ---
@@ -48,13 +48,20 @@ El proyecto **compila** (`npm run build` ✓) y **corre** (`npm run dev` ✓ en
    **manualmente en Supabase** (SQL/Table Editor), incluido marcar
    `is_published = true`.
 
-2. **No hay contenido cargado.** El schema solo siembra los 3 `products`. **No
-   existen módulos ni lecciones todavía**, así que dashboard/roadmap se verán
-   vacíos (0%) hasta que se cargue contenido.
+2. ✅ **Contenido de prueba sembrado (2026-06-21).** Se insertaron en el producto
+   **Sabiduría** 2 módulos publicados con 8 lecciones (Módulo 1: 5 lecciones —
+   video/document/3 checklist; Módulo 2: 3 — video/2 checklist). Notas:
+   - El `video` usa `fathom_share_id` placeholder (`DEMO_FATHOM_ID`, `DEMO_FATHOM_ID_2`)
+     → el player carga pero no reproduce hasta poner Fathom share IDs reales.
+   - El `document` apunta a `module-1/plantilla-flujo-caja.pdf` → la descarga da
+     404 hasta subir un PDF a esa ruta exacta en el bucket `content`.
 
-3. **No existe un usuario admin.** Para entrar al área admin, hay que poner
-   manualmente `role = 'admin'` en la tabla `profiles` del usuario en Supabase.
-   El primer login normal crea el profile como `client`.
+3. ✅ **Usuario admin creado (2026-06-21).** `tecnologia2.sabiduria@gmail.com`
+   (id `4f5aa43c-06a9-4103-9847-31f6b781433d`) → `role = 'admin'`. Creado vía
+   Authentication → Add user (Auto Confirm ON) y marcado admin por SQL.
+   **Importante:** un admin NO puede ver `/dashboard` (el client layout redirige
+   admins a `/admin/dashboard`). Para probar la vista cliente end-to-end hace
+   falta un **usuario cliente** con `user_access` activo (pendiente).
 
 4. **`activate` depende del manejo automático del token de Supabase** (no llama
    `exchangeCodeForSession` explícitamente). Según el tipo de link del email
@@ -62,25 +69,62 @@ El proyecto **compila** (`npm run build` ✓) y **corre** (`npm run dev` ✓ en
 
 5. **NPS del cliente (pantalla 8) no existe.** El admin puede VER resultados NPS,
    pero el cliente no tiene dónde responder. Era Fase 2 según ARCHITECTURE.md.
+   **Bloqueado:** falta que Sebastián confirme cada cuántos días aparece el NPS
+   (no construir cliente ni admin de NPS hasta tener esa definición).
 
-6. **Storage bucket `content`** está comentado en el schema → hay que crearlo
-   (privado) para que la descarga de documentos funcione.
+6. ✅ **Storage bucket `content` creado (2026-06-21), privado** (`public = false`).
+   Verificado por SQL. Las descargas pasan por `/api/download` (server-side con
+   service role), así que no requiere Storage policies para el cliente.
 
 ---
 
 ## 4. Siguiente paso exacto para retomar
 
-> La RLS ya quedó activa en todas las tablas (lo hizo León el 2026-06-20), así
-> que el DB está alineado. El siguiente paso es **crear datos mínimos para probar
-> la plataforma end-to-end.**
+> RLS activa (2026-06-20) y **datos mínimos de prueba ya creados (2026-06-21):**
+> admin, bucket `content` y 2 módulos + 8 lecciones en Sabiduría. Lo que falta
+> para cerrar el end-to-end es **probar la vista del cliente**.
 
 **Prioridad 1 — Crear datos mínimos para probar:**
-- Poner `role='admin'` a tu profile en Supabase (para entrar al área admin).
-- Crear el bucket `content` (privado) en Supabase Storage.
-- Insertar 1 producto con 1–2 módulos y lecciones (video/doc/checklist) para
-  ver dashboard, roadmap y module/[id] con datos reales.
-- Probar el flujo: crear un cliente desde `admin/clients/create` → revisar que
-  llegue la invitación → activar cuenta → ver dashboard.
+- ✅ Poner `role='admin'` a tu profile en Supabase (hecho).
+- ✅ Crear el bucket `content` (privado) en Supabase Storage (hecho).
+- ✅ Insertar módulos y lecciones (video/doc/checklist) en Sabiduría (hecho).
+- ✅ **Flujo cliente probado en local (2026-06-21):** cliente de prueba
+  `cliente.prueba@test.com` creado (Add user + acceso activo a Sabiduría vía
+  `admin/clients/create`). Dashboard, roadmap y module/[id] cargan con datos
+  reales; marcar checklist persiste el progreso. **El flujo de invitación por
+  email NO se probó** (link apunta a producción no desplegada + falta SMTP).
+- ⚠️ **Hallazgo + fix de RLS (2026-06-21):** `products`/`modules`/`lessons`
+  tenían RLS activa sin policies → bloqueaban toda lectura a usuarios
+  autenticados (cliente veía 0, `/admin/content` también). Se agregaron policies
+  de SELECT. Detalle en `DECISIONES.md` §3.
+- ✅ **QA del lado admin (2026-06-21):** dashboard (KPIs/alertas), lista de
+  clientes, detalle (editar `access_until` persiste) y mapa — todos correctos con
+  el cliente de prueba. **Bug encontrado y corregido:** las fechas `DATE`
+  (`access_until`, `session_date`) se mostraban un día antes por desfase de zona
+  horaria (`new Date('YYYY-MM-DD')` = UTC). Se creó `lib/format.ts` →
+  `formatDateOnly()` y se aplicó en clients, dashboard, profile y clients/[id].
+- ✅ **Progreso = solo entregables (2026-06-21).** QA detectó que dashboard y
+  hoja de ruta contaban TODAS las lecciones (video+doc+checklist) como
+  denominador, pero el cliente solo puede completar los checklist → el progreso
+  nunca llegaba a 100% y no cuadraba con la pantalla del módulo. Se unificó:
+  dashboard, roadmap y detalle de cliente (admin) ahora cuentan solo
+  `type='checklist_item'`. Pendiente de criterio: si videos/PDFs deberían contar
+  al verse (decisión de Sebastián — ver `PENDIENTES.md` B6).
+- ✅ **Formulario de notas de coaching construido (2026-06-21).** Pantalla 13
+  completa: `app/api/admin/notes/route.ts` (insert con verificación admin) +
+  `AddNoteForm.tsx` (fecha local + textarea, `router.refresh()` al guardar).
+  **Fix extra:** la query de notas hacía `profiles(full_name)` ambiguo
+  (`coaching_notes` tiene 2 FKs a `profiles`: `user_id` y `admin_id`) → fallaba
+  al haber notas. Desambiguado con `profiles!admin_id(full_name)`.
+- ✅ **Fixes consolidados en los scripts SQL (2026-06-21).** La causa raíz fue
+  que la base en vivo se creó con los archivos viejos de `sql/`. Se alinearon:
+  `supabase/schema.sql` (canónico: trigger con fallback a email + bucket `content`
+  activado), `sql/schema.sql` (trigger/`full_name` corregidos), `sql/rls-policies.sql`
+  (reescrito completo e idempotente, **ya incluye las policies de contenido**) y
+  `sql/rls-policies-fix.sql` (marcado OBSOLETO). Re-crear el entorno desde
+  `supabase/schema.sql` ahora deja la DB correcta sin pasos manuales.
+- ⬜ (opcional) Subir un PDF real a `content/module-1/plantilla-flujo-caja.pdf`
+  y poner Fathom share IDs reales para que video y descarga funcionen de verdad.
 
 **Prioridad 2 —** decidir con Sebastián: gestión de contenido por UI (CRUD) vs
 seguir cargando por SQL; y NPS del cliente.
@@ -91,6 +135,10 @@ invitación/reset en producción) y pegar las plantillas de `../email-templates/
 ---
 
 ## 5. Bloqueadores pendientes
+
+> 📋 **Registro completo y consolidado de TODO lo abierto** (bloqueadores,
+> preguntas, decisiones técnicas, verificaciones y deuda menor) en
+> **`PENDIENTES.md`**. La tabla de abajo es solo el resumen.
 
 | Bloqueador | Estado | Impacto |
 |------------|--------|---------|

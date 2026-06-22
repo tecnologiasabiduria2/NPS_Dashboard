@@ -17,14 +17,15 @@ export default async function RoadmapPage() {
 
   const { data: modules } = await supabase
     .from('modules')
-    .select('id, title, description, order, lessons(id)')
+    .select('id, title, description, order, lessons(id, type)')
     .eq('product_id', access.product_id)
     .eq('is_published', true)
     .order('order')
 
   const moduleProgress: Record<string, { completed: number; total: number }> = {}
   for (const mod of modules ?? []) {
-    const ids = (mod.lessons as any[]).map((l: any) => l.id)
+    // El progreso cuenta solo entregables (checklist), no videos ni documentos
+    const ids = (mod.lessons as any[]).filter((l: any) => l.type === 'checklist_item').map((l: any) => l.id)
     if (ids.length === 0) { moduleProgress[mod.id] = { completed: 0, total: 0 }; continue }
     const { count } = await supabase
       .from('lesson_progress').select('*', { count: 'exact', head: true })
@@ -82,7 +83,7 @@ export default async function RoadmapPage() {
                       {prog.total > 0 && (
                         <div className="mt-3">
                           <div className="flex justify-between text-xs text-cream-muted mb-1">
-                            <span>{prog.completed}/{prog.total} lecciones</span>
+                            <span>{prog.completed}/{prog.total} entregables</span>
                             <span>{pct}%</span>
                           </div>
                           <div className="w-full bg-surface-700 rounded-full h-1">

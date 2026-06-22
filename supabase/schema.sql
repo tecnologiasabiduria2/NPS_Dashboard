@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS profiles (
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- Fallback: si no viene full_name en la metadata (p.ej. usuarios creados
+  -- desde Authentication → Add user), usa el email para no violar NOT NULL.
   INSERT INTO profiles (id, full_name)
-  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', ''))
+  VALUES (NEW.id, COALESCE(NULLIF(NEW.raw_user_meta_data->>'full_name', ''), NEW.email, ''))
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
@@ -184,7 +186,11 @@ DROP POLICY IF EXISTS "lessons_admin" ON lessons;
 CREATE POLICY "lessons_admin" ON lessons FOR ALL USING (is_admin());
 
 -- ============================================
--- Supabase Storage: bucket 'content' (ejecutar por separado si falla)
+-- Supabase Storage: bucket 'content' (privado)
+-- Si falla por permisos en el SQL Editor, créalo desde Storage → New bucket
+-- (Public bucket = OFF). Las descargas pasan por /api/download (service role),
+-- así que NO requiere policies de Storage para el cliente.
 -- ============================================
--- INSERT INTO storage.buckets (id, name, public) VALUES ('content', 'content', false)
--- ON CONFLICT (id) DO NOTHING;
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('content', 'content', false)
+ON CONFLICT (id) DO NOTHING;

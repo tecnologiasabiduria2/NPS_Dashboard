@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
+import { formatDateOnly } from '@/lib/format'
 import { notFound } from 'next/navigation'
 import EditAccessForm from './EditAccessForm'
+import AddNoteForm from './AddNoteForm'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -13,7 +15,7 @@ export default async function ClientDetailPage({ params }: Props) {
   const [{ data: profile }, { data: access }, { data: notes }] = await Promise.all([
     supabase.from('profiles').select('full_name, phone, created_at').eq('id', id).single(),
     supabase.from('user_access').select('*, products(title, slug), modules(title)').eq('user_id', id).single(),
-    supabase.from('coaching_notes').select('*, profiles(full_name)').eq('user_id', id).order('session_date', { ascending: false }),
+    supabase.from('coaching_notes').select('*, profiles!admin_id(full_name)').eq('user_id', id).order('session_date', { ascending: false }),
   ])
 
   if (!profile) notFound()
@@ -21,14 +23,15 @@ export default async function ClientDetailPage({ params }: Props) {
   // Progreso por módulo
   const { data: modules } = await supabase
     .from('modules')
-    .select('id, title, order, lessons(id)')
+    .select('id, title, order, lessons(id, type)')
     .eq('product_id', access?.product_id ?? '')
     .eq('is_published', true)
     .order('order')
 
   const moduleProgress: Record<string, { completed: number; total: number }> = {}
   for (const mod of modules ?? []) {
-    const lessonIds = (mod.lessons as any[]).map((l: any) => l.id)
+    // El progreso cuenta solo entregables (checklist), no videos ni documentos
+    const lessonIds = (mod.lessons as any[]).filter((l: any) => l.type === 'checklist_item').map((l: any) => l.id)
     if (lessonIds.length === 0) { moduleProgress[mod.id] = { completed: 0, total: 0 }; continue }
     const { count } = await supabase
       .from('lesson_progress')
@@ -36,7 +39,7 @@ export default async function ClientDetailPage({ params }: Props) {
       .eq('user_id', id)
       .eq('completed', true)
       .in('lesson_id', lessonIds)
-    moduleProgress[mod.id] = { completed: count ?? 0, total: (mod.lessons as any[]).length }
+    moduleProgress[mod.id] = { completed: count ?? 0, total: lessonIds.length }
   }
 
   return (
@@ -82,13 +85,14 @@ export default async function ClientDetailPage({ params }: Props) {
       {/* Notas de coaching */}
       <div className="card">
         <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Notas de coaching</p>
+        <AddNoteForm userId={id} />
         {notes && notes.length > 0 ? (
           <div className="space-y-3">
             {notes.map((note: any) => (
               <div key={note.id} className="bg-surface-800 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-zinc-500">
-                    {new Date(note.session_date).toLocaleDateString('es-CO')}
+                    {formatDateOnly(note.session_date)}
                   </span>
                   <span className="text-xs text-zinc-600">{note.profiles?.full_name}</span>
                 </div>

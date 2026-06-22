@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { formatDateOnly } from '@/lib/format'
 import Link from 'next/link'
 
 export default async function ClientsPage() {
@@ -49,7 +50,7 @@ export default async function ClientsPage() {
                 <td className="px-6 py-4"><p className="text-sm text-zinc-400">{client.modules?.title ?? '—'}</p></td>
                 <td className="px-6 py-4">
                   <p className="text-sm text-zinc-400">
-                    {client.access_until ? new Date(client.access_until).toLocaleDateString('es-CO') : <span className="text-amber-400">—</span>}
+                    {client.access_until ? formatDateOnly(client.access_until) : <span className="text-amber-400">—</span>}
                   </p>
                 </td>
                 <td className="px-6 py-4">{getBadge(client)}</td>

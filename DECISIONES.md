@@ -19,6 +19,36 @@
 - **Pendiente de confirmar con Sebastián:** cuál de las dos queda como
   oficial y si se elimina la otra para evitar duplicación.
 
+### 2. Trigger `handle_new_user`: fallback de `full_name` al email
+- **Schema original (ARCHITECTURE.md §6):** el trigger inserta
+  `full_name = NEW.raw_user_meta_data->>'full_name'`, y `profiles.full_name`
+  es `NOT NULL`.
+- **Problema:** crear un usuario desde **Authentication → Add user** del
+  dashboard (que no permite pasar metadata) deja `full_name = NULL` →
+  viola el `NOT NULL` → el trigger explota con *"Database error creating
+  new user"*. También afectaría a cualquier signup sin nombre.
+- **Cambio aplicado (2026-06-21):** se hizo el trigger resiliente con
+  `coalesce(new.raw_user_meta_data->>'full_name', new.email)`. Si no viene
+  nombre, usa el email como respaldo. No afecta al webhook GHL (que sí
+  manda `full_name`). Se ejecutó directo en Supabase (SQL Editor).
+- **Nota:** conviene reflejar este cambio en `supabase/schema.sql` /
+  `sql/schema.sql` para mantenerlos como fuente de verdad idempotente.
+
+### 3. RLS de tablas de contenido (`products`/`modules`/`lessons`)
+- **Hallazgo (2026-06-21):** se había activado RLS en **todas** las tablas
+  (2026-06-20), pero `sql/rls-policies.sql` solo creó policies para las 5
+  tablas de datos de usuario. `products`, `modules` y `lessons` quedaron con
+  **RLS activa SIN policies** → PostgreSQL negaba toda lectura a usuarios
+  autenticados. Síntoma: el SQL Editor (rol `postgres`, salta RLS) veía el
+  contenido, pero el cliente y `/admin/content` recibían 0 filas
+  (dashboard "0 de 0", roadmap vacío).
+- **Fix aplicado (2026-06-21):** policies de SELECT para `authenticated`:
+  - `products`: `using (true)`.
+  - `modules` / `lessons`: `using (is_published or is_admin())` — el cliente
+    ve solo publicado; el admin ve también borradores.
+- **Pendiente:** portar estas policies a `sql/rls-policies.sql` y al schema
+  idempotente para que no se pierdan en un re-setup.
+
 ---
 
 ## Integración del 2026-06-20 (base Sebastián + trabajo de León)
