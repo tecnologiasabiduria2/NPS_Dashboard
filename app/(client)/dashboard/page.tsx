@@ -1,12 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ArrowRight, BookOpen, Clock, TrendingUp } from 'lucide-react'
+import { ArrowRight, BookOpen, Clock, TrendingUp, Video, Calendar, AlertTriangle } from 'lucide-react'
 import { formatDateOnly } from '@/lib/format'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
+  const { error } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -37,6 +42,21 @@ export default async function DashboardPage() {
     }
   }
 
+  // Próxima sesión en vivo del producto activo (publicada y aún no terminada)
+  let nextSession: { id: string; title: string; starts_at: string } | null = null
+  if (access?.product_id) {
+    const { data: session } = await supabase
+      .from('live_sessions')
+      .select('id, title, starts_at')
+      .eq('product_id', access.product_id)
+      .eq('is_published', true)
+      .gte('ends_at', new Date().toISOString())
+      .order('starts_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    nextSession = session
+  }
+
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Bienvenido'
   const productTitle = (access as any)?.products?.title ?? ''
@@ -47,6 +67,17 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-4xl">
+      {/* Aviso de error (ej. sesión no encontrada al unirse al Zoom) */}
+      {error === 'session_not_found' && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+          <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-300">
+            La sesión en vivo a la que intentabas unirte ya no está disponible.
+            Revisa tu próximo evento aquí abajo.
+          </p>
+        </div>
+      )}
+
       {/* Hero */}
       <div className="mb-10">
         <div className="flex items-start justify-between">
@@ -122,6 +153,34 @@ export default async function DashboardPage() {
           <p className="text-sm font-medium text-cream">{lastActivity ?? 'Hoy'}</p>
         </div>
       </div>
+
+      {/* Próximo evento en vivo */}
+      {nextSession && (
+        <div
+          className="card mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          style={{ background: 'linear-gradient(135deg, #1A1215 0%, #2A0E07 100%)' }}
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+              <Video size={18} className="text-accent" />
+            </div>
+            <div>
+              <p className="section-label !mb-1">Próximo evento</p>
+              <p className="text-cream font-medium leading-snug">{nextSession.title}</p>
+              <p className="text-sm text-cream-dim mt-1 inline-flex items-center gap-1.5 capitalize">
+                <Calendar size={12} className="text-sand" />
+                {format(new Date(nextSession.starts_at), "EEEE d 'de' MMMM · HH:mm", { locale: es })}
+              </p>
+            </div>
+          </div>
+          <a
+            href={`/api/sessions/${nextSession.id}/join`}
+            className="btn-primary shrink-0 self-start sm:self-auto"
+          >
+            Unirme al Zoom <ArrowRight size={14} />
+          </a>
+        </div>
+      )}
 
       {/* CTA */}
       <div className="card flex items-center justify-between">

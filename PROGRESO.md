@@ -31,7 +31,7 @@ El proyecto **compila** (`npm run build` ✓) y **corre** (`npm run dev` ✓ en
 | **2 — Branding** | ✅ Completo | Colores del brandbook (#7E301F / #DA7D41 / #EAAD74) portados a `tailwind.config.ts`, `Logo.tsx` y 2 hexes hardcodeados. Tema oscuro conservado. |
 | **3 — Auth** | ✅ Completo* | login, activate, forgot-password, reset-password — todos reales y conectados a Supabase. *Ver §3 caveat sobre `activate` y SMTP. |
 | **4 — Webhooks GHL** | ✅ Completo | `webhooks/ghl` (alta/reactivación) + `webhooks/ghl/deactivate` + Edge Function `supabase/functions/ghl-webhook/`. Ver `DECISIONES.md` (Edge Function vs API route). |
-| **5 — Área cliente** | ✅ Casi | dashboard, roadmap, module/[id] (video+docs+checklist), profile, access-expired — **todos reales**. **Falta:** NPS del cliente (pantalla 8). |
+| **5 — Área cliente** | ✅ Completo | dashboard (+ card "Próximo evento" → `/api/sessions/[id]/join`), roadmap, module/[id] (video+docs+checklist), profile, access-expired, **NPS del cliente (modal, Bloque 3 — 2026-06-22)** — todos reales. |
 | **6 — Área admin** | ✅ Casi | dashboard (KPIs+alertas), clients (lista), clients/[id] (detalle + editar acceso + **agregar notas de coaching**, 2026-06-21), clients/create (alta manual), map, nps (resultados). **Falta:** gestión de contenido es solo-lectura (ver §3). |
 | **7 — Sync inverso → GHL** | ❌ No hecho | No existe la función de sync diario progreso→GHL ni el cron. `lib/ghl/api.ts` tiene `updateContactFields()` pero nada la llama en schedule. |
 | **8 — Deploy VPS** | ❌ No hecho | Existe `deploy.sh`, pero nginx/PM2/SSL en el VPS no están configurados. Nunca se ha desplegado. |
@@ -67,10 +67,14 @@ El proyecto **compila** (`npm run build` ✓) y **corre** (`npm run dev` ✓ en
    `exchangeCodeForSession` explícitamente). Según el tipo de link del email
    podría requerir ajuste — validar cuando se pruebe el flujo de invitación real.
 
-5. **NPS del cliente (pantalla 8) no existe.** El admin puede VER resultados NPS,
-   pero el cliente no tiene dónde responder. Era Fase 2 según ARCHITECTURE.md.
-   **Bloqueado:** falta que Sebastián confirme cada cuántos días aparece el NPS
-   (no construir cliente ni admin de NPS hasta tener esa definición).
+5. ✅ **NPS del cliente (pantalla 8) — IMPLEMENTADO (2026-06-22, Bloque 3).**
+   Disparador redefinido (ver `PENDIENTES.md` A2): el modal responde a dos ejes,
+   `post_sesion` (cuando `now() > ends_at` de una sesión asistida y aún no
+   calificada) y `semanal` (control macro cada 7 días). Piezas: `lib/nps.ts`
+   (`getNpsPrompt`), `components/NpsModal.tsx` (modal dark premium 1–10 +
+   feedback, con guard de `sessionStorage`), `app/api/nps/route.ts` (insert con
+   `trigger`+`live_session_id`; `type` derivado server-side). Montado en
+   `app/(client)/layout.tsx`. El admin ya VE resultados en `/admin/nps`.
 
 6. ✅ **Storage bucket `content` creado (2026-06-21), privado** (`public = false`).
    Verificado por SQL. Las descargas pasan por `/api/download` (server-side con

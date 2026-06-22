@@ -16,8 +16,13 @@
   sin token de Supabase).
 - **Estado:** existe además el API route `app/api/webhooks/ghl/route.ts`
   como alternativa. La fuente de verdad operativa es la Edge Function.
-- **Pendiente de confirmar con Sebastián:** cuál de las dos queda como
-  oficial y si se elimina la otra para evitar duplicación.
+- **✅ RESUELTO (2026-06-22):** Sebastián confirmó que la **Edge Function
+  es la implementación OFICIAL**. El API route `app/api/webhooks/ghl/route.ts`
+  queda descartado (tenía el bug de `update` sobre 0 filas que no creaba el
+  acceso a un producto para un usuario existente) y debe **eliminarse** como
+  limpieza (ver `PENDIENTES.md` D2). Queda por revisar si los otros routes GHL
+  de Next.js (`webhooks/ghl/deactivate`, `ghl/update-access`) siguen vigentes
+  o también sobran frente a la Edge Function.
 
 ### 2. Trigger `handle_new_user`: fallback de `full_name` al email
 - **Schema original (ARCHITECTURE.md §6):** el trigger inserta

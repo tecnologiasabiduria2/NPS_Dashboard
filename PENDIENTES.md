@@ -14,11 +14,11 @@
 | # | Tema | Responsable | Qué se necesita | Qué bloquea | Impacto si no llega |
 |---|------|-------------|------------------|-------------|---------------------|
 | A1 | **SMTP custom en Supabase** | 🟥 | Credenciales SMTP (host/usuario/clave del dominio) | Plantillas branded de email (`email-templates/`) + emails reales de invitación/reset | Los correos usan el SMTP default de Supabase (muy limitado, casi no envía a terceros). Bloquea probar auth por email en prod. |
-| A2 | **NPS — triggers** ✅ REDEFINIDO (2026-06-22) | 🟥🟦 | ~~Cada cuántos días~~ **Decisión tomada:** el NPS se dispara por **dos triggers** que alimentan el **mismo** sistema (no dos NPS distintos): **(1) post-sesión en vivo** — pregunta puntual tras cada clase; **(2) semanal** — pregunta macro de seguimiento cada **7 días**. Pendiente menor: confirmar si el trigger semanal **alterna** `mejora_sesion` / `interes_ascension` o siempre usa uno. | Construir pantalla NPS del cliente (pantalla 8) + lógica de elegibilidad | Ya no bloquea el diseño del modelo; sí bloquea implementación hasta tener tablas de sesiones en vivo. |
+| A2 | ✅ **NPS — disparadores** | 🟥🟦 | **REDEFINIDO (2026-06-22).** Ya no es pregunta abierta de frecuencia: decisión tomada — el NPS se dispara por DOS triggers que alimentan el mismo sistema: (1) post-sesión, al terminar una sesión en vivo (`ends_at`); (2) semanal, como pregunta macro de seguimiento. Modelado en `nps_responses` con columna `"trigger"` (`post_sesion`/`semanal`), separada del `type` existente (`mejora_sesion`/`interes_ascension`, que sigue siendo el contenido de la pregunta, no el disparador). Ver migración Bloque 2 (`live_sessions` + `nps_responses.trigger`). | Ya no bloquea construir la pantalla NPS del cliente (pantalla 8) a nivel de schema; falta el bloque 7 (lógica del modal). |
 | A3 | **Stripe Secret Key** | 🟥 | `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` | `/api/webhooks/stripe` (marcado "futuro") | Ninguno para el MVP — no hay código Stripe aún. |
 | A4 | **GHL API key + webhook secret** | 🟥 | `GHL_API_KEY`, `GHL_WEBHOOK_SECRET` + workflow configurado en GHL | Probar webhooks GHL (Fase 4) y sync inverso (Fase 7) contra GHL real | Webhooks y sync quedan construidos pero **sin probar de verdad**. |
 | A5 | **Contenido real (Fathom IDs + PDFs)** | 🟦 | Fathom share IDs reales y los PDFs/documentos de los módulos | Que video y descarga funcionen "de verdad" | Hoy hay placeholders: el video no reproduce y la descarga da 404. La demo igual es navegable. |
-| A6 | **¿CRUD de contenido por UI o seguir por SQL?** | 🟥 | Decisión: construir la gestión de contenido editable (pantalla 14) o cargar contenido por SQL/Table Editor | Alcance de Fase 6 / pantalla 14 | Hoy `admin/content` es **solo lectura**. Construir el CRUD son ~1–1.5 días; por SQL es 0. |
+| A6 | **¿Cómo llegan a Supabase el `fathom_share_id` y los metadatos de módulo/lección?** | 🟥 | **PREGUNTA AFINADA (2026-06-22).** Confirmado (transcripción + captura del área de miembros de GHL): el contenido real (inmersiones, mentorías) **se sube y gestiona dentro de GHL**, insertando el video de Fathom vía un `<iframe>` al Worker (`phantom-media.tecnologia-sabiduria.workers.dev`) con el `fathom_share_id`. → **Esto DESCARTA construir un CRUD de contenido paralelo en `admin/content` de Ventra-Next.js** (esa ya NO es la pregunta; antes A6 preguntaba eso). La pregunta que SÍ sigue abierta: **¿el `fathom_share_id` y los metadatos del módulo/lección se siguen pasando a Supabase de forma MANUAL (como hoy, por SQL/Table Editor), o se construye un mecanismo de sincronización (manual asistido o automático) entre GHL y Supabase?** | Forma en que se cargan/actualizan los datos de contenido en Supabase (no afecta dónde vive el contenido en sí — eso es GHL). | Hoy se hace 100% manual por SQL/Table Editor (funciona pero no escala). **Sin asumir ninguna de las dos opciones** hasta que Sebastián defina. |
 | A7 | **¿MVP = solo Sabiduría, o también Workshop/Desafío?** | 🟥 | Confirmar productos a cargar para el lanzamiento | Cantidad de contenido a sembrar + lógica de ascensión | ARQUITECTURA dice MVP = solo Sabiduría; Workshop/Desafío en Fase 2. Asumido así por ahora. |
 
 ---
@@ -27,12 +27,16 @@
 
 | # | Tema | Responsable | Detalle |
 |---|------|-------------|---------|
-| B1 | **Duplicidad del webhook GHL** | 🟥 + 🟩 | Existen DOS implementaciones que hacen lo mismo: el **API route** (`app/api/webhooks/ghl/route.ts`) y la **Edge Function** (`supabase/functions/ghl-webhook/`). **Diferencias clave:** (1) el secret va en el **header** `x-ghl-secret` (API route) vs en el **body** (`secret`, Edge Function); (2) el API route tiene un **bug**: para un usuario existente sin acceso a ese producto hace `update` y matchea 0 filas → **no le crea el acceso**; la Edge Function lo maneja bien. **Recomendación de León:** quedarse con la **Edge Function** (más correcta, corre independiente de la app, ya tiene `verify_jwt=false`) y borrar el API route. **Falta que Sebastián confirme** cuál es oficial; luego se limpia en ~5 min. Ver `DECISIONES.md §1`. |
+| B1 | ✅ **Duplicidad del webhook GHL — RESUELTO (2026-06-22)** | 🟥 + 🟩 | **Sebastián confirmó que la Edge Function (`supabase/functions/ghl-webhook/`) es la implementación OFICIAL** del webhook GHL (corre independiente de la app, ya tiene `verify_jwt=false`, y maneja bien el alta de acceso a un producto para un usuario existente). El **API route** (`app/api/webhooks/ghl/route.ts`) queda **descartado** (tenía el bug de `update` sobre 0 filas que no creaba el acceso). Acción de limpieza desbloqueada → ver **D2**. Decisión registrada en `DECISIONES.md §1`. |
 | B2 | **Creación manual de usuarios vs solo GHL** | 🟥 | Ya existe `admin/clients/create` (alta manual). ¿Queda como vía oficial junto al webhook de GHL, o GHL debe ser siempre el origen? (En `ARCHITECTURE §14` era pregunta abierta; el código ya la implementó.) |
 | B3 | **¿El cliente debe VER sus notas de coaching?** | 🟥🟦 | La RLS permite al cliente leer sus notas (`notes_select`), y `ARCHITECTURE` dice "admin escribe, cliente lee", pero **no existe pantalla del lado cliente** para verlas. Definir si se necesita. |
 | B4 | **`current_module_id` — ¿cómo se asigna?** | 🟩 + 🟥 | Hoy queda `NULL` (dashboard muestra "Sin módulo asignado"). Verificar si `/api/progress/complete` debería avanzarlo automáticamente, o si se deriva del progreso en vez de guardarse. (Pendiente de revisar el código de esa ruta.) |
 | B5 | **Redirect URLs de Supabase Auth para local** | 🟩 | Los links de invitación/reset apuntan a `https://vip.sabiduriaempresarial.com/...`. Para probar esos flujos **en local** habría que agregar `http://localhost:3000/**` a las Redirect URLs de Supabase. Confirmar antes de probar invitaciones en local. |
 | B6 | **¿Qué cuenta como "progreso"?** | 🟥 | Decisión tomada para el MVP (2026-06-21): el progreso cuenta **solo los entregables** (`checklist_item`), no videos ni documentos — así el 100% es alcanzable y es consistente en todas las pantallas. **Falta confirmar con Sebastián** si en el futuro ver un video / abrir un PDF también debería "contar" como completado (requeriría construir el marcar-como-visto). |
+| B7 | **Rotación de Desafío + track de mentoría** | 🟥🟦 | **Salido de reunión 2026-06-22** con compañera que maneja la asistencia (transcripción `Transcripcion_sabiduria_desafio_manejo.txt`). Desafío opera por grupos/cohortes (grupo 5 activo, grupo 6 abre próxima inmersión) que alternan mes a mes entre Finanzas y Marketing; Sabiduría reparte Ventas/Procesos y Equipos según avance de cada empresario (la lógica exacta **ni la propia compañera la tiene clara del todo**, lleva ~1.5 meses en el rol). Diana indicó que esta capa de rotación/cronograma probablemente **no se automatiza** en la plataforma (se sigue llevando en Excel externo); lo que sí quiere integrar es que el empresario vea las sesiones programadas y marque asistencia. **No modelado aún** — `live_sessions.tipo` (inmersión_1/inmersión_2/mentoría/sala_gerencia/entrenamiento_comercial) sí se agregó (confirmado por Diana), pero el "track" específico (a qué mentoría/grupo pertenece la sesión) y la rotación de ciclos quedan fuera hasta que Sebastián y Diana definan el alcance. También salió: doble trazabilidad deseada (asistencia en vivo + grabación vista, como métricas separadas, con alerta al 70% de asistencia) — relacionado con B6, fuera del MVP actual. |
+| B8 | ✅ **NPS — relación `type` ↔ `trigger`** | 🟩 | **Decisión tomada (2026-06-22).** El Bloque 3 (`app/api/nps/route.ts`) acopla `trigger`→`type` 1-a-1: `post_sesion` siempre genera `type='mejora_sesion'`, `semanal` siempre genera `type='interes_ascension'` (el cliente nunca elige `type`, se deriva server-side). Se evaluó explícitamente la alternativa —que ambos `type` pudieran alternarse dentro de cada trigger, como sugiere la palabra "alternados" en `ARCHITECTURE.md` pantalla 8— y se descartó: preguntar sobre interés de ascensión justo después de una sesión en vivo no calza con el momento. Queda como decisión de producto, no como limitación técnica del schema (las 4 combinaciones siguen siendo posibles a nivel de datos si en el futuro se quisiera revertir esto). |
+
+| B9 | **Calendario de sesiones en vivo para el cliente** | 🟦 + 🟥 | **Salido de reunión 2026-06-22 (Diana + Garzón).** Diana pidió que los empresarios puedan ver un **CALENDARIO** con los días y horas de sus sesiones en vivo — no solo la próxima, sino el panorama completo (inmersiones, mentorías, sala de gerencia, entrenamiento comercial). **Hoy la plataforma solo muestra una card de "Próximo evento"** con la sesión más cercana (Bloque 3 — dashboard, pantalla 5; query `live_sessions` con `LIMIT 1`). **A definir antes de construir:** (1) **alcance** del calendario (semana/mes, lista vs. vista calendario); (2) **dónde vive** — ¿pantalla nueva (ej. `/calendario`) o sección dentro del dashboard?; (3) si aplica también a **sala de gerencia / entrenamiento comercial**, que tienen **link de Zoom fijo recurrente**, vs. **inmersión / mentoría** con **link variable** creado el día antes (relacionado con la deuda de `live_sessions.zoom_url` como campo único — ver sección E). El schema `live_sessions` ya soporta listar todas las sesiones publicadas del producto; falta la decisión de producto + la UI. **No construir hasta definir.** |
 
 ---
 
@@ -43,7 +47,7 @@
 | C1 | **Flujo `activate` con invitación real** | 🟩 | El código no llama `exchangeCodeForSession` explícitamente (confía en el manejo automático del token). Según el tipo de link del email podría requerir ajuste. Validar con una invitación real (depende de A1 + deploy). |
 | C2 | ✅ **Pipeline de documentos (Storage → signed URL)** | 🟩 | **RESUELTO (2026-06-21).** PDF de prueba subido a `content/module-1/plantilla-flujo-caja.pdf`; la descarga vía `/api/download` (signed URL 60s) funciona. |
 | C3 | **Checklist de pruebas e2e (PLAN-LEON paso 45)** | 🟩 | QA local del 2026-06-21 cubrió auth, cliente y admin (2 bugs corregidos). **Falta:** pase e2e formal completo + lo que necesita servicios reales (invitación por email, webhook GHL). |
-| C4 | **Acceso SSH + DNS antes del deploy** | 🟩 | Confirmar que `ssh root@142.93.7.13` funciona y que `vip.sabiduriaempresarial.com` resuelve, antes de empezar la Fase 8. |
+| C4 | ✅ **Acceso SSH + DNS — VERIFICADO (2026-06-22)** | 🟩 | **SSH OK** (`root@142.93.7.13`, droplet DigitalOcean `ubuntu-s-2vcpu-4gb-nyc1`, NYC1). Ya tiene **nginx 1.24.0** y **node v20.20.2**; **falta PM2** (instalar `npm i -g pm2` en el deploy). **DNS OK:** en Cloudflare `vip.sabiduriaempresarial.com` = registro **A → 142.93.7.13, Proxied** (apunta ya a este mismo servidor; el SSL público lo termina Cloudflare). nginx aún no tiene vhost para `vip.*` (responde 404). ⚠️ **OJO — servidor COMPARTIDO en producción:** ya corren `diagnostico`, `diana-dashboard`, `finance-dashboard`, `n8n-workflow`, `ventracrm`, `wordpress-sabiduria` (WordPress vivo recibiendo tráfico). El deploy debe ser **aditivo y no disruptivo**: nuevo vhost + puerto libre para la app Next.js, sin tocar los configs existentes. |
 | C5 | **Redirect a `/access-expired`** | 🟩 | Verificar visualmente que un cliente con `user_access.status='inactive'` es redirigido a `/access-expired`. La lógica está en el layout del cliente; quedó sin probar en el QA del 2026-06-21. |
 
 ---
@@ -53,28 +57,21 @@
 | # | Tema | Responsable | Detalle |
 |---|------|-------------|---------|
 | D1 | **Usuario de prueba duplicado** | 🟩 | Al crear el admin se generó por typo `tecnologia.sabiduria@gmail.com` (sin "2") además del real `tecnologia2.sabiduria@gmail.com`. Borrar el sobrante desde Authentication → Users cuando se quiera limpiar. |
-| D2 | **Borrar el webhook no-oficial** | 🟩 | Una vez resuelto B1, eliminar la implementación descartada para evitar confusión futura. |
+| D2 | **Borrar el webhook no-oficial** ⏳ accionable ya | 🟩 | **Desbloqueado (B1 resuelto 2026-06-22).** Eliminar el API route descartado `app/api/webhooks/ghl/route.ts` (y revisar si `app/api/webhooks/ghl/deactivate/route.ts` y `app/api/ghl/update-access/route.ts` siguen vivos o también sobran frente a la Edge Function oficial). Limpieza de ~5 min para evitar confusión futura; hacer antes/junto al deploy. |
 | D3 | **Datos de prueba (placeholders)** | 🟩 | Los `fathom_share_id` (`DEMO_FATHOM_ID`/`DEMO_FATHOM_ID_2`) y el `storage_path` del documento son placeholders; reemplazar por reales cuando lleguen (depende de A5). |
 
 ---
 
 ## E. Fuera del MVP (Fase 2/3 del ARCHITECTURE — registrar, no hacer aún)
 
-- NPS integrado completo (cliente + reportes) — pantalla 8 + 15 — **en curso** (triggers definidos en A2; ya no es Fase 2 pura).
+- NPS integrado completo (cliente + reportes) — pantalla 8 + 15.
 - Workshop y Desafío con contenido bloqueado + lógica de ascensión.
 - Notificaciones WhatsApp (Meta Cloud API) — requiere `META_WHATSAPP_TOKEN`, `META_PHONE_NUMBER_ID`.
 - Marketplace interno de ascensión.
 - Replicación para empresa de turismo / inmobiliaria (multi-tenant).
 - Integración directa de Stripe (`/api/webhooks/stripe`).
-
----
-
-## F. Extensión — Sesiones en vivo (reunión Diana/Sebastián, 2026-06-22)
-
-| # | Tema | Responsable | Detalle |
-|---|------|-------------|---------|
-| F1 | **Modelo de datos sesiones + asistencia** | 🟩 | Diseño acordado en este turno (ver propuesta abajo). Implementar en `supabase/schema.sql` + RLS. |
-| F2 | **Dashboard — Próximo evento (pantalla 5)** | 🟩 | Reutilizar sección existente del dashboard; query próxima sesión del `product_id` activo; link interno de join. |
-| F3 | **Ruta join + redirect Zoom** | 🟩 | `/api/sessions/[id]/join`: registra asistencia (idempotente) → 302 a `zoom_url`. |
-| F4 | **Seed beta sesiones** | 🟦🟩 | Diana simula con filas en `live_sessions` (horario/link editables en BD). |
-| F5 | **Admin CRUD horarios** | 🟩 | v1 beta: SQL/Table Editor; v2 opcional: UI en admin. |
+- Rotación de ciclos / grupos de Desafío y track de mentoría (ver B7).
+- Doble trazabilidad asistencia en vivo + grabación vista, con % y alerta (ver B7).
+- Links de Zoom recurrentes/fijos (sala de gerencia, entrenamiento comercial) vs.
+  variables (inmersión/mentoría, creados el día antes) — hoy `live_sessions.zoom_url`
+  es un solo campo editable por admin; no distingue ambos casos.

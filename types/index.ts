@@ -3,6 +3,7 @@ export type AccessStatus = 'active' | 'inactive' | 'pending'
 export type ProductSlug = 'workshop' | 'desafio' | 'sabiduria'
 export type LessonType = 'video' | 'document' | 'checklist_item'
 export type NpsType = 'mejora_sesion' | 'interes_ascension'
+export type NpsTrigger = 'post_sesion' | 'semanal'
 
 export interface Profile {
   id: string
@@ -83,5 +84,26 @@ export interface NpsResponse {
   score: number
   feedback?: string
   type: NpsType
+  trigger: NpsTrigger
+  live_session_id?: string
   created_at: string
+}
+
+export interface LiveSession {
+  id: string
+  product_id: string
+  title: string
+  starts_at: string
+  ends_at: string
+  zoom_url: string
+  is_published: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface LiveSessionAttendance {
+  id: string
+  user_id: string
+  session_id: string
+  joined_at: string
 }

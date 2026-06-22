@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import Sidebar from '@/components/Sidebar'
+import NpsModal from '@/components/NpsModal'
+import { getNpsPrompt } from '@/lib/nps'
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -33,12 +35,16 @@ export default async function ClientLayout({ children }: { children: React.React
     .eq('user_id', user.id)
     .then(() => {})
 
+  // ¿Le corresponde al cliente el modal de NPS? (post-sesión o semanal)
+  const npsPrompt = await getNpsPrompt(supabase, user.id)
+
   return (
     <div className="flex min-h-screen bg-surface-950">
       <Sidebar role="client" userName={profile?.full_name ?? user.email ?? ''} />
       <main className="flex-1 p-8 overflow-auto">
         {children}
       </main>
+      {npsPrompt && <NpsModal prompt={npsPrompt} />}
     </div>
   )
 }
