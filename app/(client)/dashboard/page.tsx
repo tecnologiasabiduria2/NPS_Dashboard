@@ -175,6 +175,8 @@ export default async function DashboardPage({
           </div>
           <a
             href={`/api/sessions/${nextSession.id}/join`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="btn-primary shrink-0 self-start sm:self-auto"
           >
             Unirme al Zoom <ArrowRight size={14} />
