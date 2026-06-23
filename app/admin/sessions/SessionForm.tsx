@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarPlus, CheckCircle2, Trash2 } from 'lucide-react'
+import { SESSION_TIPOS } from '@/lib/sessionTypes'
 
 interface Session {
   id: string
   title: string
+  tipo: string
   starts_at: string
   ends_at: string
   zoom_url: string
@@ -25,7 +27,7 @@ function toLocalInput(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-const EMPTY = { sessionId: '', title: '', starts_at: '', ends_at: '', zoom_url: '', is_published: true }
+const EMPTY = { sessionId: '', title: '', tipo: 'inmersion_1', starts_at: '', ends_at: '', zoom_url: '', is_published: true }
 
 export default function SessionForm({ products, sessionsByProduct }: Props) {
   const router = useRouter()
@@ -56,6 +58,7 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
     setF({
       sessionId: s.id,
       title: s.title,
+      tipo: s.tipo || 'inmersion_1',
       starts_at: toLocalInput(s.starts_at),
       ends_at: toLocalInput(s.ends_at),
       zoom_url: s.zoom_url,
@@ -74,6 +77,7 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
         id: f.sessionId || undefined,
         product_id: productId,
         title: f.title,
+        tipo: f.tipo,
         // datetime-local (hora local) -> ISO UTC
         starts_at: f.starts_at ? new Date(f.starts_at).toISOString() : '',
         ends_at: f.ends_at ? new Date(f.ends_at).toISOString() : '',
@@ -134,6 +138,13 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
             {f.sessionId && <p className="text-xs text-accent mt-1.5">Editando una sesión existente</p>}
           </div>
         )}
+
+        <div>
+          <label className="label">Tipo de sesión *</label>
+          <select className="select" value={f.tipo} onChange={e => set('tipo', e.target.value)} disabled={!productId} required>
+            {SESSION_TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </div>
 
         <div>
           <label className="label">Título</label>

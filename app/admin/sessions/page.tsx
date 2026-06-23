@@ -1,12 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import SessionForm from './SessionForm'
 import { Calendar, Video } from 'lucide-react'
+import { sessionTipoLabel } from '@/lib/sessionTypes'
 
 export default async function AdminSessionsPage() {
   const supabase = await createClient()
   const { data: products } = await supabase
     .from('products')
-    .select('id, title, slug, order, live_sessions(id, title, starts_at, ends_at, zoom_url, is_published)')
+    .select('id, title, slug, order, live_sessions(id, title, tipo, starts_at, ends_at, zoom_url, is_published)')
     .order('order')
 
   const productOptions: { id: string; label: string }[] = []
@@ -47,9 +48,13 @@ export default async function AdminSessionsPage() {
                         <div className="flex items-start gap-3 min-w-0">
                           <Video size={15} className={ended ? 'text-cream-muted mt-0.5' : 'text-accent mt-0.5'} />
                           <div className="min-w-0">
-                            <p className="text-sm text-cream truncate">{s.title}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm text-cream truncate">{sessionTipoLabel(s.tipo)}</p>
+                              <span className="badge-brand shrink-0">{s.tipo}</span>
+                            </div>
                             <p className="text-xs text-cream-muted mt-0.5">
                               {new Date(s.starts_at).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}
+                              {' · '}{s.title}
                               {ended && ' · terminada'}
                             </p>
                           </div>

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Video, CalendarClock, ArrowRight } from 'lucide-react'
+import { sessionTipoLabel } from '@/lib/sessionTypes'
 
 export default async function SessionsPage() {
   const supabase = await createClient()
@@ -17,7 +18,7 @@ export default async function SessionsPage() {
 
   const { data: sessions } = await supabase
     .from('live_sessions')
-    .select('id, title, starts_at, ends_at')
+    .select('id, title, tipo, starts_at, ends_at')
     .eq('product_id', access.product_id)
     .eq('is_published', true)
     .order('starts_at', { ascending: true })
@@ -77,7 +78,7 @@ export default async function SessionsPage() {
                         <Video size={16} className="text-accent" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-cream font-medium leading-snug truncate">{s.title}</p>
+                        <p className="text-cream font-medium leading-snug truncate">{sessionTipoLabel(s.tipo)}</p>
                         <p className="text-sm text-cream-dim mt-0.5">
                           {format(start, 'HH:mm')}–{format(end, 'HH:mm')}
                         </p>
@@ -107,7 +108,7 @@ export default async function SessionsPage() {
             {past.map(s => (
               <div key={s.id} className="card-sm flex items-center justify-between gap-4 opacity-60">
                 <div className="min-w-0">
-                  <p className="text-cream-dim text-sm truncate">{s.title}</p>
+                  <p className="text-cream-dim text-sm truncate">{sessionTipoLabel(s.tipo)}</p>
                   <p className="text-xs text-cream-muted mt-0.5">
                     {format(new Date(s.starts_at), "d 'de' MMMM · HH:mm", { locale: es })} · terminada
                   </p>

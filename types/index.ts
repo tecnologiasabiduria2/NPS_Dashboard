@@ -89,10 +89,18 @@ export interface NpsResponse {
   created_at: string
 }
 
+export type SessionTipo =
+  | 'inmersion_1'
+  | 'inmersion_2'
+  | 'mentoria'
+  | 'sala_gerencia'
+  | 'entrenamiento_comercial'
+
 export interface LiveSession {
   id: string
   product_id: string
   title: string
+  tipo: SessionTipo
   starts_at: string
   ends_at: string
   zoom_url: string
