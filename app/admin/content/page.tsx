@@ -1,18 +1,35 @@
 import { createClient } from '@/lib/supabase/server'
+import LessonForm from './LessonForm'
 
 export default async function ContentPage() {
   const supabase = await createClient()
   const { data: products } = await supabase
     .from('products')
-    .select('id, title, slug, order, modules(id, title, order, is_published, lessons(id, title, type))')
+    .select('id, title, slug, order, modules(id, title, order, is_published, lessons(id, title, type, fathom_share_id, storage_path, order, is_published))')
     .order('order')
+
+  // Aplanar módulos (para el selector) y mapear lecciones por módulo (para edición)
+  const modules: { id: string; label: string }[] = []
+  const lessonsByModule: Record<string, any[]> = {}
+  for (const product of (products ?? []) as any[]) {
+    const mods = [...(product.modules ?? [])].sort((a: any, b: any) => a.order - b.order)
+    for (const mod of mods) {
+      modules.push({ id: mod.id, label: `${product.title} · ${mod.order}. ${mod.title}` })
+      lessonsByModule[mod.id] = [...(mod.lessons ?? [])].sort((a: any, b: any) => a.order - b.order)
+    }
+  }
 
   return (
     <div className="max-w-4xl">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-zinc-100">Gestión de contenido</h1>
-        <p className="text-xs text-zinc-500">v1 — edición completa en v2</p>
+        <h1 className="text-2xl font-bold text-cream">Gestión de contenido</h1>
+        <p className="text-xs text-cream-muted">Carga y edición desde la plataforma</p>
       </div>
+
+      {/* Panel de carga/edición (A6) */}
+      <LessonForm modules={modules} lessonsByModule={lessonsByModule} />
+
+      {/* Listado existente (solo lectura) */}
       <div className="space-y-6">
         {(products ?? []).map((product: any) => (
           <div key={product.id} className="card">
