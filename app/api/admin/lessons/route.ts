@@ -48,16 +48,32 @@ export async function POST(req: NextRequest) {
     if (!workerUrl) {
       return NextResponse.json({ error: 'NEXT_PUBLIC_WORKER_URL no está configurada en el servidor' }, { status: 500 })
     }
-    let valid = false
+    const encoded = encodeURIComponent(fathom_share_id)
+
+    // Se valida contra DOS rutas del Worker, a propósito (verificado empíricamente 2026-06-23):
+    //  1) /player?id=<id>        → contrato PÚBLICO/ESTABLE del embed (el mismo <iframe> que usa
+    //     GHL en producción). Confirma que el Worker está arriba. OJO: devuelve 200 para CUALQUIER
+    //     id (real, inventado o vacío), así que por sí sola NO distingue un id válido de uno falso.
+    //  2) /share/<id>/video.m3u8 → ruta INTERNA que SÍ discrimina: 200 si el id existe de verdad,
+    //     404 si es inventado/typo. Es la que realmente atrapa ids inválidos.
+    // Por eso se exigen AMBAS (si cualquiera falla, se rechaza el guardado). Si algún día /share
+    // cambia o desaparece, ESTE es el punto a ajustar — no /player, que es el contrato estable.
+    let playerOk = false
+    let shareOk = false
     try {
-      const res = await fetch(`${workerUrl}/share/${encodeURIComponent(fathom_share_id)}/video.m3u8`, { cache: 'no-store' })
-      valid = res.ok
+      const [playerRes, shareRes] = await Promise.all([
+        fetch(`${workerUrl}/player?id=${encoded}`, { cache: 'no-store' }),
+        fetch(`${workerUrl}/share/${encoded}/video.m3u8`, { cache: 'no-store' }),
+      ])
+      playerOk = playerRes.ok
+      shareOk = shareRes.ok
     } catch {
-      valid = false
+      playerOk = false
+      shareOk = false
     }
-    if (!valid) {
+    if (!playerOk || !shareOk) {
       return NextResponse.json({
-        error: `El fathom_share_id «${fathom_share_id}» no existe o no responde en el Worker. Verifícalo en GHL.`,
+        error: `El fathom_share_id «${fathom_share_id}» no es válido o el Worker no responde. Verifícalo en GHL.`,
       }, { status: 400 })
     }
   }
