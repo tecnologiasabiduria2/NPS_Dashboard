@@ -34,10 +34,14 @@ export default function CreateClientPage() {
       body: JSON.stringify(form),
     })
 
-    const data = await res.json()
+    let data: any = {}
+    try { data = await res.json() } catch { /* body no era JSON */ }
 
     if (!res.ok) {
-      setError(data.error ?? 'Error al crear el cliente')
+      const msg = typeof data?.error === 'string' && data.error
+        ? data.error
+        : `Error del servidor (${res.status}). Revisa la terminal del servidor para más detalle.`
+      setError(msg)
       setLoading(false)
       return
     }

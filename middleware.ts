@@ -31,7 +31,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (user && isPublic) {
+  // Usuarios autenticados fuera de rutas públicas — EXCEPTO /activate: el usuario
+  // queda autenticado al procesar el token de invitación (hash fragment), pero aún
+  // necesita poner su contraseña antes de ser redirigido al dashboard.
+  const isActivate = request.nextUrl.pathname.startsWith('/activate')
+  if (user && isPublic && !isActivate) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

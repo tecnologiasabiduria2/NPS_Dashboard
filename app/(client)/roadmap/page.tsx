@@ -22,15 +22,30 @@ export default async function RoadmapPage() {
     .eq('is_published', true)
     .order('order')
 
+  // Progreso: un solo query para TODOS los checklist items, en vez de N queries (uno por módulo).
+  const allChecklistIds: string[] = []
+  const checklistByModule: Record<string, string[]> = {}
+  for (const mod of modules ?? []) {
+    const ids = (mod.lessons as any[]).filter((l: any) => l.type === 'checklist_item').map((l: any) => l.id)
+    checklistByModule[mod.id] = ids
+    allChecklistIds.push(...ids)
+  }
+
+  const completedSet = new Set<string>()
+  if (allChecklistIds.length > 0) {
+    const { data: progress } = await supabase
+      .from('lesson_progress')
+      .select('lesson_id')
+      .eq('user_id', user.id)
+      .eq('completed', true)
+      .in('lesson_id', allChecklistIds)
+    for (const p of progress ?? []) completedSet.add(p.lesson_id)
+  }
+
   const moduleProgress: Record<string, { completed: number; total: number }> = {}
   for (const mod of modules ?? []) {
-    // El progreso cuenta solo entregables (checklist), no videos ni documentos
-    const ids = (mod.lessons as any[]).filter((l: any) => l.type === 'checklist_item').map((l: any) => l.id)
-    if (ids.length === 0) { moduleProgress[mod.id] = { completed: 0, total: 0 }; continue }
-    const { count } = await supabase
-      .from('lesson_progress').select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id).eq('completed', true).in('lesson_id', ids)
-    moduleProgress[mod.id] = { completed: count ?? 0, total: ids.length }
+    const ids = checklistByModule[mod.id] ?? []
+    moduleProgress[mod.id] = { completed: ids.filter(id => completedSet.has(id)).length, total: ids.length }
   }
 
   const productTitle = (access as any)?.products?.title ?? ''

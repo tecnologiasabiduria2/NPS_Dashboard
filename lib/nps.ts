@@ -59,6 +59,20 @@ export async function getNpsPrompt(
   }
 
   // --- 2. semanal ---
+  // Gracia de 7 días: no pedir NPS semanal a alguien que acaba de crear su cuenta.
+  const { data: accessRow } = await supabase
+    .from('user_access')
+    .select('access_started, created_at')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .limit(1)
+    .maybeSingle()
+
+  const startDate = accessRow?.access_started ?? accessRow?.created_at
+  if (startDate && Date.now() - new Date(startDate).getTime() < WEEK_MS) {
+    return null
+  }
+
   const { data: lastWeekly } = await supabase
     .from('nps_responses')
     .select('created_at')
