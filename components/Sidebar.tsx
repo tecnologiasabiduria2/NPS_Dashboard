@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { LayoutDashboard, Map, BookOpen, User, LogOut, Users, BarChart2, FileText, UserPlus, CalendarClock } from 'lucide-react'
+import { LayoutDashboard, Map, BookOpen, User, LogOut, Users, BarChart2, FileText, UserPlus, CalendarClock, Gauge } from 'lucide-react'
 import { clsx } from 'clsx'
 import Logo from './Logo'
 
@@ -11,6 +11,7 @@ interface SidebarProps {
   role: 'client' | 'admin'
   userName: string
   productTitle?: string
+  isOwner?: boolean
 }
 
 const clientLinks = [
@@ -29,7 +30,7 @@ const adminLinks = [
   { href: '/admin/nps',       label: 'NPS',             icon: BarChart2 },
 ]
 
-export default function Sidebar({ role, userName, productTitle }: SidebarProps) {
+export default function Sidebar({ role, userName, productTitle, isOwner }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const links = role === 'admin' ? adminLinks : clientLinks
@@ -74,6 +75,20 @@ export default function Sidebar({ role, userName, productTitle }: SidebarProps) 
             {label}
           </Link>
         ))}
+
+        {role === 'admin' && isOwner && (
+          <Link href="/admin/360"
+            className={clsx(
+              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',
+              isActive('/admin/360')
+                ? 'bg-brand-600/15 text-brand-400 border border-brand-600/25'
+                : 'text-cream-muted hover:text-cream hover:bg-surface-800'
+            )}
+          >
+            <Gauge size={16} strokeWidth={isActive('/admin/360') ? 2 : 1.5} />
+            Vista 360
+          </Link>
+        )}
 
         {role === 'admin' && (
           <>
