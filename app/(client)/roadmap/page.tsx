@@ -71,7 +71,7 @@ export default async function RoadmapPage() {
             const pct = prog.total > 0 ? Math.round((prog.completed / prog.total) * 100) : 0
 
             return (
-              <Link key={mod.id} href={`/module/${mod.id}`}>
+              <Link key={mod.id} href={`/module/${mod.id}`} className="block">
                 <div className={`relative ml-12 card hover:border-brand-600/40 transition-all duration-200 cursor-pointer ${isCurrent ? 'border-brand-600/40 bg-surface-800' : ''}`}>
                   {/* Indicador en la línea */}
                   <div className={`absolute -left-9 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center border-2 z-10

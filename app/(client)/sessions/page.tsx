@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Video, CalendarClock, ArrowRight } from 'lucide-react'
 import { sessionTipoLabel } from '@/lib/sessionTypes'
+import MiniCalendar from './MiniCalendar'
 
 export default async function SessionsPage() {
   const supabase = await createClient()
@@ -51,6 +52,8 @@ export default async function SessionsPage() {
         <p className="page-subtitle">Tu calendario de inmersiones, mentorías y demás encuentros.</p>
       </div>
 
+      <MiniCalendar sessionDates={upcoming.map(s => format(new Date(s.starts_at), 'yyyy-MM-dd'))} />
+
       {upcoming.length === 0 && (
         <div className="card text-center py-10">
           <CalendarClock size={28} className="text-cream-muted mx-auto mb-3" />
@@ -62,7 +65,7 @@ export default async function SessionsPage() {
       {/* Próximas — agrupadas por día */}
       <div className="space-y-7">
         {groups.map(group => (
-          <div key={group.key}>
+          <div key={group.key} id={`session-day-${group.key}`}>
             <p className="section-label flex items-center gap-2 capitalize">
               <CalendarClock size={13} className="text-accent" />
               {group.label}
