@@ -14,9 +14,18 @@ const ESTADO_META: Record<string, { label: string; chip: string }> = {
   no_elegido: { label: 'sin asignar', chip: 'bg-surface-700 text-cream-dim' },
 }
 
+// Color del NPS por score. Umbrales según el boceto sabiduria_dashboard_cliente.html
+// (8 y 9 en verde, 7 en ámbar). La vista CS usa su propio umbral por su boceto.
+function npsColorClass(score: number) {
+  if (score >= 8) return 'text-emerald-400'
+  if (score >= 6) return 'text-amber-400'
+  return 'text-red-400'
+}
+
 type HiperfocoRow = {
   periodo: string
   estado: string
+  hiperfoco_id: string | null
   hiperfocos: { title: string } | null
 }
 
@@ -46,26 +55,60 @@ export default async function DashboardPage({
   let hiperfocoMes: HiperfocoRow | null = null
   // Historial mensual de hiperfocos (más reciente primero).
   let historial: HiperfocoRow[] = []
+  // Campos derivados del historial (B10 segunda vuelta), por clave 'YYYY-MM':
+  //   - asistió: hubo asistencia a una sesión del producto ese mes
+  //   - NPS del mes: respuesta más reciente de ese mes
+  const mesesAsistidos = new Set<string>()
+  const npsPorMes = new Map<string, number>()
   if (access?.product_id) {
-    const [{ data: mes }, { data: hist }] = await Promise.all([
+    const [{ data: mes }, { data: hist }, { data: attendanceRaw }, { data: npsRaw }] = await Promise.all([
       supabase
         .from('user_hiperfoco_mes')
-        .select('periodo, estado, hiperfocos(title)')
+        .select('periodo, estado, hiperfoco_id, hiperfocos(title)')
         .eq('user_id', user.id)
         .eq('product_id', access.product_id)
         .eq('periodo', periodoActual)
         .maybeSingle(),
       supabase
         .from('user_hiperfoco_mes')
-        .select('periodo, estado, hiperfocos(title)')
+        .select('periodo, estado, hiperfoco_id, hiperfocos(title)')
         .eq('user_id', user.id)
         .eq('product_id', access.product_id)
         .order('periodo', { ascending: false })
         .limit(12),
+      supabase
+        .from('live_session_attendance')
+        .select('live_sessions!inner(starts_at, product_id)')
+        .eq('user_id', user.id)
+        .eq('live_sessions.product_id', access.product_id),
+      supabase.from('nps_responses').select('score, created_at').eq('user_id', user.id),
     ])
     hiperfocoMes = mes as HiperfocoRow | null
     historial = (hist as HiperfocoRow[] | null) ?? []
+
+    for (const a of (attendanceRaw as any[]) ?? []) {
+      const key = (a.live_sessions?.starts_at as string | undefined)?.slice(0, 7)
+      if (key) mesesAsistidos.add(key)
+    }
+    // Orden ascendente por fecha → la última escritura por mes gana (la más reciente).
+    for (const r of ((npsRaw as any[]) ?? [])
+      .slice()
+      .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))) {
+      npsPorMes.set(String(r.created_at).slice(0, 7), r.score)
+    }
   }
+
+  // Historial enriquecido: asistió / repitió (mismo hiperfoco que el mes anterior) / NPS.
+  const historialView = historial.map((row, i, arr) => {
+    const mesKey = String(row.periodo).slice(0, 7)
+    const prev = arr[i + 1] // siguiente en orden desc = mes anterior
+    return {
+      ...row,
+      asistio: mesesAsistidos.has(mesKey),
+      repitio: Boolean(row.hiperfoco_id) && prev?.hiperfoco_id === row.hiperfoco_id,
+      nps: npsPorMes.get(mesKey) ?? null,
+    }
+  })
 
   // Próxima sesión en vivo del producto activo (publicada y aún no terminada)
   let nextSession: { id: string; title: string; starts_at: string } | null = null
@@ -171,20 +214,20 @@ export default async function DashboardPage({
           <p className="text-sm font-medium text-cream">Mi historial de hiperfocos</p>
         </div>
 
-        {historial.length === 0 ? (
+        {historialView.length === 0 ? (
           <p className="text-sm text-cream-muted">
             Todavía no hay hiperfocos registrados. Aparecerán aquí mes a mes.
           </p>
         ) : (
           <div className="flex flex-col">
-            {historial.map((row, i) => {
+            {historialView.map((row, i) => {
               const meta = ESTADO_META[row.estado] ?? ESTADO_META.no_elegido
               const conHiperfoco = Boolean(row.hiperfocos?.title)
               return (
                 <div
                   key={row.periodo}
                   className={`grid grid-cols-[88px_1fr_auto] gap-3 items-center py-2.5 ${
-                    i < historial.length - 1 ? 'border-b border-surface-700/60' : ''
+                    i < historialView.length - 1 ? 'border-b border-surface-700/60' : ''
                   }`}
                 >
                   <span className="text-xs text-cream-muted capitalize">
@@ -192,10 +235,19 @@ export default async function DashboardPage({
                   </span>
                   <span className={`text-sm ${conHiperfoco ? 'text-cream' : 'text-cream-muted'}`}>
                     {row.hiperfocos?.title ?? (row.estado === 'pausa' ? 'Pausa' : 'Sin asignar')}
+                    {row.repitio && <span className="text-xs text-cream-muted ml-1.5">· repitió</span>}
+                    {row.asistio && <span className="text-xs text-cream-muted ml-1.5">· asistió ✓</span>}
                   </span>
-                  <span className={`text-xs px-2.5 py-1 rounded-full ${meta.chip}`}>
-                    {meta.label}
-                  </span>
+                  {/* El NPS del mes reemplaza al chip de estado cuando existe (ver boceto). */}
+                  {row.nps !== null ? (
+                    <span className={`text-sm font-medium text-right ${npsColorClass(row.nps)}`}>
+                      NPS {row.nps}
+                    </span>
+                  ) : (
+                    <span className={`text-xs px-2.5 py-1 rounded-full ${meta.chip}`}>
+                      {meta.label}
+                    </span>
+                  )}
                 </div>
               )
             })}
