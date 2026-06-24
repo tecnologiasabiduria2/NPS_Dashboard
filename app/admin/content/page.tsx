@@ -1,20 +1,32 @@
 import { createClient } from '@/lib/supabase/server'
 import LessonForm from './LessonForm'
+import ModuleForm from './ModuleForm'
 
 export default async function ContentPage() {
   const supabase = await createClient()
-  const { data: products } = await supabase
-    .from('products')
-    .select('id, title, slug, order, modules(id, title, order, is_published, lessons(id, title, type, fathom_share_id, storage_path, order, is_published))')
-    .order('order')
 
-  // Aplanar módulos (para el selector) y mapear lecciones por módulo (para edición)
-  const modules: { id: string; label: string }[] = []
+  const [{ data: products }, { data: hiperfocos }] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id, title, slug, order, modules(id, title, order, is_published, hiperfoco_id, product_id, lessons(id, title, type, fathom_share_id, storage_path, order, is_published))')
+      .order('order'),
+    supabase
+      .from('hiperfocos')
+      .select('id, title, product_id')
+      .eq('is_active', true)
+      .order('order'),
+  ])
+
+  const productList = ((products ?? []) as any[]).map(p => ({ id: p.id, title: p.title }))
+  const allModules: any[] = []
+  const lessonModules: { id: string; label: string }[] = []
   const lessonsByModule: Record<string, any[]> = {}
+
   for (const product of (products ?? []) as any[]) {
     const mods = [...(product.modules ?? [])].sort((a: any, b: any) => a.order - b.order)
     for (const mod of mods) {
-      modules.push({ id: mod.id, label: `${product.title} · ${mod.order}. ${mod.title}` })
+      allModules.push(mod)
+      lessonModules.push({ id: mod.id, label: `${product.title} · ${mod.order}. ${mod.title}` })
       lessonsByModule[mod.id] = [...(mod.lessons ?? [])].sort((a: any, b: any) => a.order - b.order)
     }
   }
@@ -26,10 +38,15 @@ export default async function ContentPage() {
         <p className="text-xs text-cream-muted">Carga y edición desde la plataforma</p>
       </div>
 
-      {/* Panel de carga/edición (A6) */}
-      <LessonForm modules={modules} lessonsByModule={lessonsByModule} />
+      <ModuleForm
+        products={productList}
+        hiperfocos={(hiperfocos as any[]) ?? []}
+        modules={allModules}
+      />
 
-      {/* Listado existente (solo lectura) */}
+      <LessonForm modules={lessonModules} lessonsByModule={lessonsByModule} />
+
+      {/* Listado existente */}
       <div className="space-y-6">
         {(products ?? []).map((product: any) => (
           <div key={product.id} className="card">

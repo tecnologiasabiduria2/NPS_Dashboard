@@ -1,21 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 const VALID_TYPES = ['video', 'document', 'checklist_item'] as const
 
-// POST /api/admin/lessons
-// Crea o actualiza una lección. El admin solo habla con esta ruta;
-// el insert/update a Supabase lo hace el backend (service role), nunca SQL manual.
-// Para videos, valida el fathom_share_id contra el Worker antes de guardar.
 export async function POST(req: NextRequest) {
-  // --- Verificación de admin (mismo patrón que /api/admin/create-client) ---
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const auth = await requireAdmin()
+  if ('error' in auth) return auth.error
 
   // --- Entrada ---
   const body = await req.json().catch(() => null)

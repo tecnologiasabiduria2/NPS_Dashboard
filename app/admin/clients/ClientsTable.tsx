@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { formatDateOnly } from '@/lib/format'
 
+type SortMode = 'default' | 'vence_pronto' | 'vence_tarde'
+
 interface Props {
   clients: any[]
   today: string
@@ -13,16 +15,33 @@ interface Props {
 
 export default function ClientsTable({ clients, today, soonDate }: Props) {
   const [q, setQ] = useState('')
+  const [sort, setSort] = useState<SortMode>('default')
 
   const filtered = useMemo(() => {
+    let list = clients
     const t = q.trim().toLowerCase()
-    if (!t) return clients
-    return clients.filter((c: any) => {
-      const name = (c.profiles?.full_name ?? '').toLowerCase()
-      const phone = (c.profiles?.phone ?? '').toLowerCase()
-      return name.includes(t) || phone.includes(t)
-    })
-  }, [q, clients])
+    if (t) {
+      list = list.filter((c: any) => {
+        const name = (c.profiles?.full_name ?? '').toLowerCase()
+        const phone = (c.profiles?.phone ?? '').toLowerCase()
+        return name.includes(t) || phone.includes(t)
+      })
+    }
+    if (sort === 'vence_pronto') {
+      list = [...list].sort((a: any, b: any) => {
+        const da = a.access_until ?? '9999-12-31'
+        const db = b.access_until ?? '9999-12-31'
+        return da.localeCompare(db)
+      })
+    } else if (sort === 'vence_tarde') {
+      list = [...list].sort((a: any, b: any) => {
+        const da = a.access_until ?? '0000-01-01'
+        const db = b.access_until ?? '0000-01-01'
+        return db.localeCompare(da)
+      })
+    }
+    return list
+  }, [q, clients, sort])
 
   function getBadge(client: any) {
     if (client.status === 'inactive') return <span className="badge-inactive">Inactivo</span>
@@ -34,15 +53,26 @@ export default function ClientsTable({ clients, today, soonDate }: Props) {
 
   return (
     <>
-      <div className="relative mb-4">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-        <input
-          type="text"
-          className="input pl-9"
-          placeholder="Buscar por nombre o teléfono…"
-          value={q}
-          onChange={e => setQ(e.target.value)}
-        />
+      <div className="flex gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <input
+            type="text"
+            className="input pl-9"
+            placeholder="Buscar por nombre o teléfono…"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+          />
+        </div>
+        <select
+          className="select w-auto"
+          value={sort}
+          onChange={e => setSort(e.target.value as SortMode)}
+        >
+          <option value="default">Ordenar: Recientes</option>
+          <option value="vence_pronto">Vence pronto</option>
+          <option value="vence_tarde">Vence tarde</option>
+        </select>
       </div>
 
       <div className="card p-0 overflow-hidden">
