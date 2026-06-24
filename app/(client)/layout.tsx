@@ -16,7 +16,8 @@ export default async function ClientLayout({ children }: { children: React.React
     .eq('id', user.id)
     .single()
 
-  if (profile?.role === 'admin') redirect('/admin/dashboard')
+  // admin y owner (Diana) no son clientes → al panel admin.
+  if (profile?.role === 'admin' || profile?.role === 'owner') redirect('/admin/dashboard')
 
   // Verificar acceso activo
   const { data: access } = await supabase

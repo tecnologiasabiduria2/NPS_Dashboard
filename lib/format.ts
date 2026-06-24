@@ -12,3 +12,20 @@ export function formatDateOnly(
   if (!y || !m || !d) return String(value)
   return new Date(y, m - 1, d).toLocaleDateString(locale, options)
 }
+
+// Nombre largo del mes a partir de una fecha-solo 'YYYY-MM-DD' (ej. 'noviembre').
+// Útil para el encabezado del hiperfoco del mes ("ESTE MES · NOVIEMBRE").
+export function formatMonthLong(
+  value: string | null | undefined,
+  locale = 'es-CO'
+): string {
+  return formatDateOnly(value, { month: 'long' }, locale)
+}
+
+// Mes + año corto a partir de 'YYYY-MM-DD' (ej. 'nov 2026'). Para el historial.
+export function formatMonthShort(
+  value: string | null | undefined,
+  locale = 'es-CO'
+): string {
+  return formatDateOnly(value, { month: 'short', year: 'numeric' }, locale)
+}

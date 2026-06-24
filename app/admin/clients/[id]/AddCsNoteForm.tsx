@@ -1,0 +1,62 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+// Fecha de hoy en local (evita el desfase UTC de toISOString)
+function localToday() {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+export default function AddCsNoteForm({ userId }: { userId: string }) {
+  const router = useRouter()
+  const [content, setContent] = useState('')
+  const [date, setDate] = useState(localToday())
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!content.trim()) return
+    setLoading(true)
+    setError('')
+
+    const res = await fetch('/api/admin/cs-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, content, note_date: date }),
+    })
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Error al guardar la nota.')
+      setLoading(false)
+      return
+    }
+
+    setContent('')
+    setDate(localToday())
+    setLoading(false)
+    router.refresh()
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3 mb-5 pb-5 border-b border-surface-800">
+      <input type="date" className="input w-auto" value={date} onChange={e => setDate(e.target.value)} />
+      <textarea
+        className="input min-h-20 resize-y"
+        placeholder="Nota interna del CS (no visible para el cliente)…"
+        value={content}
+        onChange={e => setContent(e.target.value)}
+      />
+      {error && <p className="text-red-400 text-xs">{error}</p>}
+      <div className="flex justify-end">
+        <button type="submit" disabled={loading || !content.trim()} className="btn-primary">
+          {loading ? 'Guardando...' : 'Agregar nota interna'}
+        </button>
+      </div>
+    </form>
+  )
+}

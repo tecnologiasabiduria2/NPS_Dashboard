@@ -42,7 +42,8 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    if (profile?.role !== 'admin') {
+    // admin y owner (Diana) acceden al panel admin. Cualquier otro → dashboard.
+    if (profile?.role !== 'admin' && profile?.role !== 'owner') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }

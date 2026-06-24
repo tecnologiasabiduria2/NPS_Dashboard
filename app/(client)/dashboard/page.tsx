@@ -1,10 +1,24 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { format, formatDistanceToNow } from 'date-fns'
+import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ArrowRight, BookOpen, Clock, TrendingUp, Video, Calendar, AlertTriangle } from 'lucide-react'
-import { formatDateOnly } from '@/lib/format'
+import { ArrowRight, Video, Calendar, AlertTriangle, Target, History } from 'lucide-react'
+import { formatDateOnly, formatMonthLong, formatMonthShort } from '@/lib/format'
+
+// Metadatos de presentación por estado del hiperfoco (modelo de hiperfoco, B10).
+// Estados de user_hiperfoco_mes: no_elegido | en_curso | cerrado | pausa.
+const ESTADO_META: Record<string, { label: string; chip: string }> = {
+  en_curso:   { label: 'en curso',    chip: 'bg-sky-500/15 text-sky-300' },
+  cerrado:    { label: 'cerrado',     chip: 'bg-emerald-500/15 text-emerald-300' },
+  pausa:      { label: 'descanso',    chip: 'bg-surface-700 text-cream-muted' },
+  no_elegido: { label: 'sin asignar', chip: 'bg-surface-700 text-cream-dim' },
+}
+
+type HiperfocoRow = {
+  periodo: string
+  estado: string
+  hiperfocos: { title: string } | null
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -19,27 +33,38 @@ export default async function DashboardPage({
   const [{ data: profile }, { data: access }] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('id', user.id).single(),
     supabase.from('user_access')
-      .select('*, products(title, slug), modules(title, order)')
+      .select('*, products(title, slug)')
       .eq('user_id', user.id).eq('status', 'active').single(),
   ])
 
-  let completedCount = 0, totalCount = 0
+  // Periodo del mes actual = primer día del mes en hora local (coincide con la
+  // columna DATE user_hiperfoco_mes.periodo, que es siempre date_trunc('month')).
+  const now = new Date()
+  const periodoActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+
+  // Hiperfoco del mes actual (lo asigna la CS; el cliente solo lo visualiza).
+  let hiperfocoMes: HiperfocoRow | null = null
+  // Historial mensual de hiperfocos (más reciente primero).
+  let historial: HiperfocoRow[] = []
   if (access?.product_id) {
-    const { data: lessons } = await supabase
-      .from('lessons')
-      .select('id, modules!inner(product_id)')
-      .eq('modules.product_id', access.product_id)
-      .eq('is_published', true)
-      .eq('type', 'checklist_item')
-    totalCount = lessons?.length ?? 0
-    const ids = lessons?.map(l => l.id) ?? []
-    if (ids.length > 0) {
-      const { count } = await supabase
-        .from('lesson_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id).eq('completed', true).in('lesson_id', ids)
-      completedCount = count ?? 0
-    }
+    const [{ data: mes }, { data: hist }] = await Promise.all([
+      supabase
+        .from('user_hiperfoco_mes')
+        .select('periodo, estado, hiperfocos(title)')
+        .eq('user_id', user.id)
+        .eq('product_id', access.product_id)
+        .eq('periodo', periodoActual)
+        .maybeSingle(),
+      supabase
+        .from('user_hiperfoco_mes')
+        .select('periodo, estado, hiperfocos(title)')
+        .eq('user_id', user.id)
+        .eq('product_id', access.product_id)
+        .order('periodo', { ascending: false })
+        .limit(12),
+    ])
+    hiperfocoMes = mes as HiperfocoRow | null
+    historial = (hist as HiperfocoRow[] | null) ?? []
   }
 
   // Próxima sesión en vivo del producto activo (publicada y aún no terminada)
@@ -57,13 +82,13 @@ export default async function DashboardPage({
     nextSession = session
   }
 
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Bienvenido'
   const productTitle = (access as any)?.products?.title ?? ''
-  const currentModule = (access as any)?.modules?.title ?? 'Sin módulo asignado'
-  const lastActivity = access?.last_activity
-    ? formatDistanceToNow(new Date(access.last_activity), { addSuffix: true, locale: es })
-    : null
+
+  // Estado efectivo del mes: si no hay fila, se considera "no_elegido".
+  const estadoMes = hiperfocoMes?.estado ?? 'no_elegido'
+  const tituloMes = hiperfocoMes?.hiperfocos?.title ?? null
+  const tieneHiperfocoMes = Boolean(tituloMes) && (estadoMes === 'en_curso' || estadoMes === 'cerrado')
 
   return (
     <div className="max-w-4xl">
@@ -96,68 +121,92 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Progreso hero */}
-      <div className="card mb-6" style={{ background: 'linear-gradient(135deg, #1A1215 0%, #221518 100%)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="section-label">Progreso general</p>
-            <p className="text-4xl font-bold text-cream">{progressPercent}<span className="text-xl text-cream-muted">%</span></p>
+      {/* Hiperfoco del mes */}
+      <div
+        className="card mb-6"
+        style={{ background: 'linear-gradient(135deg, #11201B 0%, #0E2A22 100%)', borderColor: 'rgba(29,158,117,0.35)' }}
+      >
+        <p className="section-label !text-emerald-300/80">
+          Este mes · {formatMonthLong(periodoActual).toUpperCase()}
+        </p>
+        {tieneHiperfocoMes ? (
+          <div className="flex items-center gap-4 mt-2">
+            <div className="w-11 h-11 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <Target size={18} className="text-emerald-300" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xl font-semibold text-cream leading-snug">
+                Tu hiperfoco: {tituloMes}
+              </p>
+            </div>
+            <span className={`text-xs px-2.5 py-1 rounded-full shrink-0 ${ESTADO_META[estadoMes]?.chip ?? ESTADO_META.no_elegido.chip}`}>
+              {ESTADO_META[estadoMes]?.label ?? estadoMes}
+            </span>
           </div>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center"
-            style={{ background: `conic-gradient(#7E301F ${progressPercent * 3.6}deg, #2E2028 0deg)` }}>
-            <div className="w-12 h-12 rounded-full bg-surface-850 flex items-center justify-center">
-              <TrendingUp size={18} className="text-brand-400" />
+        ) : (
+          <div className="flex items-center gap-4 mt-2">
+            <div className="w-11 h-11 rounded-xl bg-surface-700 flex items-center justify-center shrink-0">
+              <Target size={18} className="text-cream-muted" />
+            </div>
+            <div className="flex-1">
+              <p className="text-base font-medium text-cream leading-snug">
+                {estadoMes === 'pausa'
+                  ? 'Mes en pausa'
+                  : 'Aún no tienes un hiperfoco asignado este mes'}
+              </p>
+              <p className="text-sm text-cream-muted mt-0.5">
+                {estadoMes === 'pausa'
+                  ? 'Este mes es de descanso. Retomamos el próximo.'
+                  : 'Tu Customer Success definirá tu enfoque junto contigo.'}
+              </p>
             </div>
           </div>
-        </div>
-        <div className="w-full bg-surface-700 rounded-full h-1.5">
-          <div className="bg-gradient-to-r from-brand-700 to-brand-500 h-1.5 rounded-full transition-all duration-700"
-            style={{ width: `${progressPercent}%` }} />
-        </div>
-        <p className="text-xs text-cream-muted mt-2">{completedCount} de {totalCount} entregables completados</p>
+        )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="card-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-brand-600/15 flex items-center justify-center">
-              <BookOpen size={14} className="text-brand-400" />
-            </div>
-            <p className="text-xs text-cream-muted uppercase tracking-wide">Módulo actual</p>
-          </div>
-          <p className="text-sm font-medium text-cream leading-snug">{currentModule}</p>
-          <Link href="/roadmap" className="text-xs text-brand-400 hover:text-brand-300 mt-2 inline-flex items-center gap-1">
-            Ver hoja de ruta <ArrowRight size={10} />
-          </Link>
+      {/* Historial de hiperfocos */}
+      <div className="card mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <History size={15} className="text-brand-400" />
+          <p className="text-sm font-medium text-cream">Mi historial de hiperfocos</p>
         </div>
 
-        <div className="card-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <TrendingUp size={14} className="text-emerald-400" />
-            </div>
-            <p className="text-xs text-cream-muted uppercase tracking-wide">Completadas</p>
+        {historial.length === 0 ? (
+          <p className="text-sm text-cream-muted">
+            Todavía no hay hiperfocos registrados. Aparecerán aquí mes a mes.
+          </p>
+        ) : (
+          <div className="flex flex-col">
+            {historial.map((row, i) => {
+              const meta = ESTADO_META[row.estado] ?? ESTADO_META.no_elegido
+              const conHiperfoco = Boolean(row.hiperfocos?.title)
+              return (
+                <div
+                  key={row.periodo}
+                  className={`grid grid-cols-[88px_1fr_auto] gap-3 items-center py-2.5 ${
+                    i < historial.length - 1 ? 'border-b border-surface-700/60' : ''
+                  }`}
+                >
+                  <span className="text-xs text-cream-muted capitalize">
+                    {formatMonthShort(row.periodo)}
+                  </span>
+                  <span className={`text-sm ${conHiperfoco ? 'text-cream' : 'text-cream-muted'}`}>
+                    {row.hiperfocos?.title ?? (row.estado === 'pausa' ? 'Pausa' : 'Sin asignar')}
+                  </span>
+                  <span className={`text-xs px-2.5 py-1 rounded-full ${meta.chip}`}>
+                    {meta.label}
+                  </span>
+                </div>
+              )
+            })}
           </div>
-          <p className="text-2xl font-bold text-cream">{completedCount}</p>
-          <p className="text-xs text-cream-muted">de {totalCount} entregables</p>
-        </div>
-
-        <div className="card-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Clock size={14} className="text-amber-400" />
-            </div>
-            <p className="text-xs text-cream-muted uppercase tracking-wide">Último acceso</p>
-          </div>
-          <p className="text-sm font-medium text-cream">{lastActivity ?? 'Hoy'}</p>
-        </div>
+        )}
       </div>
 
       {/* Próximo evento en vivo */}
       {nextSession && (
         <div
-          className="card mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
           style={{ background: 'linear-gradient(135deg, #1A1215 0%, #2A0E07 100%)' }}
         >
           <div className="flex items-start gap-4">
@@ -183,17 +232,6 @@ export default async function DashboardPage({
           </a>
         </div>
       )}
-
-      {/* CTA */}
-      <div className="card flex items-center justify-between">
-        <div>
-          <p className="text-cream font-medium">Continúa donde lo dejaste</p>
-          <p className="text-cream-muted text-sm mt-0.5">{currentModule}</p>
-        </div>
-        <Link href="/roadmap" className="btn-primary">
-          Continuar <ArrowRight size={14} />
-        </Link>
-      </div>
     </div>
   )
 }

@@ -13,7 +13,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') redirect('/dashboard')
+  // admin y owner (Diana) acceden al panel admin.
+  if (profile?.role !== 'admin' && profile?.role !== 'owner') redirect('/dashboard')
 
   return (
     <div className="flex min-h-screen bg-surface-950">
