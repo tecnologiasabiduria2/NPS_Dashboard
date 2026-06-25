@@ -1,121 +1,230 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle2, Circle, Lock, ChevronRight } from 'lucide-react'
+import { ChevronRight, Video, FileText } from 'lucide-react'
+import { formatMonthLong } from '@/lib/format'
 
-export default async function RoadmapPage() {
+// Primer día del mes actual como 'YYYY-MM-DD', sin depender de TZ del cliente.
+function periodoActual(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  return `${y}-${m}-01`
+}
+
+const TRANSVERSAL_TITLES = ['Sala de Gerencia', 'Entrenamiento Comercial'] as const
+
+export default async function MiContenidoPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: access } = await supabase
     .from('user_access')
-    .select('product_id, current_module_id, products(title)')
-    .eq('user_id', user.id).eq('status', 'active').single()
+    .select('product_id, products(title)')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
 
   if (!access) redirect('/access-expired')
 
-  const { data: modules } = await supabase
-    .from('modules')
-    .select('id, title, description, order, lessons(id, type)')
-    .eq('product_id', access.product_id)
-    .eq('is_published', true)
-    .order('order')
+  const productId: string = (access as any).product_id
+  const periodo = periodoActual()
 
-  // Progreso: un solo query para TODOS los checklist items, en vez de N queries (uno por módulo).
-  const allChecklistIds: string[] = []
-  const checklistByModule: Record<string, string[]> = {}
-  for (const mod of modules ?? []) {
-    const ids = (mod.lessons as any[]).filter((l: any) => l.type === 'checklist_item').map((l: any) => l.id)
-    checklistByModule[mod.id] = ids
-    allChecklistIds.push(...ids)
-  }
-
-  const completedSet = new Set<string>()
-  if (allChecklistIds.length > 0) {
-    const { data: progress } = await supabase
-      .from('lesson_progress')
-      .select('lesson_id')
+  const [
+    { data: historialRaw },
+    { data: modulesRaw },
+    { data: transversalesRaw },
+  ] = await Promise.all([
+    // Historial de hiperfocos del usuario (B12), desc por periodo
+    supabase
+      .from('user_hiperfoco_mes')
+      .select('periodo, hiperfoco_id, hiperfocos(id, title)')
       .eq('user_id', user.id)
-      .eq('completed', true)
-      .in('lesson_id', allChecklistIds)
-    for (const p of progress ?? []) completedSet.add(p.lesson_id)
+      .not('hiperfoco_id', 'is', null)
+      .order('periodo', { ascending: false }),
+    // Módulos publicados del producto
+    supabase
+      .from('modules')
+      .select('id, title, order, hiperfoco_id, lessons(id, type)')
+      .eq('product_id', productId)
+      .eq('is_published', true)
+      .order('order'),
+    // Hiperfocos transversales del producto
+    supabase
+      .from('hiperfocos')
+      .select('id, title')
+      .eq('product_id', productId)
+      .in('title', [...TRANSVERSAL_TITLES])
+      .eq('is_active', true),
+  ])
+
+  const historial = (historialRaw as any[]) ?? []
+  const allModules = (modulesRaw as any[]) ?? []
+  const transversales = (transversalesRaw as any[]) ?? []
+
+  // IDs accesibles según historial (B12: acumulativos) y transversales
+  const accessibleIds = new Set<string>(historial.map((h: any) => h.hiperfoco_id))
+  const transversalIds = new Set<string>(transversales.map((h: any) => h.id))
+  const freeAccess = accessibleIds.size === 0 // sin historial → catálogo libre
+
+  // Módulos agrupados por hiperfoco_id (solo los que el usuario puede ver)
+  const modulesByHiperfoco = new Map<string, any[]>()
+  for (const mod of allModules) {
+    if (!mod.hiperfoco_id) continue
+    const accessible =
+      freeAccess ||
+      accessibleIds.has(mod.hiperfoco_id) ||
+      transversalIds.has(mod.hiperfoco_id)
+    if (!accessible) continue
+    if (!modulesByHiperfoco.has(mod.hiperfoco_id)) modulesByHiperfoco.set(mod.hiperfoco_id, [])
+    modulesByHiperfoco.get(mod.hiperfoco_id)!.push(mod)
   }
 
-  const moduleProgress: Record<string, { completed: number; total: number }> = {}
-  for (const mod of modules ?? []) {
-    const ids = checklistByModule[mod.id] ?? []
-    moduleProgress[mod.id] = { completed: ids.filter(id => completedSet.has(id)).length, total: ids.length }
+  // Hiperfoco del mes actual
+  const mesActual = historial.find((h: any) => h.periodo === periodo)
+  const currentHiperfocoId: string | null = mesActual?.hiperfoco_id ?? null
+
+  // Hiperfocos anteriores únicos (sin repetir el del mes actual ni los transversales)
+  const pastSeen = new Set<string>()
+  if (currentHiperfocoId) pastSeen.add(currentHiperfocoId)
+  for (const id of transversalIds) pastSeen.add(id)
+
+  const pastHiperfocos: Array<{ id: string; title: string }> = []
+  for (const h of historial) {
+    if (pastSeen.has(h.hiperfoco_id)) continue
+    pastSeen.add(h.hiperfoco_id)
+    pastHiperfocos.push({ id: h.hiperfoco_id, title: (h.hiperfocos as any)?.title ?? '' })
   }
 
   const productTitle = (access as any)?.products?.title ?? ''
-  let firstIncompleteFound = false
 
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
         <p className="text-cream-muted text-sm">{productTitle}</p>
-        <h1 className="page-title mt-1">Hoja de ruta</h1>
+        <h1 className="page-title mt-1">Mi contenido</h1>
       </div>
 
-      <div className="relative">
-        {/* Línea vertical conectora */}
-        <div className="absolute left-6 top-6 bottom-6 w-px bg-surface-600" />
+      {/* Este mes */}
+      {currentHiperfocoId && (
+        <section className="mb-8">
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">
+            Este mes · <span className="capitalize">{formatMonthLong(periodo)}</span>
+          </p>
+          <HiperfocoBlock
+            title={(mesActual?.hiperfocos as any)?.title ?? ''}
+            modules={modulesByHiperfoco.get(currentHiperfocoId) ?? []}
+            highlighted
+          />
+        </section>
+      )}
 
-        <div className="space-y-3">
-          {(modules ?? []).map((mod, index) => {
-            const prog = moduleProgress[mod.id] ?? { completed: 0, total: 0 }
-            const isComplete = prog.total > 0 && prog.completed === prog.total
-            const isCurrent = !isComplete && !firstIncompleteFound
-            if (isCurrent) firstIncompleteFound = true
-            const pct = prog.total > 0 ? Math.round((prog.completed / prog.total) * 100) : 0
+      {/* Catálogo libre (sin historial de asignación) */}
+      {freeAccess && allModules.filter((m: any) => !transversalIds.has(m.hiperfoco_id)).length > 0 && (
+        <section className="mb-8">
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Explorar catálogo</p>
+          <div className="space-y-2">
+            {allModules
+              .filter((m: any) => m.hiperfoco_id && !transversalIds.has(m.hiperfoco_id))
+              .map((mod: any) => <ModuleCard key={mod.id} mod={mod} />)}
+          </div>
+        </section>
+      )}
 
-            return (
-              <Link key={mod.id} href={`/module/${mod.id}`} className="block">
-                <div className={`relative ml-12 card hover:border-brand-600/40 transition-all duration-200 cursor-pointer ${isCurrent ? 'border-brand-600/40 bg-surface-800' : ''}`}>
-                  {/* Indicador en la línea */}
-                  <div className={`absolute -left-9 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center border-2 z-10
-                    ${isComplete ? 'bg-emerald-500 border-emerald-500' : isCurrent ? 'bg-brand-600 border-brand-600' : 'bg-surface-850 border-surface-600'}`}>
-                    {isComplete
-                      ? <CheckCircle2 size={12} className="text-white" />
-                      : isCurrent
-                        ? <div className="w-2 h-2 rounded-full bg-white" />
-                        : <div className="w-2 h-2 rounded-full bg-surface-500" />
-                    }
-                  </div>
+      {/* Hiperfocos anteriores accesibles (B12) */}
+      {pastHiperfocos.length > 0 && (
+        <section className="mb-8">
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Hiperfocos anteriores</p>
+          <div className="space-y-4">
+            {pastHiperfocos.map(h => (
+              <HiperfocoBlock
+                key={h.id}
+                title={h.title}
+                modules={modulesByHiperfoco.get(h.id) ?? []}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs text-cream-muted">Módulo {mod.order}</span>
-                        {isCurrent && <span className="badge-brand">En progreso</span>}
-                        {isComplete && <span className="badge-active">Completado</span>}
-                      </div>
-                      <p className="text-cream font-medium">{mod.title}</p>
-                      {mod.description && (
-                        <p className="text-cream-muted text-xs mt-1 line-clamp-1">{mod.description}</p>
-                      )}
-                      {prog.total > 0 && (
-                        <div className="mt-3">
-                          <div className="flex justify-between text-xs text-cream-muted mb-1">
-                            <span>{prog.completed}/{prog.total} entregables</span>
-                            <span>{pct}%</span>
-                          </div>
-                          <div className="w-full bg-surface-700 rounded-full h-1">
-                            <div className="bg-brand-600 h-1 rounded-full transition-all"
-                              style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="text-cream-muted shrink-0 mt-1 ml-3" />
-                  </div>
-                </div>
-              </Link>
-            )
-          })}
+      {/* Contenido transversal (siempre visible) */}
+      {TRANSVERSAL_TITLES.map(name => {
+        const hiper = transversales.find((h: any) => h.title === name)
+        const mods = hiper ? (modulesByHiperfoco.get(hiper.id) ?? []) : []
+        return (
+          <section key={name} className="mb-8">
+            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">{name}</p>
+            {mods.length > 0 ? (
+              <div className="space-y-2">
+                {mods.map((mod: any) => <ModuleCard key={mod.id} mod={mod} />)}
+              </div>
+            ) : (
+              <div className="card py-6 text-center">
+                <p className="text-sm text-zinc-600">Contenido próximamente</p>
+              </div>
+            )}
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
+function HiperfocoBlock({
+  title,
+  modules,
+  highlighted = false,
+}: {
+  title: string
+  modules: any[]
+  highlighted?: boolean
+}) {
+  return (
+    <div className={`card ${highlighted ? 'border-brand-600/40 bg-surface-800' : ''}`}>
+      <p className={`text-sm font-semibold mb-3 ${highlighted ? 'text-brand-400' : 'text-zinc-300'}`}>
+        {title || '—'}
+      </p>
+      {modules.length > 0 ? (
+        <div className="space-y-2">
+          {modules.map((mod: any) => <ModuleCard key={mod.id} mod={mod} />)}
+        </div>
+      ) : (
+        <p className="text-sm text-zinc-600">Sin grabaciones publicadas aún.</p>
+      )}
+    </div>
+  )
+}
+
+function ModuleCard({ mod }: { mod: any }) {
+  const lessons = (mod.lessons as any[]) ?? []
+  const videoCount = lessons.filter((l: any) => l.type === 'video').length
+  const docCount = lessons.filter((l: any) => l.type === 'document').length
+
+  return (
+    <Link
+      href={`/module/${mod.id}`}
+      className="flex items-center justify-between px-4 py-3 bg-surface-800 hover:bg-surface-700 rounded-lg transition-colors group"
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-zinc-200 group-hover:text-zinc-100 truncate">{mod.title}</p>
+        <div className="flex items-center gap-3 mt-1">
+          {videoCount > 0 && (
+            <span className="text-xs text-zinc-500 flex items-center gap-1">
+              <Video size={11} /> {videoCount}
+            </span>
+          )}
+          {docCount > 0 && (
+            <span className="text-xs text-zinc-500 flex items-center gap-1">
+              <FileText size={11} /> {docCount}
+            </span>
+          )}
+          {videoCount === 0 && docCount === 0 && (
+            <span className="text-xs text-zinc-600">Sin grabaciones</span>
+          )}
         </div>
       </div>
-    </div>
+      <ChevronRight size={15} className="text-zinc-600 group-hover:text-zinc-400 shrink-0 ml-3 transition-colors" />
+    </Link>
   )
 }

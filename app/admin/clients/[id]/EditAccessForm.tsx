@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface Props {
   userId: string
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function EditAccessForm({ userId, currentDate, ghlContactId, status }: Props) {
+  const router = useRouter()
   const [date, setDate] = useState(currentDate)
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -27,9 +29,11 @@ export default function EditAccessForm({ userId, currentDate, ghlContactId, stat
     })
 
     if (!res.ok) {
-      setError('Error al guardar. Intenta de nuevo.')
+      const data = await res.json().catch(() => ({}))
+      setError(data?.error ?? 'Error al guardar. Intenta de nuevo.')
     } else {
       setSaved(true)
+      router.refresh()
     }
     setLoading(false)
   }

@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
+import Link from 'next/link'
 import VideoPlayer from '@/components/VideoPlayer'
 import VideoMark from '@/components/VideoMark'
-import ChecklistSection from '@/components/ChecklistSection'
-import { FileDown } from 'lucide-react'
+import { FileDown, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -35,24 +35,45 @@ export default async function ModulePage({ params }: Props) {
   // Verificar que el módulo pertenece al producto del usuario
   if (mod.product_id !== access.product_id) notFound()
 
+  // Módulos hermanos (mismo hiperfoco si lo tiene, o mismo producto) para prev/next
+  const siblingsQuery = mod.hiperfoco_id
+    ? supabase
+        .from('modules')
+        .select('id, title, order')
+        .eq('product_id', mod.product_id)
+        .eq('hiperfoco_id', mod.hiperfoco_id)
+        .eq('is_published', true)
+        .order('order')
+    : supabase
+        .from('modules')
+        .select('id, title, order')
+        .eq('product_id', mod.product_id)
+        .eq('is_published', true)
+        .order('order')
+
+  const { data: siblings } = await siblingsQuery
+  const siblingList = (siblings ?? []) as Array<{ id: string; title: string; order: number }>
+  const currentIndex = siblingList.findIndex(m => m.id === id)
+  const prevModule = currentIndex > 0 ? siblingList[currentIndex - 1] : null
+  const nextModule = currentIndex >= 0 && currentIndex < siblingList.length - 1 ? siblingList[currentIndex + 1] : null
+
   const lessons = (mod.lessons as any[]).sort((a: any, b: any) => a.order - b.order)
   const videos = lessons.filter((l: any) => l.type === 'video' && l.fathom_share_id)
   const documents = lessons.filter((l: any) => l.type === 'document' && l.storage_path)
-  const checklistItems = lessons.filter((l: any) => l.type === 'checklist_item')
 
-  // Progreso actual del usuario
-  const lessonIds = lessons.map((l: any) => l.id)
-  const { data: progress } = await supabase
-    .from('lesson_progress')
-    .select('lesson_id, completed')
-    .eq('user_id', user.id)
-    .in('lesson_id', lessonIds)
-
-  const completedIds = new Set(
-    (progress ?? []).filter((p: any) => p.completed).map((p: any) => p.lesson_id)
-  )
-
-  const completedCount = checklistItems.filter((l: any) => completedIds.has(l.id)).length
+  // Progreso de videos ("marca como visto")
+  const videoIds = videos.map((l: any) => l.id)
+  const completedVideoIds = new Set<string>()
+  if (videoIds.length > 0) {
+    const { data: progress } = await supabase
+      .from('lesson_progress')
+      .select('lesson_id, completed')
+      .eq('user_id', user.id)
+      .in('lesson_id', videoIds)
+    for (const p of progress ?? []) {
+      if (p.completed) completedVideoIds.add(p.lesson_id)
+    }
+  }
 
   return (
     <div className="max-w-3xl">
@@ -60,11 +81,6 @@ export default async function ModulePage({ params }: Props) {
         <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Módulo {mod.order}</p>
         <h1 className="text-2xl font-bold text-zinc-100">{mod.title}</h1>
         {mod.description && <p className="text-zinc-400 mt-2">{mod.description}</p>}
-        {checklistItems.length > 0 && (
-          <p className="text-xs text-zinc-500 mt-2">
-            {completedCount}/{checklistItems.length} entregables completados
-          </p>
-        )}
       </div>
 
       {/* Videos */}
@@ -77,7 +93,7 @@ export default async function ModulePage({ params }: Props) {
                 <VideoMark
                   lessonId={lesson.id}
                   userId={user.id}
-                  initialCompleted={completedIds.has(lesson.id)}
+                  initialCompleted={completedVideoIds.has(lesson.id)}
                 />
               </div>
               <VideoPlayer shareId={lesson.fathom_share_id} />
@@ -98,14 +114,32 @@ export default async function ModulePage({ params }: Props) {
         </div>
       )}
 
-      {/* Checklist */}
-      {checklistItems.length > 0 && (
-        <ChecklistSection
-          items={checklistItems}
-          completedIds={Array.from(completedIds)}
-          userId={user.id}
-        />
+      {/* Navegación entre módulos */}
+      {(prevModule || nextModule) && (
+        <div className="flex items-center justify-between gap-4 mt-8 pt-6 border-t border-surface-700">
+          {prevModule ? (
+            <Link
+              href={`/module/${prevModule.id}`}
+              className="flex items-center gap-2 px-4 py-2.5 bg-surface-800 hover:bg-surface-700 rounded-lg text-sm text-zinc-300 hover:text-zinc-100 transition-colors group min-w-0"
+            >
+              <ChevronLeft size={16} className="shrink-0 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+              <span className="truncate">{prevModule.title}</span>
+            </Link>
+          ) : (
+            <div />
+          )}
+          {nextModule && (
+            <Link
+              href={`/module/${nextModule.id}`}
+              className="flex items-center gap-2 px-4 py-2.5 bg-surface-800 hover:bg-surface-700 rounded-lg text-sm text-zinc-300 hover:text-zinc-100 transition-colors group min-w-0"
+            >
+              <span className="truncate">{nextModule.title}</span>
+              <ChevronRight size={16} className="shrink-0 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+            </Link>
+          )}
+        </div>
       )}
+
     </div>
   )
 }

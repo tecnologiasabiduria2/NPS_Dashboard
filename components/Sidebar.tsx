@@ -16,7 +16,7 @@ interface SidebarProps {
 
 const clientLinks = [
   { href: '/dashboard',  label: 'Dashboard',     icon: LayoutDashboard },
-  { href: '/roadmap',    label: 'Hoja de ruta',  icon: Map },
+  { href: '/roadmap',    label: 'Mi contenido',  icon: Map },
   { href: '/sessions',   label: 'Sesiones',      icon: CalendarClock },
   { href: '/profile',    label: 'Mi perfil',     icon: User },
 ]

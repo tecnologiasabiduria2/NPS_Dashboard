@@ -113,10 +113,10 @@ export default function ModuleForm({ products, hiperfocos, modules }: Props) {
     <div className="card mb-8">
       <div className="flex items-center gap-2 mb-1">
         <Layers size={18} className="text-brand-400" />
-        <h2 className="text-lg font-semibold text-cream">Crear / editar módulo</h2>
+        <h2 className="text-lg font-semibold text-cream">Crear colección de contenido</h2>
       </div>
       <p className="text-sm text-cream-muted mb-5">
-        Los módulos agrupan las lecciones. Cada módulo puede asociarse a un hiperfoco.
+        Cada colección agrupa las grabaciones de un tipo de sesión (Inmersión o Mentoría) dentro de un hiperfoco.
       </p>
 
       <form onSubmit={submit} className="space-y-4">
@@ -137,13 +137,13 @@ export default function ModuleForm({ products, hiperfocos, modules }: Props) {
                 <option key={m.id} value={m.id}>{m.order}. {m.title}</option>
               ))}
             </select>
-            {isEditing && <p className="text-xs text-accent mt-1.5">Editando un módulo existente</p>}
+            {isEditing && <p className="text-xs text-accent mt-1.5">Editando una colección existente</p>}
           </div>
         )}
 
         <div>
           <label className="label">Título *</label>
-          <input type="text" className="input" placeholder="Ej. Fundamentos del Flujo de Caja"
+          <input type="text" className="input" placeholder="Ej. Inmersión · Ventas Sabias"
             value={title} onChange={e => { setTitle(e.target.value); setSuccess(''); setError('') }}
             required disabled={!productId} />
         </div>
@@ -157,7 +157,7 @@ export default function ModuleForm({ products, hiperfocos, modules }: Props) {
               <option key={h.id} value={h.id}>{h.title}</option>
             ))}
           </select>
-          <p className="text-xs text-cream-muted mt-1.5">Opcional. Asocia este módulo a un hiperfoco del producto.</p>
+          <p className="text-xs text-cream-muted mt-1.5">Opcional. Asocia esta colección a un hiperfoco del producto.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -188,7 +188,7 @@ export default function ModuleForm({ products, hiperfocos, modules }: Props) {
         )}
 
         <button type="submit" disabled={loading || !productId || !title.trim()} className="btn-primary w-full justify-center py-3 disabled:opacity-40 disabled:cursor-not-allowed">
-          {loading ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear módulo'}
+          {loading ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear colección'}
         </button>
       </form>
     </div>

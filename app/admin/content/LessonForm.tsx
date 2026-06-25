@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FilePlus2, CheckCircle2, Video, FileText, ListChecks } from 'lucide-react'
+import { FilePlus2, CheckCircle2, Video, FileText } from 'lucide-react'
 
-type LessonType = 'video' | 'document' | 'checklist_item'
+type LessonType = 'video' | 'document'
 
 interface Lesson {
   id: string
@@ -105,18 +105,18 @@ export default function LessonForm({ modules, lessonsByModule }: Props) {
     <div className="card mb-8">
       <div className="flex items-center gap-2 mb-1">
         <FilePlus2 size={18} className="text-brand-400" />
-        <h2 className="text-lg font-semibold text-cream">Cargar / editar lección</h2>
+        <h2 className="text-lg font-semibold text-cream">Cargar grabación</h2>
       </div>
       <p className="text-sm text-cream-muted mb-5">
-        El contenido se guarda desde aquí — sin tocar Supabase a mano. Los videos se
+        Agrega grabaciones de sesión (Inmersión o Mentoría) a una colección. Los videos se
         validan contra el Worker antes de guardar.
       </p>
 
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="label">Módulo *</label>
+          <label className="label">Colección *</label>
           <select className="select" value={moduleId} onChange={e => changeModule(e.target.value)} required>
-            <option value="">— Selecciona un módulo —</option>
+            <option value="">— Selecciona una colección —</option>
             {modules.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </div>
@@ -130,13 +130,13 @@ export default function LessonForm({ modules, lessonsByModule }: Props) {
                 <option key={l.id} value={l.id}>{l.order}. {l.title} ({l.type})</option>
               ))}
             </select>
-            {f.lessonId && <p className="text-xs text-accent mt-1.5">Editando una lección existente</p>}
+            {f.lessonId && <p className="text-xs text-accent mt-1.5">Editando una grabación existente</p>}
           </div>
         )}
 
         <div>
           <label className="label">Título *</label>
-          <input type="text" className="input" placeholder="Ej. Flujo de caja en 7 pasos"
+          <input type="text" className="input" placeholder="Ej. Inmersión día 1 — Script de ventas"
             value={f.title} onChange={e => set('title', e.target.value)} required disabled={!moduleId} />
         </div>
 
@@ -146,7 +146,6 @@ export default function LessonForm({ modules, lessonsByModule }: Props) {
             {([
               ['video', 'Video', Video],
               ['document', 'Documento', FileText],
-              ['checklist_item', 'Entregable', ListChecks],
             ] as [LessonType, string, any][]).map(([val, lbl, Icon]) => (
               <button key={val} type="button" disabled={!moduleId}
                 onClick={() => set('type', val)}
@@ -205,7 +204,7 @@ export default function LessonForm({ modules, lessonsByModule }: Props) {
         )}
 
         <button type="submit" disabled={loading || !moduleId} className="btn-primary w-full justify-center py-3 disabled:opacity-40 disabled:cursor-not-allowed">
-          {loading ? 'Guardando…' : f.lessonId ? 'Guardar cambios' : 'Crear lección'}
+          {loading ? 'Guardando…' : f.lessonId ? 'Guardar cambios' : 'Cargar grabación'}
         </button>
       </form>
     </div>

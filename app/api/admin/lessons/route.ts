@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-const VALID_TYPES = ['video', 'document', 'checklist_item'] as const
+const VALID_TYPES = ['video', 'document'] as const
 
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin()

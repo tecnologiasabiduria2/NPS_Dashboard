@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import SessionForm from './SessionForm'
+import DeleteSessionButton from './DeleteSessionButton'
 import { Calendar, Video } from 'lucide-react'
 import { sessionTipoLabel } from '@/lib/sessionTypes'
 
@@ -59,9 +60,12 @@ export default async function AdminSessionsPage() {
                             </p>
                           </div>
                         </div>
-                        <span className={s.is_published ? 'badge-active shrink-0' : 'badge-pending shrink-0'}>
-                          {s.is_published ? 'Publicada' : 'Borrador'}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={s.is_published ? 'badge-active' : 'badge-pending'}>
+                            {s.is_published ? 'Publicada' : 'Borrador'}
+                          </span>
+                          <DeleteSessionButton sessionId={s.id} />
+                        </div>
                       </div>
                     )
                   })}

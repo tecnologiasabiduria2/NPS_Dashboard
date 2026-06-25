@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { updateContactFields } from '@/lib/ghl/api'
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const auth = await requireAdmin()
+  if ('error' in auth) return auth.error
 
   const { user_id, access_until, ghl_contact_id } = await req.json()
   if (!user_id || !access_until) {
@@ -17,10 +13,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Actualizar Supabase
-  await supabaseAdmin
+  const { error: updateError } = await supabaseAdmin
     .from('user_access')
     .update({ access_until, updated_at: new Date().toISOString() })
     .eq('user_id', user_id)
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
 
   // Actualizar GHL si tiene contact ID
   if (ghl_contact_id && process.env.GHL_API_KEY) {

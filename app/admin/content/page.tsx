@@ -56,7 +56,7 @@ export default async function ContentPage() {
                 <div key={mod.id} className="flex items-center justify-between bg-surface-800 rounded-lg px-4 py-3">
                   <div>
                     <p className="text-sm text-zinc-200">{mod.order}. {mod.title}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">{(mod.lessons as any[]).length} lecciones</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">{(mod.lessons as any[]).length} grabaciones</p>
                   </div>
                   <span className={mod.is_published ? 'badge-active' : 'badge-pending'}>
                     {mod.is_published ? 'Publicado' : 'Borrador'}
