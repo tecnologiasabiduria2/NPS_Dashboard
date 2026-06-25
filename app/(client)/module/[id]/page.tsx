@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import VideoPlayer from '@/components/VideoPlayer'
+import VideoMark from '@/components/VideoMark'
 import ChecklistSection from '@/components/ChecklistSection'
 import { FileDown } from 'lucide-react'
 
@@ -71,7 +72,14 @@ export default async function ModulePage({ params }: Props) {
         <div className="mb-8 space-y-4">
           {videos.map((lesson: any) => (
             <div key={lesson.id}>
-              <p className="text-sm text-zinc-400 mb-2">{lesson.title}</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-zinc-400">{lesson.title}</p>
+                <VideoMark
+                  lessonId={lesson.id}
+                  userId={user.id}
+                  initialCompleted={completedIds.has(lesson.id)}
+                />
+              </div>
               <VideoPlayer shareId={lesson.fathom_share_id} />
             </div>
           ))}
