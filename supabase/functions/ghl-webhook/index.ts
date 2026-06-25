@@ -30,7 +30,10 @@ Deno.serve(async (req) => {
     })
   }
 
-  const { email, full_name, product_access, access_until, ghl_contact_id, secret } = body
+  const { email, full_name, product_access, ghl_contact_id, secret } = body
+  const access_until = body.access_until && body.access_until !== 'null' && body.access_until !== ''
+    ? body.access_until
+    : null
 
   const expectedSecret = Deno.env.get('GHL_WEBHOOK_SECRET')
   if (expectedSecret && secret !== expectedSecret) {
@@ -73,11 +76,16 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user.id
 
-    await supabase.from('profiles').upsert({
+    const { error: profileError } = await supabase.from('profiles').upsert({
       id: userId, full_name: full_name ?? '', role: 'client'
     })
+    if (profileError) {
+      return new Response(JSON.stringify({ error: 'Profile insert failed: ' + profileError.message }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      })
+    }
 
-    await supabase.from('user_access').insert({
+    const { error: accessError } = await supabase.from('user_access').insert({
       user_id: userId,
       product_id: product.id,
       status: 'active',
@@ -86,6 +94,11 @@ Deno.serve(async (req) => {
       platform_invite_sent: true,
       access_started: new Date().toISOString().split('T')[0],
     })
+    if (accessError) {
+      return new Response(JSON.stringify({ error: 'Access insert failed: ' + accessError.message }), {
+        status: 500, headers: { 'Content-Type': 'application/json' }
+      })
+    }
 
     return new Response(JSON.stringify({ ok: true, action: 'created', user_id: userId }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
