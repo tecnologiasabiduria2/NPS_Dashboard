@@ -64,8 +64,8 @@ SELECT p.id, v.title, v.ord
 FROM (VALUES
   ('sabiduria', 'Ventas Sabias',      1),
   ('sabiduria', 'Procesos y Equipos', 2),
-  ('desafio',   'Finanzas Sabias',    1),
-  ('desafio',   'Marketing Sabio',    2)
+  ('desafio',   'Finanzas',           1),
+  ('desafio',   'Marketing',          2)
 ) AS v(slug, title, ord)
 JOIN products p ON p.slug = v.slug
 WHERE NOT EXISTS (

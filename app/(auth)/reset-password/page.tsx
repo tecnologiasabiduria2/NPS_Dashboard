@@ -33,7 +33,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="card">
-      <h2 className="text-xl font-semibold text-zinc-100 mb-6">Nueva contraseña</h2>
+      <h2 className="text-xl font-semibold text-cream mb-6">Nueva contraseña</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="label">Nueva contraseña</label>

@@ -15,7 +15,7 @@ export default async function NpsPage() {
   return (
     <div className="max-w-4xl">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-zinc-100">Resultados NPS</h1>
+        <h1 className="text-2xl font-bold text-cream">Resultados NPS</h1>
         {avg && (
           <div className="card py-2 px-4 text-center">
             <p className="text-2xl font-bold text-brand-400">{avg}</p>
@@ -28,7 +28,7 @@ export default async function NpsPage() {
           <div key={r.id} className="card">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-zinc-200">{(r as any).profiles?.full_name ?? '—'}</p>
+                <p className="text-sm font-medium text-cream">{(r as any).profiles?.full_name ?? '—'}</p>
                 <p className="text-xs text-zinc-500 mt-0.5">
                   {r.type === 'mejora_sesion' ? 'Mejora de sesión' : 'Interés de ascensión'}
                   {' · '}

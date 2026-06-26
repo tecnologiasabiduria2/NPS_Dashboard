@@ -25,6 +25,9 @@ export async function getNpsPrompt(
   userId: string
 ): Promise<NpsPrompt | null> {
   const nowIso = new Date().toISOString()
+  // Solo considerar sesiones que terminaron en los últimos 14 días para evitar
+  // disparar NPS por asistencias antiguas o registros de prueba.
+  const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
 
   // --- 1. post_sesion ---
   // Sesiones asistidas que ya terminaron (RLS las limita a las del usuario).
@@ -33,6 +36,7 @@ export async function getNpsPrompt(
     .select('session_id, live_sessions!inner(id, title, ends_at)')
     .eq('user_id', userId)
     .lt('live_sessions.ends_at', nowIso)
+    .gt('live_sessions.ends_at', twoWeeksAgo)
     .order('joined_at', { ascending: false })
     .limit(20)
 

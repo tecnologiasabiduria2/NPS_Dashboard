@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FilePlus2, CheckCircle2, Video, FileText } from 'lucide-react'
+import { FilePlus2, CheckCircle2, Video, FileText, Trash2 } from 'lucide-react'
+import { CONTENT_TIPOS } from '@/lib/sessionTypes'
 
 type LessonType = 'video' | 'document'
 
-interface Lesson {
+interface Recording {
   id: string
   title: string
   type: LessonType
@@ -16,13 +17,23 @@ interface Lesson {
   is_published: boolean
 }
 
+export interface HiperfocoConTipos {
+  id: string
+  title: string
+  product_id: string
+  tipos: {
+    tipo: string  // value: 'inmersion' | 'mentoria' | etc.
+    recordings: Recording[]
+  }[]
+}
+
 interface Props {
-  modules: { id: string; label: string }[]
-  lessonsByModule: Record<string, Lesson[]>
+  products: { id: string; title: string }[]
+  hiperfocos: HiperfocoConTipos[]
 }
 
 const EMPTY = {
-  lessonId: '',
+  recordingId: '',
   title: '',
   type: 'video' as LessonType,
   fathom_share_id: '',
@@ -31,47 +42,55 @@ const EMPTY = {
   is_published: false,
 }
 
-export default function LessonForm({ modules, lessonsByModule }: Props) {
+export default function LessonForm({ products, hiperfocos }: Props) {
   const router = useRouter()
-  const [moduleId, setModuleId] = useState('')
+  const [productId, setProductId] = useState('')
+  const [hiperfocoId, setHiperfocoId] = useState('')
+  const [tipo, setTipo] = useState('')  // value: 'inmersion', 'mentoria', etc.
   const [f, setF] = useState({ ...EMPTY })
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const moduleLessons = useMemo(
-    () => (moduleId ? lessonsByModule[moduleId] ?? [] : []),
-    [moduleId, lessonsByModule]
+  const filteredHiperfocos = useMemo(
+    () => hiperfocos.filter(h => h.product_id === productId),
+    [productId, hiperfocos]
   )
+
+  const tipoData = useMemo(() => {
+    const h = hiperfocos.find(h => h.id === hiperfocoId)
+    return h?.tipos.find(t => t.tipo === tipo) ?? null
+  }, [hiperfocoId, tipo, hiperfocos])
+
+  function reset() { setF({ ...EMPTY }); setSuccess(''); setError(''); setConfirmDelete(false) }
 
   function set<K extends keyof typeof f>(key: K, value: (typeof f)[K]) {
     setF(prev => ({ ...prev, [key]: value }))
-    setSuccess('')
-    setError('')
+    setSuccess(''); setError('')
   }
 
-  // Al elegir una lección existente, carga sus valores (modo edición)
-  function pickLesson(lessonId: string) {
-    if (!lessonId) { setF({ ...EMPTY }); return }
-    const l = moduleLessons.find(x => x.id === lessonId)
-    if (!l) return
+  function pickRecording(recordingId: string) {
+    setConfirmDelete(false)
+    if (!recordingId) { reset(); return }
+    const r = tipoData?.recordings.find(x => x.id === recordingId)
+    if (!r) return
     setF({
-      lessonId: l.id,
-      title: l.title,
-      type: l.type,
-      fathom_share_id: l.fathom_share_id ?? '',
-      storage_path: l.storage_path ?? '',
-      order: `${l.order}`,
-      is_published: l.is_published,
+      recordingId: r.id,
+      title: r.title,
+      type: r.type,
+      fathom_share_id: r.fathom_share_id ?? '',
+      storage_path: r.storage_path ?? '',
+      order: `${r.order}`,
+      is_published: r.is_published,
     })
     setSuccess(''); setError('')
   }
 
-  function changeModule(id: string) {
-    setModuleId(id)
-    setF({ ...EMPTY })
-    setSuccess(''); setError('')
-  }
+  function changeProduct(id: string) { setProductId(id); setHiperfocoId(''); setTipo(''); reset() }
+  function changeHiperfoco(id: string) { setHiperfocoId(id); setTipo(''); reset() }
+  function changeTipo(t: string) { setTipo(t); reset() }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -81,8 +100,9 @@ export default function LessonForm({ modules, lessonsByModule }: Props) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id: f.lessonId || undefined,
-        module_id: moduleId,
+        id: f.recordingId || undefined,
+        hiperfoco_id: hiperfocoId,
+        tipo,  // value
         title: f.title,
         type: f.type,
         fathom_share_id: f.fathom_share_id,
@@ -94,12 +114,24 @@ export default function LessonForm({ modules, lessonsByModule }: Props) {
     const data = await res.json().catch(() => ({}))
     setLoading(false)
 
-    if (!res.ok) { setError(data.error ?? 'No se pudo guardar la lección'); return }
-
-    setSuccess(f.lessonId ? 'Lección actualizada.' : 'Lección creada.')
-    setF({ ...EMPTY })
+    if (!res.ok) { setError(data.error ?? 'No se pudo guardar'); return }
+    setSuccess(f.recordingId ? 'Grabación actualizada.' : 'Grabación guardada.')
+    reset()
     router.refresh()
   }
+
+  async function handleDelete() {
+    if (!confirmDelete) { setConfirmDelete(true); return }
+    setDeleting(true); setError('')
+    const res = await fetch(`/api/admin/lessons?id=${f.recordingId}`, { method: 'DELETE' })
+    const data = await res.json().catch(() => ({}))
+    setDeleting(false)
+    if (!res.ok) { setError(data.error ?? 'No se pudo eliminar'); setConfirmDelete(false); return }
+    reset()
+    router.refresh()
+  }
+
+  const canSubmit = !!productId && !!hiperfocoId && !!tipo && !!f.title.trim()
 
   return (
     <div className="card mb-8">
@@ -108,88 +140,120 @@ export default function LessonForm({ modules, lessonsByModule }: Props) {
         <h2 className="text-lg font-semibold text-cream">Cargar grabación</h2>
       </div>
       <p className="text-sm text-cream-muted mb-5">
-        Agrega grabaciones de sesión (Inmersión o Mentoría) a una colección. Los videos se
-        validan contra el Worker antes de guardar.
+        Elige producto → hiperfoco → tipo de sesión y agrega las grabaciones.
       </p>
 
       <form onSubmit={submit} className="space-y-4">
+        {/* Producto */}
         <div>
-          <label className="label">Colección *</label>
-          <select className="select" value={moduleId} onChange={e => changeModule(e.target.value)} required>
-            <option value="">— Selecciona una colección —</option>
-            {modules.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+          <label className="label">Producto *</label>
+          <select className="select" value={productId} onChange={e => changeProduct(e.target.value)} required>
+            <option value="">— Selecciona un producto —</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
         </div>
 
-        {moduleId && (
+        {/* Hiperfoco */}
+        {productId && (
           <div>
-            <label className="label">Lección</label>
-            <select className="select" value={f.lessonId} onChange={e => pickLesson(e.target.value)}>
-              <option value="">— Nueva lección —</option>
-              {moduleLessons.map(l => (
-                <option key={l.id} value={l.id}>{l.order}. {l.title} ({l.type})</option>
+            <label className="label">Hiperfoco *</label>
+            <select className="select" value={hiperfocoId} onChange={e => changeHiperfoco(e.target.value)} required>
+              <option value="">— Selecciona un hiperfoco —</option>
+              {filteredHiperfocos.map(h => <option key={h.id} value={h.id}>{h.title}</option>)}
+            </select>
+          </div>
+        )}
+
+        {/* Tipo de sesión */}
+        {hiperfocoId && (
+          <div>
+            <label className="label">Tipo de sesión *</label>
+            <div className="grid grid-cols-2 gap-2">
+              {CONTENT_TIPOS.map(t => (
+                <button key={t.value} type="button" onClick={() => changeTipo(t.value)}
+                  className={`px-3 py-2.5 rounded-xl border text-sm transition-colors ${
+                    tipo === t.value
+                      ? 'border-brand-500 bg-brand-600/15 text-cream font-medium'
+                      : 'border-surface-600 bg-surface-800 text-cream-dim hover:text-cream'
+                  }`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Grabación existente (edición) */}
+        {tipo && tipoData && tipoData.recordings.length > 0 && (
+          <div>
+            <label className="label">Grabación</label>
+            <select className="select" value={f.recordingId} onChange={e => pickRecording(e.target.value)}>
+              <option value="">— Nueva grabación —</option>
+              {tipoData.recordings.map(r => (
+                <option key={r.id} value={r.id}>{r.title} ({r.type})</option>
               ))}
             </select>
-            {f.lessonId && <p className="text-xs text-accent mt-1.5">Editando una grabación existente</p>}
+            {f.recordingId && <p className="text-xs text-accent mt-1.5">Editando una grabación existente</p>}
           </div>
         )}
 
-        <div>
-          <label className="label">Título *</label>
-          <input type="text" className="input" placeholder="Ej. Inmersión día 1 — Script de ventas"
-            value={f.title} onChange={e => set('title', e.target.value)} required disabled={!moduleId} />
-        </div>
+        {/* Campos de detalle */}
+        {tipo && (
+          <>
+            <div>
+              <label className="label">Título *</label>
+              <input type="text" className="input" placeholder="Ej. Script de ventas — sesión 1"
+                value={f.title} onChange={e => set('title', e.target.value)} required />
+            </div>
 
-        <div>
-          <label className="label">Tipo *</label>
-          <div className="grid grid-cols-3 gap-2">
-            {([
-              ['video', 'Video', Video],
-              ['document', 'Documento', FileText],
-            ] as [LessonType, string, any][]).map(([val, lbl, Icon]) => (
-              <button key={val} type="button" disabled={!moduleId}
-                onClick={() => set('type', val)}
-                className={`flex flex-col items-center gap-1 py-3 rounded-xl border text-xs transition-colors ${
-                  f.type === val
-                    ? 'border-brand-500 bg-brand-600/15 text-cream'
-                    : 'border-surface-600 bg-surface-800 text-cream-dim hover:text-cream'
-                }`}>
-                <Icon size={16} /> {lbl}
-              </button>
-            ))}
-          </div>
-        </div>
+            <div>
+              <label className="label">Tipo de archivo *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {([['video', 'Video', Video], ['document', 'Documento', FileText]] as [LessonType, string, any][]).map(([val, lbl, Icon]) => (
+                  <button key={val} type="button" onClick={() => set('type', val)}
+                    className={`flex items-center justify-center gap-2 py-3 rounded-xl border text-sm transition-colors ${
+                      f.type === val
+                        ? 'border-brand-500 bg-brand-600/15 text-cream'
+                        : 'border-surface-600 bg-surface-800 text-cream-dim hover:text-cream'
+                    }`}>
+                    <Icon size={15} /> {lbl}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {f.type === 'video' && (
-          <div>
-            <label className="label">fathom_share_id *</label>
-            <input type="text" className="input" placeholder="ID del video en GHL (Fathom)"
-              value={f.fathom_share_id} onChange={e => set('fathom_share_id', e.target.value)} />
-            <p className="text-xs text-cream-muted mt-1.5">Se valida contra el Worker; si no existe, no se guarda.</p>
-          </div>
+            {f.type === 'video' && (
+              <div>
+                <label className="label">fathom_share_id *</label>
+                <input type="text" className="input" placeholder="ID del video en GHL (Fathom)"
+                  value={f.fathom_share_id} onChange={e => set('fathom_share_id', e.target.value)} />
+                <p className="text-xs text-cream-muted mt-1.5">Se valida contra el Worker; si el ID no existe, no se guarda.</p>
+              </div>
+            )}
+
+            {f.type === 'document' && (
+              <div>
+                <label className="label">storage_path</label>
+                <input type="text" className="input" placeholder="Ej. ventas-sabias/plantilla-flujo.pdf"
+                  value={f.storage_path} onChange={e => set('storage_path', e.target.value)} />
+                <p className="text-xs text-cream-muted mt-1.5">Ruta dentro del bucket privado <code>content</code>.</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Orden</label>
+                <input type="number" className="input" placeholder="Auto (al final)"
+                  value={f.order} onChange={e => set('order', e.target.value)} />
+              </div>
+              <label className="flex items-end gap-2 pb-2.5 cursor-pointer select-none">
+                <input type="checkbox" className="w-4 h-4 accent-brand-600"
+                  checked={f.is_published} onChange={e => set('is_published', e.target.checked)} />
+                <span className="text-sm text-cream-dim">Publicada (visible al cliente)</span>
+              </label>
+            </div>
+          </>
         )}
-
-        {f.type === 'document' && (
-          <div>
-            <label className="label">storage_path</label>
-            <input type="text" className="input" placeholder="Ej. module-1/plantilla-flujo-caja.pdf"
-              value={f.storage_path} onChange={e => set('storage_path', e.target.value)} />
-            <p className="text-xs text-cream-muted mt-1.5">Ruta dentro del bucket privado <code>content</code>.</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label">Orden</label>
-            <input type="number" className="input" placeholder="Auto (al final)"
-              value={f.order} onChange={e => set('order', e.target.value)} disabled={!moduleId} />
-          </div>
-          <label className="flex items-end gap-2 pb-2.5 cursor-pointer select-none">
-            <input type="checkbox" className="w-4 h-4 accent-brand-600"
-              checked={f.is_published} onChange={e => set('is_published', e.target.checked)} disabled={!moduleId} />
-            <span className="text-sm text-cream-dim">Publicada (visible al cliente)</span>
-          </label>
-        </div>
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
@@ -203,9 +267,30 @@ export default function LessonForm({ modules, lessonsByModule }: Props) {
           </div>
         )}
 
-        <button type="submit" disabled={loading || !moduleId} className="btn-primary w-full justify-center py-3 disabled:opacity-40 disabled:cursor-not-allowed">
-          {loading ? 'Guardando…' : f.lessonId ? 'Guardar cambios' : 'Cargar grabación'}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button type="submit" disabled={loading || !canSubmit}
+            className="btn-primary flex-1 justify-center py-3 disabled:opacity-40 disabled:cursor-not-allowed">
+            {loading ? 'Guardando…' : f.recordingId ? 'Guardar cambios' : 'Guardar grabación'}
+          </button>
+
+          {f.recordingId && (
+            <button type="button" onClick={handleDelete} disabled={deleting}
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                confirmDelete
+                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-600'
+                  : 'bg-red-900/30 hover:bg-red-800/50 text-red-400 border-red-800/40'
+              }`}>
+              <Trash2 size={14} />
+              {deleting ? 'Eliminando…' : confirmDelete ? 'Confirmar eliminar' : 'Eliminar'}
+            </button>
+          )}
+        </div>
+
+        {confirmDelete && (
+          <p className="text-xs text-red-400 text-center -mt-1">
+            Haz clic de nuevo para confirmar. Esta acción no se puede deshacer.
+          </p>
+        )}
       </form>
     </div>
   )

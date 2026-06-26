@@ -5,24 +5,24 @@ import { CheckCircle2, Circle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
-  lessonId: string
+  recordingId: string
   userId: string
   initialCompleted: boolean
 }
 
-export default function VideoMark({ lessonId, userId, initialCompleted }: Props) {
+export default function VideoMark({ recordingId, userId, initialCompleted }: Props) {
   const [done, setDone] = useState(initialCompleted)
   const [loading, setLoading] = useState(false)
 
   async function toggle() {
     setLoading(true)
     const supabase = createClient()
-    await supabase.from('lesson_progress').upsert({
+    await supabase.from('recording_progress').upsert({
       user_id: userId,
-      lesson_id: lessonId,
+      recording_id: recordingId,
       completed: !done,
-      completed_at: !done ? new Date().toISOString() : null,
-    }, { onConflict: 'user_id,lesson_id' })
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,recording_id' })
     setDone(!done)
     setLoading(false)
   }

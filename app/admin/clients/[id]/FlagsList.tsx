@@ -49,7 +49,7 @@ export default function FlagsList({ flags }: { flags: FlagRow[] }) {
                 {esExito ? <Star size={14} /> : <Flag size={14} />}
               </span>
               <div>
-                <p className="text-sm text-zinc-200">
+                <p className="text-sm text-cream">
                   {esExito ? 'Caso de éxito' : 'Bandera'}
                   <span className="text-xs text-zinc-500 ml-2">{formatDateOnly(f.created_at?.slice(0, 10))}</span>
                 </p>

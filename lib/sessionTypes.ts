@@ -27,3 +27,17 @@ export function sessionTipoLabel(tipo: string | null | undefined): string {
   if (!tipo) return 'Sesión en vivo'
   return LABELS[tipo] ?? 'Sesión en vivo'
 }
+
+// Tipos para CONTENIDO grabado (más simples: no se distingue inmersión 1 vs 2).
+// El título de la grabación identifica el detalle específico.
+export const CONTENT_TIPOS = [
+  { value: 'inmersion',               label: 'Inmersión' },
+  { value: 'mentoria',                label: 'Mentoría' },
+  { value: 'sala_gerencia',           label: 'Sala de Gerencia' },
+  { value: 'entrenamiento_comercial', label: 'Entrenamiento Comercial' },
+] as const
+
+export type ContentTipoValue = typeof CONTENT_TIPOS[number]['value']
+export const CONTENT_TIPO_LABELS = CONTENT_TIPOS.map(t => t.label)
+export const CONTENT_TIPO_VALUES = CONTENT_TIPOS.map(t => t.value)
+export const contentTipoLabel = (v: string) => CONTENT_TIPOS.find(t => t.value === v)?.label ?? v

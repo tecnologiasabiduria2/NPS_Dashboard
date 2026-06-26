@@ -44,7 +44,7 @@ export default function MiniCalendar({ sessionDates }: Props) {
   }, [])
 
   return (
-    <div className="card mb-6">
+    <div className="card">
       <div className="flex items-center justify-between mb-3">
         <button onClick={prev} className="btn-ghost p-1.5"><ChevronLeft size={16} /></button>
         <p className="text-sm font-medium text-cream">{MONTHS[month]} {year}</p>

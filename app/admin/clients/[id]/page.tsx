@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { formatDateOnly, formatMonthShort } from '@/lib/format'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { Flag, Star } from 'lucide-react'
+import BackLink from '@/components/BackLink'
 import EditAccessForm from './EditAccessForm'
 import AddNoteForm from './AddNoteForm'
 import AddCsNoteForm from './AddCsNoteForm'
@@ -126,10 +128,11 @@ export default async function ClientDetailPage({ params }: Props) {
 
   return (
     <div className="max-w-3xl">
+      <BackLink />
       {/* Header + capa CS */}
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100">{profile.full_name}</h1>
+          <h1 className="text-2xl font-bold text-cream">{profile.full_name}</h1>
           <p className="text-zinc-500 text-sm mt-1">
             {(access as any)?.products?.title ?? '—'}
             {meses !== null && <> · {meses} {meses === 1 ? 'mes' : 'meses'} contigo</>}
@@ -178,7 +181,7 @@ export default async function ClientDetailPage({ params }: Props) {
                 }`}
               >
                 <span className="text-xs text-zinc-500 capitalize">{formatMonthShort(h.periodo)}</span>
-                <span className={h.title ? 'text-zinc-200' : 'text-zinc-500'}>
+                <span className={h.title ? 'text-cream' : 'text-zinc-500'}>
                   {h.title ?? (h.estado === 'pausa' ? 'Pausa' : 'Sin asignar')}
                   {h.repitio && <span className="text-xs text-amber-400 ml-2">repitió</span>}
                 </span>
@@ -217,7 +220,7 @@ export default async function ClientDetailPage({ params }: Props) {
                   <span className="text-xs text-zinc-500">{formatDateOnly(note.note_date)}</span>
                   <span className="text-xs text-zinc-600">{note.profiles?.full_name}</span>
                 </div>
-                <p className="text-sm text-zinc-300">{note.content}</p>
+                <p className="text-sm text-cream-dim">{note.content}</p>
               </div>
             ))}
           </div>
@@ -238,7 +241,7 @@ export default async function ClientDetailPage({ params }: Props) {
                   <span className="text-xs text-zinc-500">{formatDateOnly(note.session_date)}</span>
                   <span className="text-xs text-zinc-600">{note.profiles?.full_name}</span>
                 </div>
-                <p className="text-sm text-zinc-300">{note.content}</p>
+                <p className="text-sm text-cream-dim">{note.content}</p>
               </div>
             ))}
           </div>

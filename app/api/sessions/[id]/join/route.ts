@@ -9,7 +9,7 @@ interface Props {
 // Ventana de asistencia válida (margen alrededor del horario de la sesión).
 // Fáciles de ajustar: muy probablemente Sebastián/Diana querrán afinarlos.
 const ATTENDANCE_MARGIN_BEFORE_MIN = 10 // se puede registrar desde 10 min antes de empezar
-const ATTENDANCE_MARGIN_AFTER_MIN = 15  // y hasta 15 min después de terminar
+const ATTENDANCE_MARGIN_AFTER_MIN = 0   // solo hasta que termine la sesión (ends_at exacto)
 
 // GET /api/sessions/[id]/join
 // SIEMPRE redirige al Zoom de la sesión (no se bloquea el acceso a la sala).

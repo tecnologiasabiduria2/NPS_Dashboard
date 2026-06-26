@@ -24,9 +24,9 @@ export default function ForgotPasswordPage() {
     return (
       <div className="card text-center">
         <div className="text-4xl mb-4">📬</div>
-        <h2 className="text-lg font-semibold text-zinc-100 mb-2">Revisa tu correo</h2>
+        <h2 className="text-lg font-semibold text-cream mb-2">Revisa tu correo</h2>
         <p className="text-zinc-400 text-sm mb-4">
-          Enviamos un enlace a <strong className="text-zinc-200">{email}</strong>
+          Enviamos un enlace a <strong className="text-cream">{email}</strong>
         </p>
         <Link href="/login" className="text-brand-400 text-sm hover:text-brand-300">
           Volver al login
@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="card">
-      <h2 className="text-xl font-semibold text-zinc-100 mb-2">Recuperar contraseña</h2>
+      <h2 className="text-xl font-semibold text-cream mb-2">Recuperar contraseña</h2>
       <p className="text-zinc-500 text-sm mb-6">Te enviamos un enlace para crear una nueva contraseña</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

@@ -7,15 +7,15 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { lesson_id, completed } = await req.json()
-  if (!lesson_id) return NextResponse.json({ error: 'Missing lesson_id' }, { status: 400 })
+  const { recording_id, completed } = await req.json()
+  if (!recording_id) return NextResponse.json({ error: 'Missing recording_id' }, { status: 400 })
 
-  await supabaseAdmin.from('lesson_progress').upsert({
+  await supabaseAdmin.from('recording_progress').upsert({
     user_id: user.id,
-    lesson_id,
+    recording_id,
     completed: completed ?? true,
-    completed_at: completed !== false ? new Date().toISOString() : null,
-  }, { onConflict: 'user_id,lesson_id' })
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id,recording_id' })
 
   return NextResponse.json({ ok: true })
 }

@@ -47,7 +47,7 @@ export default async function Vista360Page() {
   const periodoActual = periodoKey(0)
   const periodoPrev = periodoKey(-1)
   const todayStr = new Date().toISOString().slice(0, 10)
-  const plus90Str = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const plus90Str = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
   const [
     { data: activos },
@@ -255,7 +255,7 @@ export default async function Vista360Page() {
           <p className="text-xs text-cream-dim mt-0.5">{npsAll.length} respuestas</p>
         </div>
         <div className="card">
-          <p className="text-xs text-cream-muted">Renovación 90d</p>
+          <p className="text-xs text-cream-muted">Renovación 15d</p>
           <p className="text-2xl font-semibold text-cream mt-0.5">
             {renovacion90d} <span className="text-xs text-cream-dim font-normal">clientes</span>
           </p>

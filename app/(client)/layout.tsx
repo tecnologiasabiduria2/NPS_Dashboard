@@ -42,7 +42,7 @@ export default async function ClientLayout({ children }: { children: React.React
   return (
     <div className="flex min-h-screen bg-surface-950">
       <Sidebar role="client" userName={profile?.full_name ?? user.email ?? ''} />
-      <main className="flex-1 p-8 overflow-auto">
+      <main className="flex-1 p-4 lg:p-8 overflow-auto pt-16 lg:pt-8 min-w-0">
         {children}
       </main>
       {npsPrompt && <NpsModal prompt={npsPrompt} />}

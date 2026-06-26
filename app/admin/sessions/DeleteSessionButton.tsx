@@ -35,7 +35,7 @@ export default function DeleteSessionButton({ sessionId }: { sessionId: string }
         <button
           onClick={() => setConfirming(false)}
           disabled={loading}
-          className="text-xs px-2.5 py-1 rounded-md text-zinc-500 hover:text-zinc-300 transition-colors"
+          className="text-xs px-2.5 py-1 rounded-md text-zinc-500 hover:text-cream-dim transition-colors"
         >
           Cancelar
         </button>

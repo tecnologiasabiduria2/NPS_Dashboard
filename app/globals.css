@@ -11,7 +11,7 @@
 * { box-sizing: border-box; }
 
 body {
-  background-color: #120D10;
+  background-color: #161520;
   color: #F2E8D5;
   font-family: var(--font-outfit), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -19,8 +19,8 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #1A1215; }
-::-webkit-scrollbar-thumb { background: #3A2A32; border-radius: 3px; }
+::-webkit-scrollbar-track { background: #1e1e28; }
+::-webkit-scrollbar-thumb { background: #302e42; border-radius: 3px; }
 
 @layer components {
 
@@ -54,7 +54,7 @@ body {
     @apply text-xs text-cream-dim mb-1.5 block font-medium uppercase tracking-wide;
   }
   .select {
-    @apply bg-surface-800 border border-surface-600 rounded-xl px-4 py-2.5 text-cream focus:outline-none focus:border-brand-600 w-full text-sm;
+    @apply bg-surface-800 border border-surface-600 rounded-xl pl-4 pr-9 py-2.5 text-cream focus:outline-none focus:border-brand-600 w-full text-sm cursor-pointer;
   }
 
   /* ---- Badges ---- */

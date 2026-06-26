@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, UserPlus, CheckCircle2 } from 'lucide-react'
+import { UserPlus, CheckCircle2 } from 'lucide-react'
+import BackLink from '@/components/BackLink'
 
 export default function CreateClientPage() {
   const router = useRouter()
@@ -79,9 +80,7 @@ export default function CreateClientPage() {
   return (
     <div className="max-w-lg">
       <div className="mb-8">
-        <Link href="/admin/clients" className="btn-ghost mb-4 -ml-2">
-          <ArrowLeft size={14} /> Volver a clientes
-        </Link>
+        <BackLink />
         <h1 className="page-title flex items-center gap-2">
           <UserPlus size={22} className="text-brand-400" />
           Nuevo cliente

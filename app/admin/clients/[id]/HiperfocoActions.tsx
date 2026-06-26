@@ -94,7 +94,7 @@ export default function HiperfocoActions({ userId, productId, hiperfocos }: Prop
 
           {panel === 'pausa' && (
             <div className="space-y-3">
-              <p className="text-sm text-zinc-300">¿Marcar el mes en curso como <span className="font-medium">pausa</span>? El hiperfoco del mes quedará en descanso.</p>
+              <p className="text-sm text-cream-dim">¿Marcar el mes en curso como <span className="font-medium">pausa</span>? El hiperfoco del mes quedará en descanso.</p>
               <div className="flex justify-end gap-2">
                 <button onClick={reset} className="btn-secondary text-sm">Cancelar</button>
                 <button onClick={marcarPausa} disabled={loading} className="btn-primary text-sm">

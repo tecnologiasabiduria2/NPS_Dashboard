@@ -82,7 +82,7 @@ function ActivateForm() {
   if (expired) {
     return (
       <div className="card text-center py-8">
-        <h2 className="text-xl font-semibold text-zinc-100 mb-2">Enlace inválido o expirado</h2>
+        <h2 className="text-xl font-semibold text-cream mb-2">Enlace inválido o expirado</h2>
         <p className="text-zinc-500 text-sm mb-4">
           Este enlace de activación ya fue usado o expiró. Contacta a tu administrador para recibir uno nuevo.
         </p>
@@ -93,7 +93,7 @@ function ActivateForm() {
 
   return (
     <div className="card">
-      <h2 className="text-xl font-semibold text-zinc-100 mb-2">Activar cuenta</h2>
+      <h2 className="text-xl font-semibold text-cream mb-2">Activar cuenta</h2>
       <p className="text-zinc-500 text-sm mb-6">Completa tu perfil para acceder a la plataforma</p>
 
       {!sessionReady ? (

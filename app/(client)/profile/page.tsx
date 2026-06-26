@@ -22,22 +22,22 @@ export default async function ProfilePage() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-bold text-zinc-100 mb-8">Mi perfil</h1>
+      <h1 className="text-2xl font-bold text-cream mb-8">Mi perfil</h1>
 
       <div className="card mb-4">
         <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Información personal</p>
         <div className="space-y-3">
           <div>
             <p className="text-xs text-zinc-500">Nombre</p>
-            <p className="text-zinc-100">{profile?.full_name ?? '—'}</p>
+            <p className="text-cream">{profile?.full_name ?? '—'}</p>
           </div>
           <div>
             <p className="text-xs text-zinc-500">Email</p>
-            <p className="text-zinc-100">{user.email}</p>
+            <p className="text-cream">{user.email}</p>
           </div>
           <div>
             <p className="text-xs text-zinc-500">Teléfono</p>
-            <p className="text-zinc-100">{profile?.phone ?? '—'}</p>
+            <p className="text-cream">{profile?.phone ?? '—'}</p>
           </div>
         </div>
       </div>
@@ -47,7 +47,7 @@ export default async function ProfilePage() {
         <div className="space-y-3">
           <div>
             <p className="text-xs text-zinc-500">Programa</p>
-            <p className="text-zinc-100">{(access as any)?.products?.title ?? '—'}</p>
+            <p className="text-cream">{(access as any)?.products?.title ?? '—'}</p>
           </div>
           <div>
             <p className="text-xs text-zinc-500">Estado</p>
@@ -56,7 +56,7 @@ export default async function ProfilePage() {
           {access?.access_until && (
             <div>
               <p className="text-xs text-zinc-500">Acceso hasta</p>
-              <p className="text-zinc-100">
+              <p className="text-cream">
                 {formatDateOnly(access.access_until, { year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
