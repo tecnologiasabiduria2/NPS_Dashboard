@@ -2,8 +2,11 @@ import type { ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Lightbulb } from 'lucide-react'
+import { Lightbulb, AlertTriangle } from 'lucide-react'
 import { formatMonthLong } from '@/lib/format'
+
+// Objetivo de sesiones 1:1 por CS por mes. Configurable via settings table (pendiente — ver PENDIENTES.md).
+const CS_SESSION_TARGET_MONTHLY = 20
 
 // ============================================================================
 // VISTA 360 EJECUTIVA — Diana (rol owner). Boceto: sabiduria_dashboard_360_diana.html
@@ -49,12 +52,16 @@ export default async function Vista360Page() {
   const todayStr = new Date().toISOString().slice(0, 10)
   const plus90Str = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
+  const periodoProximo = periodoKey(1)
+
   const [
     { data: activos },
     { data: hiperfocos },
     { data: historia },
     { data: banderas },
     { data: npsRows },
+    { data: uhmCS },
+    { data: sessions1x1Raw },
   ] = await Promise.all([
     supabase.from('user_access').select('user_id, access_until, access_started').eq('status', 'active'),
     supabase.from('hiperfocos').select('id, title'),
@@ -66,7 +73,76 @@ export default async function Vista360Page() {
       .limit(2000),
     supabase.from('client_flags').select('user_id').eq('type', 'bandera').eq('status', 'abierta'),
     supabase.from('nps_responses').select('user_id, score, created_at').limit(2000),
+    // HTML4: clientes con CS asignado este mes
+    supabase
+      .from('user_hiperfoco_mes')
+      .select('user_id, cs_id')
+      .eq('periodo', periodoActual)
+      .not('cs_id', 'is', null),
+    // HTML4: sesiones 1:1 este mes
+    supabase
+      .from('live_sessions')
+      .select('id, cs_id, client_user_id')
+      .eq('audience', 'individual')
+      .gte('starts_at', periodoActual)
+      .lt('starts_at', periodoProximo),
   ])
+
+  // HTML4: perfiles de CS y clientes sin 1:1 (query secuencial sobre IDs derivados)
+  const uhmCSRows = (uhmCS ?? []) as any[]
+  const sessions1x1Rows = (sessions1x1Raw ?? []) as any[]
+  const clientsWithSessionSet = new Set<string>(sessions1x1Rows.map((s: any) => s.client_user_id as string))
+  const csIds = [...new Set<string>(uhmCSRows.map((r: any) => r.cs_id as string))]
+  const clientesSin1x1Rows = uhmCSRows.filter((r: any) => !clientsWithSessionSet.has(r.user_id as string))
+  const clientIdsNeeded = clientesSin1x1Rows.slice(0, 30).map((r: any) => r.user_id as string)
+  const profileIdsNeeded = [...new Set<string>([...csIds, ...clientIdsNeeded])]
+
+  const profileMap = new Map<string, string>()
+  if (profileIdsNeeded.length > 0) {
+    const { data: profData } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', profileIdsNeeded)
+    for (const p of (profData ?? []) as any[]) profileMap.set(p.id, p.full_name ?? '—')
+  }
+
+  // HTML4: sesiones y clientes por CS
+  const sessionsByCS = new Map<string, number>()
+  for (const s of sessions1x1Rows) {
+    if (s.cs_id) sessionsByCS.set(s.cs_id, (sessionsByCS.get(s.cs_id) ?? 0) + 1)
+  }
+  const clientsByCS = new Map<string, number>()
+  for (const r of uhmCSRows) clientsByCS.set(r.cs_id, (clientsByCS.get(r.cs_id) ?? 0) + 1)
+
+  // HTML4: NPS promedio por CS (NPS de este mes cruzado con cs_id del cliente)
+  const csOfClient = new Map<string, string>(uhmCSRows.map((r: any) => [r.user_id as string, r.cs_id as string]))
+  const npsByCS = new Map<string, { sum: number; count: number }>()
+  for (const r of (npsRows ?? []) as any[]) {
+    if ((r.created_at as string).slice(0, 7) !== periodoActual.slice(0, 7)) continue
+    const csId = csOfClient.get(r.user_id as string)
+    if (!csId) continue
+    const d = npsByCS.get(csId) ?? { sum: 0, count: 0 }
+    d.sum += Number(r.score); d.count++
+    npsByCS.set(csId, d)
+  }
+
+  // Lista de CS ordenada por sesiones completadas desc
+  const csList = csIds.map(id => ({
+    id,
+    name: profileMap.get(id) ?? '—',
+    clientes: clientsByCS.get(id) ?? 0,
+    sesiones: sessionsByCS.get(id) ?? 0,
+    nps: npsByCS.has(id) ? npsByCS.get(id)!.sum / npsByCS.get(id)!.count : null,
+  })).sort((a, b) => b.sesiones - a.sesiones)
+
+  // Clientes sin 1:1 (máx 10 mostrados en la card)
+  const totalSin1x1 = clientesSin1x1Rows.length
+  const clientesSin1x1 = clientesSin1x1Rows.slice(0, 10).map((r: any) => ({
+    userId: r.user_id as string,
+    name: profileMap.get(r.user_id as string) ?? '—',
+    csId: r.cs_id as string,
+    csName: profileMap.get(r.cs_id as string) ?? '—',
+  }))
 
   const activeRows = (activos as any[]) ?? []
   const activeIds = new Set<string>(activeRows.map(r => r.user_id))
@@ -363,7 +439,7 @@ export default async function Vista360Page() {
 
       {/* Insights automáticos (reglas sobre los datos) */}
       {insights.length > 0 && (
-        <div className="card">
+        <div className="card mb-4">
           <p className="text-sm font-medium text-cream inline-flex items-center gap-1.5">
             <Lightbulb size={15} className="text-amber-400" /> Insights automáticos
           </p>
@@ -376,6 +452,156 @@ export default async function Vista360Page() {
           </div>
         </div>
       )}
+
+      {/* ================================================================
+          HTML4 — Operación CS
+      ================================================================ */}
+      <div className="mt-8 mb-2">
+        <p className="text-xs font-semibold uppercase tracking-widest text-cream-dim">Operación CS</p>
+      </div>
+
+      {/* Bloque 1: Sesiones 1:1 por CS */}
+      <div className="card mb-4">
+        <div className="flex items-baseline justify-between mb-3">
+          <p className="text-sm font-medium text-cream">Sesiones 1:1 completadas · {formatMonthLong(periodoActual)}</p>
+          <p className="text-xs text-cream-dim">Objetivo: {CS_SESSION_TARGET_MONTHLY} por CS / mes</p>
+        </div>
+        {csList.length === 0 ? (
+          <p className="text-sm text-cream-muted">Sin CS asignados a clientes este mes.</p>
+        ) : (
+          <>
+            <div className="space-y-3">
+              {csList.map(cs => {
+                const pct = Math.min(100, (cs.sesiones / CS_SESSION_TARGET_MONTHLY) * 100)
+                const ok = cs.sesiones >= CS_SESSION_TARGET_MONTHLY
+                const warn = cs.sesiones >= CS_SESSION_TARGET_MONTHLY * 0.7
+                const barColor = ok ? '#1D9E75' : warn ? '#BA7517' : '#E24B4A'
+                const textColor = ok ? 'text-emerald-400' : warn ? 'text-amber-400' : 'text-red-400'
+                return (
+                  <div key={cs.id} className="grid grid-cols-[140px_1fr_90px] gap-3 items-center text-sm">
+                    <div>
+                      <p className="text-cream font-medium truncate">{cs.name}</p>
+                      <p className="text-xs text-cream-muted">{cs.clientes} cliente{cs.clientes !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
+                    </div>
+                    <span className={`font-medium text-right ${textColor}`}>
+                      {cs.sesiones} / {CS_SESSION_TARGET_MONTHLY}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="pt-3 mt-2 border-t border-surface-700 grid grid-cols-3 gap-3 text-xs text-cream-muted">
+              <div>
+                <p>Total sesiones</p>
+                <p className="text-base font-semibold text-cream mt-0.5">{sessions1x1Rows.length} / {csList.length * CS_SESSION_TARGET_MONTHLY}</p>
+              </div>
+              <div>
+                <p>Cumplimiento global</p>
+                <p className={`text-base font-semibold mt-0.5 ${
+                  csList.length * CS_SESSION_TARGET_MONTHLY > 0
+                    ? sessions1x1Rows.length / (csList.length * CS_SESSION_TARGET_MONTHLY) >= 1
+                      ? 'text-emerald-400'
+                      : sessions1x1Rows.length / (csList.length * CS_SESSION_TARGET_MONTHLY) >= 0.7
+                      ? 'text-amber-400'
+                      : 'text-red-400'
+                    : 'text-cream'
+                }`}>
+                  {csList.length * CS_SESSION_TARGET_MONTHLY > 0
+                    ? `${Math.round((sessions1x1Rows.length / (csList.length * CS_SESSION_TARGET_MONTHLY)) * 100)}%`
+                    : '—'}
+                </p>
+              </div>
+              <div>
+                <p>Clientes sin 1:1</p>
+                <p className={`text-base font-semibold mt-0.5 ${totalSin1x1 > 0 ? 'text-red-400' : 'text-emerald-400'}`}>{totalSin1x1}</p>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Bloque 2: Clientes sin 1:1 este mes */}
+      {totalSin1x1 > 0 && (
+        <div className="card mb-4" style={{ borderColor: 'rgba(226,75,74,0.2)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle size={15} className="text-red-400 shrink-0" />
+            <p className="text-sm font-medium text-red-400">Clientes sin 1:1 este mes</p>
+          </div>
+          <p className="text-xs text-cream-muted mb-3">
+            {totalSin1x1} empresario{totalSin1x1 !== 1 ? 's' : ''} con CS asignado no ha{totalSin1x1 !== 1 ? 'n' : ''} tenido su sesión individual este mes
+          </p>
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-[1fr_130px] gap-3 text-xs text-cream-muted pb-2 border-b border-surface-700">
+              <span>Cliente</span>
+              <span>CS responsable</span>
+            </div>
+            {clientesSin1x1.map(c => (
+              <div key={c.userId} className="grid grid-cols-[1fr_130px] gap-3 text-sm items-center">
+                <Link href={`/admin/clients/${c.userId}`} className="text-cream hover:text-brand-400 transition-colors truncate">
+                  {c.name}
+                </Link>
+                <span className="text-cream-muted text-xs truncate">{c.csName}</span>
+              </div>
+            ))}
+            {totalSin1x1 > 10 && (
+              <p className="text-xs text-cream-muted pt-1">
+                + {totalSin1x1 - 10} más ·{' '}
+                <Link href="/admin/clients" className="text-brand-400">Ver todos →</Link>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bloque 3: Salud por CS — NPS promedio */}
+      <div className="card mb-4">
+        <p className="text-sm font-medium text-cream mb-0.5">Salud por CS — NPS promedio de la cartera</p>
+        <p className="text-xs text-cream-muted mb-3">Promedio de respuestas NPS de este mes atribuidas a cada CS</p>
+        {csList.filter(cs => cs.nps !== null).length === 0 ? (
+          <p className="text-sm text-cream-muted">Sin respuestas NPS este mes todavía.</p>
+        ) : (
+          <>
+            <div className="space-y-2.5">
+              {[...csList]
+                .filter(cs => cs.nps !== null)
+                .sort((a, b) => (b.nps ?? 0) - (a.nps ?? 0))
+                .map(cs => (
+                  <div key={cs.id} className="grid grid-cols-[140px_1fr_52px] gap-3 items-center text-sm">
+                    <span className="text-cream truncate">{cs.name}</span>
+                    <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${(cs.nps! / 10) * 100}%`,
+                          background: cs.nps! >= 8 ? '#1D9E75' : cs.nps! >= 6 ? '#BA7517' : '#E24B4A',
+                        }}
+                      />
+                    </div>
+                    <span className={`text-right font-medium ${npsColor(cs.nps!)}`}>{cs.nps!.toFixed(1)}</span>
+                  </div>
+                ))}
+            </div>
+            {(() => {
+              const withNps = csList.filter(cs => cs.nps !== null)
+              const peorNpsCS = [...withNps].sort((a, b) => (a.nps ?? 10) - (b.nps ?? 10))[0]
+              const peorOpCS = [...csList].sort((a, b) => a.sesiones - b.sesiones)[0]
+              if (peorNpsCS && peorOpCS && peorNpsCS.id === peorOpCS.id && peorNpsCS.nps! < 7.5) {
+                return (
+                  <p className="text-xs text-cream-muted mt-3 pt-3 border-t border-surface-700 leading-relaxed">
+                    <span className="text-amber-400 font-medium">Patrón detectado:</span>{' '}
+                    {peorNpsCS.name} tiene el menor cumplimiento de sesiones ({peorOpCS.sesiones}/{CS_SESSION_TARGET_MONTHLY}) y el NPS más bajo ({peorNpsCS.nps!.toFixed(1)}).
+                    Posible sobrecarga o necesidad de acompañamiento.
+                  </p>
+                )
+              }
+              return null
+            })()}
+          </>
+        )}
+      </div>
     </div>
   )
 }
