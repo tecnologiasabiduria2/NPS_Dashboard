@@ -3,11 +3,53 @@ import type { NpsTrigger } from '@/types'
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
+export interface NpsCopy {
+  eyebrow: string
+  title: string // puede contener el token {sesion} (solo post_sesion)
+  question: string
+}
+
+// Textos por defecto del modal NPS. Son el fallback si la tabla nps_questions
+// está vacía, y el seed de la migración del Bloque 2.
+export const DEFAULT_NPS_COPY: Record<NpsTrigger, NpsCopy> = {
+  post_sesion: {
+    eyebrow: 'Después de tu sesión en vivo',
+    title: '¿Cómo estuvo «{sesion}»?',
+    question: '¿Qué tan probable es que recomiendes esta sesión a otro empresario?',
+  },
+  semanal: {
+    eyebrow: 'Seguimiento semanal',
+    title: '¿Cómo vas con tu proceso?',
+    question: '¿Qué tan probable es que recomiendes Sabiduría Empresarial a un colega?',
+  },
+}
+
+/** Lee los textos configurados de un disparador, con fallback a los por defecto. */
+async function fetchNpsCopy(
+  supabase: SupabaseClient,
+  trigger: NpsTrigger
+): Promise<NpsCopy> {
+  const { data } = await supabase
+    .from('nps_questions')
+    .select('eyebrow, title, question')
+    .eq('trigger', trigger)
+    .maybeSingle()
+
+  const def = DEFAULT_NPS_COPY[trigger]
+  if (!data) return def
+  return {
+    eyebrow: data.eyebrow ?? def.eyebrow,
+    title: data.title ?? def.title,
+    question: data.question ?? def.question,
+  }
+}
+
 export interface NpsPrompt {
   trigger: NpsTrigger
   // Sólo presente cuando trigger === 'post_sesion'
   sessionId?: string
   sessionTitle?: string
+  copy: NpsCopy
 }
 
 /**
@@ -58,6 +100,7 @@ export async function getNpsPrompt(
         trigger: 'post_sesion',
         sessionId: pending.session_id,
         sessionTitle: ls?.title ?? 'tu última sesión',
+        copy: await fetchNpsCopy(supabase, 'post_sesion'),
       }
     }
   }
@@ -90,7 +133,7 @@ export async function getNpsPrompt(
     !lastWeekly ||
     Date.now() - new Date(lastWeekly.created_at).getTime() > WEEK_MS
 
-  if (due) return { trigger: 'semanal' }
+  if (due) return { trigger: 'semanal', copy: await fetchNpsCopy(supabase, 'semanal') }
 
   return null
 }

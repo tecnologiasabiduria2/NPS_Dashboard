@@ -131,10 +131,12 @@ export default function CreateClientPage() {
           </div>
 
           <div>
-            <label className="label">ID de contacto en GHL</label>
-            <input type="text" className="input" placeholder="ID del contacto en Go High Level (opcional)"
-              value={form.ghl_contact_id} onChange={e => handle('ghl_contact_id', e.target.value)} />
-            <p className="text-xs text-cream-muted mt-1.5">Se usa para sincronizar el progreso con GHL</p>
+            <label className="label">ID de contacto en GHL *</label>
+            <input type="text" className="input" placeholder="ID del contacto en Go High Level"
+              value={form.ghl_contact_id} onChange={e => handle('ghl_contact_id', e.target.value)} required />
+            <p className="text-xs text-cream-muted mt-1.5">
+              Obligatorio: vincula al cliente con su contacto en GHL para mantener la sincronización.
+            </p>
           </div>
         </div>
 

@@ -8,8 +8,6 @@ out/
 *.tsbuildinfo
 
 # Documentación de control local (no versionar en el repo de la app)
-PROGRESO.md
-PENDIENTES.md
-DECISIONES.md
-RESUMEN-*.md
-AUDITORIA-*.md
+# Los .md de notas internas no van al repo público, pero el README sí.
+*.md
+!README.md

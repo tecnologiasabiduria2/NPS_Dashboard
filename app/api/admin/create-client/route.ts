@@ -13,6 +13,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email, programa y fecha de acceso son obligatorios' }, { status: 400 })
     }
 
+    const ghlContactId = typeof ghl_contact_id === 'string' ? ghl_contact_id.trim() : ''
+    if (!ghlContactId) {
+      return NextResponse.json({ error: 'El ID de contacto en GHL es obligatorio.' }, { status: 400 })
+    }
+
     const { data: product } = await supabaseAdmin
       .from('products').select('id').eq('slug', product_access).single()
 
@@ -34,12 +39,12 @@ export async function POST(req: NextRequest) {
 
       if (existingAccess) {
         await supabaseAdmin.from('user_access')
-          .update({ status: 'active', access_until, ghl_contact_id: ghl_contact_id || null, updated_at: new Date().toISOString() })
+          .update({ status: 'active', access_until, ghl_contact_id: ghlContactId, updated_at: new Date().toISOString() })
           .eq('user_id', existing.id).eq('product_id', product.id)
       } else {
         await supabaseAdmin.from('user_access').insert({
           user_id: existing.id, product_id: product.id, status: 'active',
-          access_until, ghl_contact_id: ghl_contact_id || null,
+          access_until, ghl_contact_id: ghlContactId,
           platform_invite_sent: true, access_started: new Date().toISOString().split('T')[0],
         })
       }
@@ -71,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     await supabaseAdmin.from('user_access').insert({
       user_id: newUser.user.id, product_id: product.id, status: 'active',
-      access_until, ghl_contact_id: ghl_contact_id || null,
+      access_until, ghl_contact_id: ghlContactId,
       platform_invite_sent: true, access_started: new Date().toISOString().split('T')[0],
     })
 

@@ -6,24 +6,6 @@ import { X, Star } from 'lucide-react'
 import { clsx } from 'clsx'
 import type { NpsPrompt } from '@/lib/nps'
 
-const COPY: Record<
-  NpsPrompt['trigger'],
-  { eyebrow: string; title: (s?: string) => string; question: string }
-> = {
-  post_sesion: {
-    eyebrow: 'Después de tu sesión en vivo',
-    title: (s) => `¿Cómo estuvo «${s ?? 'tu última sesión'}»?`,
-    question:
-      '¿Qué tan probable es que recomiendes esta sesión a otro empresario?',
-  },
-  semanal: {
-    eyebrow: 'Seguimiento semanal',
-    title: () => '¿Cómo vas con tu proceso?',
-    question:
-      '¿Qué tan probable es que recomiendes Sabiduría Empresarial a un colega?',
-  },
-}
-
 export default function NpsModal({ prompt }: { prompt: NpsPrompt }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -73,7 +55,9 @@ export default function NpsModal({ prompt }: { prompt: NpsPrompt }) {
 
   if (!open) return null
 
-  const copy = COPY[prompt.trigger]
+  const copy = prompt.copy
+  // {sesion} se reemplaza por el nombre de la sesión (solo aplica a post_sesion).
+  const titleText = copy.title.replace('{sesion}', prompt.sessionTitle ?? 'tu última sesión')
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
@@ -115,7 +99,7 @@ export default function NpsModal({ prompt }: { prompt: NpsPrompt }) {
               {copy.eyebrow}
             </p>
             <h2 className="text-xl font-semibold text-cream leading-snug">
-              {copy.title(prompt.sessionTitle)}
+              {titleText}
             </h2>
             <p className="text-sm text-cream-dim mt-2">{copy.question}</p>
 

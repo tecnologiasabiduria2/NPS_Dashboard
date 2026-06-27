@@ -1,53 +1,26 @@
+import Link from 'next/link'
+import { Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import NpsResults from './NpsResults'
 
 export default async function NpsPage() {
   const supabase = await createClient()
   const { data: responses } = await supabase
     .from('nps_responses')
-    .select('*, profiles(full_name)')
+    .select('id, score, feedback, type, trigger, hiperfoco_id, created_at, profiles(full_name), hiperfocos(title)')
     .order('created_at', { ascending: false })
-    .limit(50)
-
-  const avg = responses && responses.length > 0
-    ? Math.round((responses.reduce((s, r) => s + r.score, 0) / responses.length) * 10) / 10
-    : null
+    .limit(500)
 
   return (
     <div className="max-w-4xl">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-cream">Resultados NPS</h1>
-        {avg && (
-          <div className="card py-2 px-4 text-center">
-            <p className="text-2xl font-bold text-brand-400">{avg}</p>
-            <p className="text-xs text-zinc-500">Promedio</p>
-          </div>
-        )}
+        <Link href="/admin/nps/questions" className="btn-ghost flex items-center gap-2">
+          <Settings size={16} />
+          Configurar preguntas
+        </Link>
       </div>
-      <div className="space-y-3">
-        {(responses ?? []).map(r => (
-          <div key={r.id} className="card">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-cream">{(r as any).profiles?.full_name ?? '—'}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  {r.type === 'mejora_sesion' ? 'Mejora de sesión' : 'Interés de ascensión'}
-                  {' · '}
-                  {new Date(r.created_at).toLocaleDateString('es-CO')}
-                </p>
-              </div>
-              <div className={`text-lg font-bold ${r.score >= 9 ? 'text-green-400' : r.score >= 7 ? 'text-amber-400' : 'text-red-400'}`}>
-                {r.score}/10
-              </div>
-            </div>
-            {r.feedback && (
-              <p className="text-sm text-zinc-400 mt-3 bg-surface-800 rounded-lg px-3 py-2">"{r.feedback}"</p>
-            )}
-          </div>
-        ))}
-        {(!responses || responses.length === 0) && (
-          <div className="card text-center text-zinc-500">Sin respuestas NPS aún</div>
-        )}
-      </div>
+      <NpsResults responses={(responses ?? []) as any[]} />
     </div>
   )
 }

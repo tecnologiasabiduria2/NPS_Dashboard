@@ -86,7 +86,17 @@ export interface NpsResponse {
   type: NpsType
   trigger: NpsTrigger
   live_session_id?: string
+  hiperfoco_id?: string
   created_at: string
+}
+
+export interface NpsQuestion {
+  trigger: NpsTrigger
+  eyebrow: string
+  title: string
+  question: string
+  updated_at?: string
+  updated_by?: string
 }
 
 export type SessionTipo =

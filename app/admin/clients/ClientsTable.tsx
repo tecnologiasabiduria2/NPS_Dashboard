@@ -18,6 +18,7 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
   const [q, setQ] = useState('')
   const [sort, setSort] = useState<SortMode>('default')
   const [hiperfocoFilter, setHiperfocoFilter] = useState('')
+  const [productFilter, setProductFilter] = useState('')
 
   // Build unique hiperfoco options for the filter dropdown
   const hiperfocoOptions = useMemo(() => {
@@ -25,6 +26,16 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
     for (const v of hiperfocoByUser.values()) if (v) set.add(v)
     return Array.from(set).sort()
   }, [hiperfocoByUser])
+
+  // Build unique product options (slug → title) for the filter dropdown
+  const productOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const c of clients) {
+      const slug = c.products?.slug
+      if (slug) map.set(slug, c.products?.title ?? slug)
+    }
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
+  }, [clients])
 
   const filtered = useMemo(() => {
     let list = clients
@@ -35,6 +46,9 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
         const phone = (c.profiles?.phone ?? '').toLowerCase()
         return name.includes(t) || phone.includes(t)
       })
+    }
+    if (productFilter) {
+      list = list.filter((c: any) => c.products?.slug === productFilter)
     }
     if (hiperfocoFilter === '__none__') {
       list = list.filter((c: any) => !hiperfocoByUser.get(c.user_id))
@@ -55,7 +69,7 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
       })
     }
     return list
-  }, [q, clients, sort, hiperfocoFilter, hiperfocoByUser])
+  }, [q, clients, sort, hiperfocoFilter, productFilter, hiperfocoByUser])
 
   function getBadge(client: any) {
     if (client.status === 'inactive') return <span className="badge-inactive">Inactivo</span>
@@ -78,6 +92,16 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
             onChange={e => setQ(e.target.value)}
           />
         </div>
+        <select
+          className="select w-auto"
+          value={productFilter}
+          onChange={e => setProductFilter(e.target.value)}
+        >
+          <option value="">Todos los programas</option>
+          {productOptions.map(([slug, title]) => (
+            <option key={slug} value={slug}>{title}</option>
+          ))}
+        </select>
         <select
           className="select w-auto"
           value={hiperfocoFilter}
