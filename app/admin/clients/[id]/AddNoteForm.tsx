@@ -14,6 +14,7 @@ export default function AddNoteForm({ userId }: { userId: string }) {
   const router = useRouter()
   const [content, setContent] = useState('')
   const [date, setDate] = useState(localToday())
+  const [fathom, setFathom] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -26,7 +27,12 @@ export default function AddNoteForm({ userId }: { userId: string }) {
     const res = await fetch('/api/admin/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, content, session_date: date }),
+      body: JSON.stringify({
+        user_id: userId,
+        content,
+        session_date: date,
+        fathom_share_id: fathom,
+      }),
     })
 
     if (!res.ok) {
@@ -38,6 +44,7 @@ export default function AddNoteForm({ userId }: { userId: string }) {
 
     setContent('')
     setDate(localToday())
+    setFathom('')
     setLoading(false)
     router.refresh()
   }
@@ -52,14 +59,21 @@ export default function AddNoteForm({ userId }: { userId: string }) {
       />
       <textarea
         className="input min-h-20 resize-y"
-        placeholder="Escribe una nota de la sesión de coaching..."
+        placeholder="Notas de la sesión 1:1 (desafíos, acuerdos, próximos pasos)..."
         value={content}
         onChange={e => setContent(e.target.value)}
+      />
+      <input
+        type="text"
+        className="input"
+        placeholder="Fathom share ID de la grabación 1:1 (opcional)"
+        value={fathom}
+        onChange={e => setFathom(e.target.value)}
       />
       {error && <p className="text-red-400 text-xs">{error}</p>}
       <div className="flex justify-end">
         <button type="submit" disabled={loading || !content.trim()} className="btn-primary">
-          {loading ? 'Guardando...' : 'Agregar nota'}
+          {loading ? 'Guardando...' : 'Agregar sesión 1:1'}
         </button>
       </div>
     </form>

@@ -1,0 +1,110 @@
+import { createClient } from '@/lib/supabase/server'
+import { formatDateOnly } from '@/lib/format'
+import { Play } from 'lucide-react'
+import Timeline from '@/components/Timeline'
+import { buildTimeline } from '@/lib/timeline'
+
+const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL ?? ''
+
+export default async function MiRutaPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const [{ data: access }, { data: historial }, { data: attendance }, { data: nps }, { data: notes }] =
+    await Promise.all([
+      supabase
+        .from('user_access')
+        .select('access_started, products(title)')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle(),
+      supabase
+        .from('user_hiperfoco_mes')
+        .select('periodo, estado, hiperfocos(title)')
+        .eq('user_id', user.id)
+        .order('periodo', { ascending: false }),
+      supabase
+        .from('live_session_attendance')
+        .select('live_sessions!inner(title, starts_at)')
+        .eq('user_id', user.id),
+      supabase
+        .from('nps_responses')
+        .select('score, created_at, hiperfocos(title)')
+        .eq('user_id', user.id),
+      // coaching_notes: el cliente lee las suyas (RLS notes_select). Son sus sesiones 1:1.
+      supabase
+        .from('coaching_notes')
+        .select('id, session_date, content, fathom_share_id, profiles!admin_id(full_name)')
+        .eq('user_id', user.id)
+        .order('session_date', { ascending: false }),
+    ])
+
+  const timeline = buildTimeline({
+    inicio: (access as any)?.access_started,
+    hiperfocos: ((historial as any[]) ?? []).map(r => ({
+      periodo: r.periodo, title: r.hiperfocos?.title ?? null, estado: r.estado,
+    })),
+    sesiones: ((attendance as any[]) ?? []).map(a => ({
+      date: a.live_sessions?.starts_at, title: a.live_sessions?.title ?? 'Sesión en vivo',
+    })),
+    unoAuno: ((notes as any[]) ?? []).map(n => ({
+      date: n.session_date, content: n.content, fathomShareId: n.fathom_share_id,
+    })),
+    nps: ((nps as any[]) ?? []).map(n => ({
+      date: n.created_at, score: n.score, hiperfoco: n.hiperfocos?.title ?? null,
+    })),
+    // El cliente NO ve banderas ni casos de éxito (interno del CS).
+  })
+
+  const unoAuno = (notes as any[]) ?? []
+
+  return (
+    <div className="max-w-3xl">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-cream">Mi ruta</h1>
+        <p className="text-zinc-500 text-sm mt-1">
+          {(access as any)?.products?.title ?? 'Tu proceso'} · tu historial en la plataforma
+        </p>
+      </div>
+
+      {/* Hoja de vida */}
+      <div className="card mb-6">
+        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-5">Mi historial</p>
+        <Timeline events={timeline} />
+      </div>
+
+      {/* Mis sesiones 1:1 */}
+      <div className="card">
+        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Mis sesiones 1:1</p>
+        {unoAuno.length > 0 ? (
+          <div className="space-y-3">
+            {unoAuno.map((note: any) => (
+              <div key={note.id} className="bg-surface-800 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-zinc-500">{formatDateOnly(note.session_date)}</span>
+                  {note.profiles?.full_name && (
+                    <span className="text-xs text-zinc-600">con {note.profiles.full_name}</span>
+                  )}
+                </div>
+                <p className="text-sm text-cream-dim whitespace-pre-wrap">{note.content}</p>
+                {note.fathom_share_id && WORKER_URL && (
+                  <a
+                    href={`${WORKER_URL}/player?id=${note.fathom_share_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-brand-400 hover:text-brand-300 mt-3"
+                  >
+                    <Play size={12} /> Ver grabación de la sesión
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-600">Aún no tienes sesiones 1:1 registradas.</p>
+        )}
+      </div>
+    </div>
+  )
+}

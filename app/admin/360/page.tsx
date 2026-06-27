@@ -178,13 +178,16 @@ export default async function Vista360Page() {
   const npsGeneral = npsAll.length ? npsAll.reduce((a, r) => a + r.score, 0) / npsAll.length : null
 
   // --- Distribución por hiperfoco (mes actual) + NPS del mes por hiperfoco
+  // Agrupado por NOMBRE de hiperfoco (une mismos nombres entre productos, ej.
+  // "Marketing" de Sabiduría + de Desafío → una sola fila).
   const distrib = new Map<string, { count: number; npsSum: number; npsN: number }>()
   for (const id of activeIds) {
     const cur = estadoActual.get(id)
     if (cur?.estado === 'en_curso' && cur.hiperfoco_id) {
-      const d = distrib.get(cur.hiperfoco_id) ?? { count: 0, npsSum: 0, npsN: 0 }
+      const title = hfTitle.get(cur.hiperfoco_id) ?? '—'
+      const d = distrib.get(title) ?? { count: 0, npsSum: 0, npsN: 0 }
       d.count++
-      distrib.set(cur.hiperfoco_id, d)
+      distrib.set(title, d)
     }
   }
   // NPS de este mes atribuido al hiperfoco en curso del cliente.
@@ -192,13 +195,14 @@ export default async function Vista360Page() {
     if (r.created_at.slice(0, 7) !== periodoActual.slice(0, 7)) continue
     const cur = estadoActual.get(r.user_id)
     if (cur?.estado === 'en_curso' && cur.hiperfoco_id) {
-      const d = distrib.get(cur.hiperfoco_id)
+      const title = hfTitle.get(cur.hiperfoco_id) ?? '—'
+      const d = distrib.get(title)
       if (d) { d.npsSum += r.score; d.npsN++ }
     }
   }
   const distribList = [...distrib.entries()]
-    .map(([hid, d]) => ({
-      title: hfTitle.get(hid) ?? '—',
+    .map(([title, d]) => ({
+      title,
       count: d.count,
       nps: d.npsN ? d.npsSum / d.npsN : null,
       pct: eligieron ? (d.count / eligieron) * 100 : 0,
@@ -214,9 +218,11 @@ export default async function Vista360Page() {
     arr.push({ periodo: row.periodo, hiperfoco_id: row.hiperfoco_id })
     porUsuario.set(row.user_id, arr)
   }
-  const runLens = new Map<string, number[]>()        // hiperfoco_id -> largos de run
-  const repeaters = new Map<string, Set<string>>()   // hiperfoco_id -> usuarios con run >= 2
-  const everAssigned = new Map<string, Set<string>>() // hiperfoco_id -> usuarios que lo tuvieron
+  // Agregado por NOMBRE de hiperfoco (los runs se detectan por id consecutivo,
+  // pero se acumulan bajo el título para unir mismos nombres entre productos).
+  const runLens = new Map<string, number[]>()        // título -> largos de run
+  const repeaters = new Map<string, Set<string>>()   // título -> usuarios con run >= 2
+  const everAssigned = new Map<string, Set<string>>() // título -> usuarios que lo tuvieron
   for (const [uid, rows] of porUsuario) {
     let i = 0
     while (i < rows.length) {
@@ -224,28 +230,29 @@ export default async function Vista360Page() {
       let j = i
       while (j + 1 < rows.length && rows[j + 1].hiperfoco_id === hid) j++
       const len = j - i + 1
-      if (!runLens.has(hid)) runLens.set(hid, [])
-      runLens.get(hid)!.push(len)
-      if (!everAssigned.has(hid)) everAssigned.set(hid, new Set())
-      everAssigned.get(hid)!.add(uid)
+      const title = hfTitle.get(hid) ?? '—'
+      if (!runLens.has(title)) runLens.set(title, [])
+      runLens.get(title)!.push(len)
+      if (!everAssigned.has(title)) everAssigned.set(title, new Set())
+      everAssigned.get(title)!.add(uid)
       if (len >= 2) {
-        if (!repeaters.has(hid)) repeaters.set(hid, new Set())
-        repeaters.get(hid)!.add(uid)
+        if (!repeaters.has(title)) repeaters.set(title, new Set())
+        repeaters.get(title)!.add(uid)
       }
       i = j + 1
     }
   }
   const tiempoList = [...runLens.entries()]
-    .map(([hid, lens]) => ({
-      title: hfTitle.get(hid) ?? '—',
+    .map(([title, lens]) => ({
+      title,
       avg: lens.reduce((a, b) => a + b, 0) / lens.length,
     }))
     .sort((a, b) => b.avg - a.avg)
   const repetidosList = [...everAssigned.entries()]
-    .map(([hid, users]) => {
-      const reps = repeaters.get(hid)?.size ?? 0
+    .map(([title, users]) => {
+      const reps = repeaters.get(title)?.size ?? 0
       return {
-        title: hfTitle.get(hid) ?? '—',
+        title,
         reps,
         pct: users.size ? (reps / users.size) * 100 : 0,
       }

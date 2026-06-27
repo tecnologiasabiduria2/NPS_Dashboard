@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { formatDateOnly, formatMonthShort } from '@/lib/format'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { Flag, Star } from 'lucide-react'
+import { Flag, Star, Play } from 'lucide-react'
 import BackLink from '@/components/BackLink'
+import Timeline from '@/components/Timeline'
+import { buildTimeline } from '@/lib/timeline'
 import EditAccessForm from './EditAccessForm'
 import AddNoteForm from './AddNoteForm'
 import AddCsNoteForm from './AddCsNoteForm'
@@ -13,6 +14,8 @@ import FlagsList from './FlagsList'
 interface Props {
   params: Promise<{ id: string }>
 }
+
+const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL ?? ''
 
 // Color del NPS según el puntaje (1–10).
 function npsColor(score: number) {
@@ -61,11 +64,11 @@ export default async function ClientDetailPage({ params }: Props) {
     productId
       ? supabase
           .from('live_session_attendance')
-          .select('live_sessions!inner(starts_at, product_id)')
+          .select('live_sessions!inner(title, starts_at, product_id)')
           .eq('user_id', id)
           .eq('live_sessions.product_id', productId)
       : Promise.resolve({ data: [] as any[] }),
-    supabase.from('nps_responses').select('score, created_at').eq('user_id', id),
+    supabase.from('nps_responses').select('score, created_at, hiperfocos(title)').eq('user_id', id),
     productId
       ? supabase.from('hiperfocos').select('id, title').eq('product_id', productId).eq('is_active', true).order('order')
       : Promise.resolve({ data: [] as any[] }),
@@ -110,6 +113,24 @@ export default async function ClientDetailPage({ params }: Props) {
       nps: npsPorMes.get(mesKey) ?? null,
       repitio: Boolean(row.hiperfoco_id) && prev?.hiperfoco_id === row.hiperfoco_id,
     }
+  })
+
+  // Hoja de vida (timeline): fusiona inicio + hiperfocos + sesiones + 1:1 + NPS + banderas.
+  const timeline = buildTimeline({
+    inicio: (access as any)?.access_started ?? profile.created_at,
+    hiperfocos: ((historialRaw as any[]) ?? []).map(r => ({
+      periodo: r.periodo, title: r.hiperfocos?.title ?? null, estado: r.estado,
+    })),
+    sesiones: ((attendanceRaw as any[]) ?? []).map(a => ({
+      date: a.live_sessions?.starts_at, title: a.live_sessions?.title ?? 'Sesión en vivo',
+    })),
+    unoAuno: ((notes as any[]) ?? []).map(n => ({
+      date: n.session_date, content: n.content, fathomShareId: n.fathom_share_id,
+    })),
+    nps: ((npsRaw as any[]) ?? []).map(n => ({
+      date: n.created_at, score: n.score, hiperfoco: n.hiperfocos?.title ?? null,
+    })),
+    flags: ((flags as any[]) ?? []).map(f => ({ date: f.created_at, type: f.type, reason: f.reason })),
   })
 
   // Badge "repite X N veces": hiperfoco más repetido en el historial (>=2).
@@ -164,6 +185,12 @@ export default async function ClientDetailPage({ params }: Props) {
           ghlContactId={access?.ghl_contact_id ?? ''}
           status={access?.status ?? 'pending'}
         />
+      </div>
+
+      {/* Hoja de vida (timeline) */}
+      <div className="card mb-6">
+        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-5">Hoja de vida</p>
+        <Timeline events={timeline} />
       </div>
 
       {/* Hiperfocos */}
@@ -229,9 +256,9 @@ export default async function ClientDetailPage({ params }: Props) {
         )}
       </div>
 
-      {/* Notas de coaching (visibles para el cliente según RLS) */}
+      {/* Sesiones 1:1 (notas de coaching — visibles para el cliente según RLS) */}
       <div className="card">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Notas de coaching</p>
+        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Sesiones 1:1</p>
         <AddNoteForm userId={id} />
         {notes && notes.length > 0 ? (
           <div className="space-y-3">
@@ -241,12 +268,22 @@ export default async function ClientDetailPage({ params }: Props) {
                   <span className="text-xs text-zinc-500">{formatDateOnly(note.session_date)}</span>
                   <span className="text-xs text-zinc-600">{note.profiles?.full_name}</span>
                 </div>
-                <p className="text-sm text-cream-dim">{note.content}</p>
+                <p className="text-sm text-cream-dim whitespace-pre-wrap">{note.content}</p>
+                {note.fathom_share_id && WORKER_URL && (
+                  <a
+                    href={`${WORKER_URL}/player?id=${note.fathom_share_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-brand-400 hover:text-brand-300 mt-3"
+                  >
+                    <Play size={12} /> Ver grabación 1:1
+                  </a>
+                )}
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-zinc-600">Sin notas de coaching aún.</p>
+          <p className="text-sm text-zinc-600">Sin sesiones 1:1 registradas aún.</p>
         )}
       </div>
     </div>

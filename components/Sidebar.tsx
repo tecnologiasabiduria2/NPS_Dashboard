@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Map, User, LogOut, Users, BarChart2,
-  FileText, UserPlus, CalendarClock, Gauge, Menu, X,
+  FileText, UserPlus, CalendarClock, Gauge, Menu, X, Route,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import Logo from './Logo'
@@ -22,6 +22,7 @@ interface SidebarProps {
 const clientLinks = [
   { href: '/dashboard',  label: 'Dashboard',    icon: LayoutDashboard },
   { href: '/roadmap',    label: 'Mi contenido', icon: Map },
+  { href: '/mi-ruta',    label: 'Mi ruta',      icon: Route },
   { href: '/sessions',   label: 'Sesiones',     icon: CalendarClock },
   { href: '/profile',    label: 'Mi perfil',    icon: User },
 ]

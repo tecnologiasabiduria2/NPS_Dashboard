@@ -74,6 +74,7 @@ export interface CoachingNote {
   admin_id: string
   content: string
   session_date: string
+  fathom_share_id?: string
   created_at: string
   profiles?: Profile
 }
