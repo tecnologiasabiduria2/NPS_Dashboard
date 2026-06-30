@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import SessionForm from './SessionForm'
 import DeleteSessionButton from './DeleteSessionButton'
+import CopyNpsLink from './CopyNpsLink'
 import { Calendar, Video } from 'lucide-react'
 import { sessionTipoLabel } from '@/lib/sessionTypes'
 
@@ -18,6 +19,14 @@ export default async function AdminSessionsPage() {
     sessionsByProduct[p.id] = [...(p.live_sessions ?? [])].sort(
       (a: any, b: any) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
     )
+  }
+
+  // Token público de NPS por sesión, en consulta aparte: si la migración 5b aún
+  // no corrió, esto degrada (sin token → sin botón) sin romper la página.
+  const npsTokenById: Record<string, string> = {}
+  const { data: tokenRows } = await supabase.from('live_sessions').select('id, nps_token')
+  for (const r of (tokenRows ?? []) as { id: string; nps_token?: string | null }[]) {
+    if (r.nps_token) npsTokenById[r.id] = r.nps_token
   }
 
   const now = Date.now()
@@ -63,6 +72,7 @@ export default async function AdminSessionsPage() {
                             <span className={s.is_published ? 'badge-active' : 'badge-pending'}>
                               {s.is_published ? 'Pub.' : 'Borrador'}
                             </span>
+                            {npsTokenById[s.id] && <CopyNpsLink token={npsTokenById[s.id]} />}
                             <DeleteSessionButton sessionId={s.id} />
                           </div>
                         </div>

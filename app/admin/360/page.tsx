@@ -352,7 +352,7 @@ export default async function Vista360Page({
   const npsColor = (v: number) => (v >= 8 ? 'text-emerald-400' : v >= 6 ? 'text-amber-400' : 'text-red-400')
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-7xl">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="page-title">Vista 360 ejecutiva</h1>

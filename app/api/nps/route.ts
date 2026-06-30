@@ -96,6 +96,10 @@ export async function POST(req: NextRequest) {
   })
 
   if (error) {
+    // Ya calificó esta sesión (índice único user+sesión) → idempotente.
+    if ((error as { code?: string }).code === '23505') {
+      return NextResponse.json({ ok: true, already: true })
+    }
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 

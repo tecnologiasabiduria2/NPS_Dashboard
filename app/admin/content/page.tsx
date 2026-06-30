@@ -37,7 +37,7 @@ export default async function ContentPage() {
   }
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-6xl">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-cream">Gestión de contenido</h1>
         <p className="text-xs text-cream-muted">Carga y edición desde la plataforma</p>

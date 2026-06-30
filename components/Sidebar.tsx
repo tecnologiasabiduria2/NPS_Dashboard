@@ -134,7 +134,7 @@ export default function Sidebar({ role, userName, productTitle, isOwner }: Sideb
               </Link>
               <Link href="/admin/comerciales" onClick={() => setMobileOpen(false)} className={linkClass('/admin/comerciales')}>
                 <Briefcase size={16} strokeWidth={isActive('/admin/comerciales') ? 2 : 1.5} />
-                Comerciales
+                Business Coach
               </Link>
             </>
           )}

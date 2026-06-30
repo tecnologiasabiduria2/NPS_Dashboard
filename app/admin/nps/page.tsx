@@ -12,7 +12,7 @@ export default async function NpsPage() {
     .limit(500)
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-6xl">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-cream">Resultados NPS</h1>
         <Link href="/admin/nps/questions" className="btn-ghost flex items-center gap-2">

@@ -28,8 +28,14 @@ export async function middleware(request: NextRequest) {
   const isWebhook = request.nextUrl.pathname.startsWith('/api/webhooks')
   // El cron (sync inverso) se autentica con su propio CRON_SECRET, no con sesión.
   const isCron = request.nextUrl.pathname.startsWith('/api/cron')
+  // NPS por link (Bloque 5b): página y API públicas, sin login (el que califica
+  // puede no tener cuenta). No se incluye en publicPaths para no forzar el
+  // redirect a /dashboard de los usuarios autenticados que abran su propio link.
+  const isPublicNps =
+    request.nextUrl.pathname.startsWith('/nps') ||
+    request.nextUrl.pathname.startsWith('/api/nps/public')
 
-  if (!user && !isPublic && !isWebhook && !isCron) {
+  if (!user && !isPublic && !isWebhook && !isCron && !isPublicNps) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

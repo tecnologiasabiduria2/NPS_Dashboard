@@ -59,9 +59,9 @@ export default async function ComercialesPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="page-title">Comerciales</h1>
+      <h1 className="page-title">Business Coach</h1>
       <p className="page-subtitle mb-6">
-        Usuarios de GHL (comerciales = CS) y sus empresarios asignados · vincula cada uno con su perfil en la plataforma
+        Business Coach de GHL (servicio al cliente) y sus empresarios asignados · vincula cada uno con su perfil en la plataforma
       </p>
 
       {ghlError && (
@@ -99,7 +99,7 @@ export default async function ComercialesPage() {
         <div className="card">
           <div className="flex items-center gap-2 mb-3">
             <Users size={15} className="text-brand-400" />
-            <p className="text-sm font-medium text-cream">Usuarios de GHL</p>
+            <p className="text-sm font-medium text-cream">Business Coach (usuarios de GHL)</p>
             <span className="text-xs text-cream-dim">{ghlUsers.length}</span>
           </div>
           {ghlUsers.length === 0 ? (
@@ -132,7 +132,7 @@ export default async function ComercialesPage() {
             </div>
           )}
           <p className="text-xs text-cream-dim mt-3">
-            Empresarios asignados = contactos de GHL con ese comercial como responsable (muestra hasta 100 contactos · beta).
+            Empresarios asignados = contactos de GHL con ese Business Coach como responsable (muestra hasta 100 contactos · beta).
           </p>
         </div>
       )}
