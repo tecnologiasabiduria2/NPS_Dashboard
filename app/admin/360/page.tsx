@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Lightbulb, AlertTriangle } from 'lucide-react'
 import { formatMonthLong } from '@/lib/format'
+import ProductFilter from './ProductFilter'
 
 // Objetivo de sesiones 1:1 por CS por mes. Configurable via settings table (pendiente — ver PENDIENTES.md).
 const CS_SESSION_TARGET_MONTHLY = 20
@@ -38,7 +39,12 @@ function periodoKey(offset = 0): string {
 
 const EXPECTED_MONTHS = 6 // tiempo esperado por hiperfoco antes de cambiar de tema
 
-export default async function Vista360Page() {
+export default async function Vista360Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ producto?: string }>
+}) {
+  const { producto: productoFilter = '' } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -64,7 +70,7 @@ export default async function Vista360Page() {
     { data: sessions1x1Raw },
   ] = await Promise.all([
     supabase.from('user_access').select('user_id, access_until, access_started').eq('status', 'active'),
-    supabase.from('hiperfocos').select('id, title'),
+    supabase.from('hiperfocos').select('id, title, products(slug, title)'),
     supabase
       .from('user_hiperfoco_mes')
       .select('user_id, periodo, estado, hiperfoco_id')
@@ -79,19 +85,22 @@ export default async function Vista360Page() {
       .select('user_id, cs_id')
       .eq('periodo', periodoActual)
       .not('cs_id', 'is', null),
-    // HTML4: sesiones 1:1 este mes
+    // HTML4 + B15: sesiones 1:1 REALIZADAS este mes = coaching_notes (notas + grabación
+    // que el coach registra). Antes se contaba live_sessions individual (agendadas);
+    // la fuente de verdad del 1:1 realizado es coaching_notes. admin_id = el CS que la
+    // registró; user_id = el cliente atendido.
     supabase
-      .from('live_sessions')
-      .select('id, cs_id, client_user_id')
-      .eq('audience', 'individual')
-      .gte('starts_at', periodoActual)
-      .lt('starts_at', periodoProximo),
+      .from('coaching_notes')
+      .select('user_id, admin_id, session_date')
+      .gte('session_date', periodoActual)
+      .lt('session_date', periodoProximo),
   ])
 
   // HTML4: perfiles de CS y clientes sin 1:1 (query secuencial sobre IDs derivados)
   const uhmCSRows = (uhmCS ?? []) as any[]
+  // notas 1:1 (coaching_notes) realizadas este mes — fuente de verdad del 1:1 (B15)
   const sessions1x1Rows = (sessions1x1Raw ?? []) as any[]
-  const clientsWithSessionSet = new Set<string>(sessions1x1Rows.map((s: any) => s.client_user_id as string))
+  const clientsWithSessionSet = new Set<string>(sessions1x1Rows.map((n: any) => n.user_id as string))
   const csIds = [...new Set<string>(uhmCSRows.map((r: any) => r.cs_id as string))]
   const clientesSin1x1Rows = uhmCSRows.filter((r: any) => !clientsWithSessionSet.has(r.user_id as string))
   const clientIdsNeeded = clientesSin1x1Rows.slice(0, 30).map((r: any) => r.user_id as string)
@@ -106,10 +115,11 @@ export default async function Vista360Page() {
     for (const p of (profData ?? []) as any[]) profileMap.set(p.id, p.full_name ?? '—')
   }
 
-  // HTML4: sesiones y clientes por CS
+  // HTML4 + B15: sesiones 1:1 por CS = coaching_notes agrupadas por admin_id (el CS
+  // que registró la sesión). clientes por CS sigue saliendo de la asignación (uhm.cs_id).
   const sessionsByCS = new Map<string, number>()
-  for (const s of sessions1x1Rows) {
-    if (s.cs_id) sessionsByCS.set(s.cs_id, (sessionsByCS.get(s.cs_id) ?? 0) + 1)
+  for (const n of sessions1x1Rows) {
+    if (n.admin_id) sessionsByCS.set(n.admin_id, (sessionsByCS.get(n.admin_id) ?? 0) + 1)
   }
   const clientsByCS = new Map<string, number>()
   for (const r of uhmCSRows) clientsByCS.set(r.cs_id, (clientsByCS.get(r.cs_id) ?? 0) + 1)
@@ -147,7 +157,34 @@ export default async function Vista360Page() {
   const activeRows = (activos as any[]) ?? []
   const activeIds = new Set<string>(activeRows.map(r => r.user_id))
   const totalActivos = activeIds.size
-  const hfTitle = new Map<string, string>(((hiperfocos as any[]) ?? []).map(h => [h.id, h.title]))
+  // B16: etiqueta = "Título · Producto" para SEPARAR hiperfocos homónimos entre
+  // productos (ej. "Marketing · Sabiduría" vs "Marketing · Desafío"). Como todo el
+  // agrupado de abajo se hace por esta etiqueta, separa por producto sin más cambios.
+  const hfTitle = new Map<string, string>(
+    ((hiperfocos as any[]) ?? []).map(h => [
+      h.id,
+      h.products?.title ? `${h.title} · ${h.products.title}` : h.title,
+    ])
+  )
+
+  // Filtro de producto (desplegable): opciones distintas + set de hiperfocos en
+  // alcance. Solo afecta las secciones por hiperfoco (distribución/tiempo/repetidos);
+  // KPIs, cartera y Operación CS quedan globales. "" = todos.
+  const productOptions = (() => {
+    const seen = new Map<string, string>()
+    for (const h of (hiperfocos as any[]) ?? []) {
+      const slug = h.products?.slug
+      if (slug && !seen.has(slug)) seen.set(slug, h.products?.title ?? slug)
+    }
+    return [...seen.entries()].map(([slug, title]) => ({ slug, title }))
+  })()
+  const allowedHfIds = new Set<string>(
+    ((hiperfocos as any[]) ?? [])
+      .filter(h => !productoFilter || h.products?.slug === productoFilter)
+      .map(h => h.id as string)
+  )
+  const inScope = (hiperfocoId: string | null) => !!hiperfocoId && allowedHfIds.has(hiperfocoId)
+
   const flaggedIds = new Set<string>(((banderas as any[]) ?? []).map(f => f.user_id).filter((id: string) => activeIds.has(id)))
 
   // --- KPIs simples sobre user_access ------------------------------------
@@ -178,13 +215,13 @@ export default async function Vista360Page() {
   const npsGeneral = npsAll.length ? npsAll.reduce((a, r) => a + r.score, 0) / npsAll.length : null
 
   // --- Distribución por hiperfoco (mes actual) + NPS del mes por hiperfoco
-  // Agrupado por NOMBRE de hiperfoco (une mismos nombres entre productos, ej.
-  // "Marketing" de Sabiduría + de Desafío → una sola fila).
+  // Agrupado por etiqueta "Título · Producto" (B16): separa hiperfocos homónimos
+  // entre productos en filas distintas.
   const distrib = new Map<string, { count: number; npsSum: number; npsN: number }>()
   for (const id of activeIds) {
     const cur = estadoActual.get(id)
-    if (cur?.estado === 'en_curso' && cur.hiperfoco_id) {
-      const title = hfTitle.get(cur.hiperfoco_id) ?? '—'
+    if (cur?.estado === 'en_curso' && inScope(cur.hiperfoco_id)) {
+      const title = hfTitle.get(cur.hiperfoco_id!) ?? '—'
       const d = distrib.get(title) ?? { count: 0, npsSum: 0, npsN: 0 }
       d.count++
       distrib.set(title, d)
@@ -194,18 +231,21 @@ export default async function Vista360Page() {
   for (const r of npsAll) {
     if (r.created_at.slice(0, 7) !== periodoActual.slice(0, 7)) continue
     const cur = estadoActual.get(r.user_id)
-    if (cur?.estado === 'en_curso' && cur.hiperfoco_id) {
-      const title = hfTitle.get(cur.hiperfoco_id) ?? '—'
+    if (cur?.estado === 'en_curso' && inScope(cur.hiperfoco_id)) {
+      const title = hfTitle.get(cur.hiperfoco_id!) ?? '—'
       const d = distrib.get(title)
       if (d) { d.npsSum += r.score; d.npsN++ }
     }
   }
+  // Denominador del % = total en alcance (con filtro, relativo a lo mostrado;
+  // sin filtro coincide con `eligieron` porque cada elector tiene 1 hiperfoco).
+  const distribTotal = [...distrib.values()].reduce((a, d) => a + d.count, 0)
   const distribList = [...distrib.entries()]
     .map(([title, d]) => ({
       title,
       count: d.count,
       nps: d.npsN ? d.npsSum / d.npsN : null,
-      pct: eligieron ? (d.count / eligieron) * 100 : 0,
+      pct: distribTotal ? (d.count / distribTotal) * 100 : 0,
     }))
     .sort((a, b) => b.count - a.count)
 
@@ -213,16 +253,16 @@ export default async function Vista360Page() {
   // Para tiempo promedio (largo de cada run) y top repetidos (runs >= 2).
   const porUsuario = new Map<string, { periodo: string; hiperfoco_id: string | null }[]>()
   for (const row of (historia as any[]) ?? []) {
-    if (!activeIds.has(row.user_id) || !row.hiperfoco_id) continue
+    if (!activeIds.has(row.user_id) || !inScope(row.hiperfoco_id)) continue
     const arr = porUsuario.get(row.user_id) ?? []
     arr.push({ periodo: row.periodo, hiperfoco_id: row.hiperfoco_id })
     porUsuario.set(row.user_id, arr)
   }
-  // Agregado por NOMBRE de hiperfoco (los runs se detectan por id consecutivo,
-  // pero se acumulan bajo el título para unir mismos nombres entre productos).
-  const runLens = new Map<string, number[]>()        // título -> largos de run
-  const repeaters = new Map<string, Set<string>>()   // título -> usuarios con run >= 2
-  const everAssigned = new Map<string, Set<string>>() // título -> usuarios que lo tuvieron
+  // Agregado por etiqueta "Título · Producto" (B16): los runs se detectan por id
+  // consecutivo y se acumulan bajo la etiqueta, que ya separa por producto.
+  const runLens = new Map<string, number[]>()        // etiqueta -> largos de run
+  const repeaters = new Map<string, Set<string>>()   // etiqueta -> usuarios con run >= 2
+  const everAssigned = new Map<string, Set<string>>() // etiqueta -> usuarios que lo tuvieron
   for (const [uid, rows] of porUsuario) {
     let i = 0
     while (i < rows.length) {
@@ -313,10 +353,17 @@ export default async function Vista360Page() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="page-title">Vista 360 ejecutiva</h1>
-      <p className="page-subtitle mb-6">
-        Estado del negocio en una pantalla · {formatMonthLong(periodoActual)} {periodoActual.slice(0, 4)}
-      </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+        <div>
+          <h1 className="page-title">Vista 360 ejecutiva</h1>
+          <p className="page-subtitle">
+            Estado del negocio en una pantalla · {formatMonthLong(periodoActual)} {periodoActual.slice(0, 4)}
+          </p>
+        </div>
+        {productOptions.length > 1 && (
+          <ProductFilter options={productOptions} value={productoFilter} />
+        )}
+      </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -350,7 +397,7 @@ export default async function Vista360Page() {
       <div className="card mb-4">
         <div className="flex items-baseline justify-between mb-3">
           <p className="text-sm font-medium text-cream">Distribución por hiperfoco · {formatMonthLong(periodoActual)}</p>
-          <p className="text-xs text-cream-dim">{eligieron} empresarios</p>
+          <p className="text-xs text-cream-dim">{distribTotal} empresarios</p>
         </div>
         {distribList.length === 0 ? (
           <p className="text-sm text-cream-muted">Nadie tiene un hiperfoco en curso este mes todavía.</p>

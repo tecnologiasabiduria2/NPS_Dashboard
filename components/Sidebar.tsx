@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Map, User, LogOut, Users, BarChart2,
-  FileText, UserPlus, CalendarClock, Gauge, Menu, X, Route,
+  FileText, UserPlus, CalendarClock, Gauge, Menu, X, Route, Briefcase,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import Logo from './Logo'
@@ -127,10 +127,16 @@ export default function Sidebar({ role, userName, productTitle, isOwner }: Sideb
           ))}
 
           {role === 'admin' && isOwner && (
-            <Link href="/admin/360" onClick={() => setMobileOpen(false)} className={linkClass('/admin/360')}>
-              <Gauge size={16} strokeWidth={isActive('/admin/360') ? 2 : 1.5} />
-              Vista 360
-            </Link>
+            <>
+              <Link href="/admin/360" onClick={() => setMobileOpen(false)} className={linkClass('/admin/360')}>
+                <Gauge size={16} strokeWidth={isActive('/admin/360') ? 2 : 1.5} />
+                Vista 360
+              </Link>
+              <Link href="/admin/comerciales" onClick={() => setMobileOpen(false)} className={linkClass('/admin/comerciales')}>
+                <Briefcase size={16} strokeWidth={isActive('/admin/comerciales') ? 2 : 1.5} />
+                Comerciales
+              </Link>
+            </>
           )}
 
           {role === 'admin' && (

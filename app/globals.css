@@ -15,6 +15,9 @@ body {
   color: #F2E8D5;
   font-family: var(--font-outfit), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Controles nativos (calendario de <input type="date">, popups, scrollbars) en
+     modo oscuro → el ícono del calendario se ve y el desplegable combina con el tema. */
+  color-scheme: dark;
 }
 
 /* Scrollbar */
@@ -54,7 +57,12 @@ body {
     @apply text-xs text-cream-dim mb-1.5 block font-medium uppercase tracking-wide;
   }
   .select {
-    @apply bg-surface-800 border border-surface-600 rounded-xl pl-4 pr-9 py-2.5 text-cream focus:outline-none focus:border-brand-600 w-full text-sm cursor-pointer;
+    @apply bg-surface-800 border border-surface-600 rounded-xl pl-4 pr-10 py-2.5 text-cream focus:outline-none focus:border-brand-600 w-full text-sm cursor-pointer appearance-none;
+    /* Chevron propio (oculta la flecha nativa pegada al borde) con margen al borde derecho. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a948a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+    background-size: 1rem;
   }
 
   /* ---- Badges ---- */

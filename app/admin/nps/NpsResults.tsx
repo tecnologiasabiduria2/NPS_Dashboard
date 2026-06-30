@@ -11,7 +11,7 @@ interface Resp {
   hiperfoco_id?: string | null
   created_at: string
   profiles?: { full_name?: string } | null
-  hiperfocos?: { title?: string } | null
+  hiperfocos?: { title?: string; products?: { title?: string } | null } | null
 }
 
 const SIN = '__sin__'
@@ -28,9 +28,13 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
   const [hiperfocoFilter, setHiperfocoFilter] = useState('')
   const [triggerFilter, setTriggerFilter] = useState('')
 
-  // Etiqueta de hiperfoco por respuesta (cae a "Sin hiperfoco").
+  // Etiqueta de hiperfoco por respuesta = "Título · Producto" (B16: separa hiperfocos
+  // homónimos entre productos). Cae a "Sin hiperfoco" si no hay hiperfoco.
   function labelOf(r: Resp) {
-    return r.hiperfocos?.title ?? null
+    const title = r.hiperfocos?.title
+    if (!title) return null
+    const product = r.hiperfocos?.products?.title
+    return product ? `${title} · ${product}` : title
   }
 
   // Agregación por hiperfoco (sobre TODAS las respuestas, no las filtradas).
@@ -144,7 +148,7 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
               <div>
                 <p className="text-sm font-medium text-cream">{r.profiles?.full_name ?? '—'}</p>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  {r.hiperfocos?.title ?? <span className="italic">Sin hiperfoco</span>}
+                  {labelOf(r) ?? <span className="italic">Sin hiperfoco</span>}
                   {' · '}
                   {r.trigger === 'post_sesion' ? 'Post-sesión' : 'Semanal'}
                   {' · '}

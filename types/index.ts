@@ -1,4 +1,4 @@
-export type UserRole = 'client' | 'admin'
+export type UserRole = 'client' | 'admin' | 'owner'
 export type AccessStatus = 'active' | 'inactive' | 'pending'
 export type ProductSlug = 'workshop' | 'desafio' | 'sabiduria'
 export type LessonType = 'video' | 'document' | 'checklist_item'
@@ -10,6 +10,7 @@ export interface Profile {
   full_name: string
   phone?: string
   role: UserRole
+  ghl_user_id?: string | null
   created_at: string
 }
 

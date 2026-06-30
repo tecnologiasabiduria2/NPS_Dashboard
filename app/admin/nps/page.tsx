@@ -7,7 +7,7 @@ export default async function NpsPage() {
   const supabase = await createClient()
   const { data: responses } = await supabase
     .from('nps_responses')
-    .select('id, score, feedback, type, trigger, hiperfoco_id, created_at, profiles(full_name), hiperfocos(title)')
+    .select('id, score, feedback, type, trigger, hiperfoco_id, created_at, profiles(full_name), hiperfocos(title, products(title))')
     .order('created_at', { ascending: false })
     .limit(500)
 

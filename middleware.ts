@@ -26,8 +26,10 @@ export async function middleware(request: NextRequest) {
   const publicPaths = ['/login', '/activate', '/forgot-password', '/reset-password']
   const isPublic = publicPaths.some(p => request.nextUrl.pathname.startsWith(p))
   const isWebhook = request.nextUrl.pathname.startsWith('/api/webhooks')
+  // El cron (sync inverso) se autentica con su propio CRON_SECRET, no con sesión.
+  const isCron = request.nextUrl.pathname.startsWith('/api/cron')
 
-  if (!user && !isPublic && !isWebhook) {
+  if (!user && !isPublic && !isWebhook && !isCron) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
