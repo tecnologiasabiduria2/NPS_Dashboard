@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import Foro, { type ForoPost } from './Foro'
+import Foro, { type ForoPost, type CommunityInfo } from './Foro'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,8 +10,27 @@ export default async function ConversacionPage() {
   if (!user) return null
 
   const { data: myAccess } = await supabase
-    .from('user_access').select('product_id').eq('user_id', user.id).eq('status', 'active')
-  const productIds = ((myAccess ?? []) as { product_id: string }[]).map(a => a.product_id)
+    .from('user_access').select('product_id, products(title)').eq('user_id', user.id).eq('status', 'active')
+  const accessRows = (myAccess ?? []) as any[]
+  const productIds = accessRows.map(a => a.product_id)
+  const firstProduct = accessRows[0] ? (Array.isArray(accessRows[0].products) ? accessRows[0].products[0] : accessRows[0].products) : null
+
+  // Info de comunidad para el panel derecho (miembros del/los producto(s) del cliente).
+  const community: CommunityInfo = { name: firstProduct?.title ?? 'Sabiduría Empresarial', memberCount: 0, avatars: [] }
+  if (productIds.length) {
+    const { data: mem } = await supabaseAdmin
+      .from('user_access')
+      .select('profiles(id, full_name, avatar_url)')
+      .in('product_id', productIds)
+      .eq('status', 'active')
+    const memMap = new Map<string, { id: string; name: string; avatarUrl: string | null }>()
+    for (const r of (mem ?? []) as any[]) {
+      const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+      if (p && !memMap.has(p.id)) memMap.set(p.id, { id: p.id, name: p.full_name || 'Miembro', avatarUrl: p.avatar_url ?? null })
+    }
+    community.memberCount = memMap.size
+    community.avatars = [...memMap.values()].slice(0, 6)
+  }
 
   let posts: ForoPost[] = []
   if (productIds.length) {
@@ -58,10 +77,10 @@ export default async function ConversacionPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div>
       <h1 className="page-title mb-1">Conversación</h1>
       <p className="page-subtitle mb-6">Comparte y conversa con la comunidad.</p>
-      <Foro posts={posts} />
+      <Foro posts={posts} community={community} />
     </div>
   )
 }

@@ -39,7 +39,7 @@ export default function ContentCards({ cards }: { cards: ContentCard[] }) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
       {cards.map(card => {
         const pct = card.total > 0 ? Math.round((card.completed / card.total) * 100) : 0
         const isOpen = open.has(card.key)

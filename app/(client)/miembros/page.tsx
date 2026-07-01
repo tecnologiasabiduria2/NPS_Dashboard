@@ -54,7 +54,7 @@ export default async function MiembrosPage() {
   const members = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
-    <div className="max-w-4xl">
+    <div>
       <h1 className="page-title">Miembros</h1>
       <p className="page-subtitle mb-6">La comunidad de Sabiduría Empresarial</p>
       <MembersList members={members} />

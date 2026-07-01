@@ -52,7 +52,7 @@ export default async function SessionsPage() {
   const productTitle = (access as any)?.products?.title ?? ''
 
   return (
-    <div className="max-w-7xl">
+    <div>
       <div className="mb-8">
         <p className="text-cream-muted text-sm">{productTitle}</p>
         <h1 className="page-title mt-1">Eventos</h1>
