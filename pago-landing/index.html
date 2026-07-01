@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sabiduría Empresarial — Activa tu acceso</title>
+  <!--
+    Landing del subdominio de pagos (pago.sabiduriaempresarial.com).
+    Sirve para RENOVAR (cliente inactivo) e INSCRIBIRSE (prospecto nuevo).
+    Autónomo: un solo archivo, sin build. Mantiene la paleta de la plataforma.
+    TODO: conectar el CTA a Stripe Checkout cuando esté la key (hoy es placeholder).
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --brand: #7E301F;
+      --brand-300: #d98a76;
+      --accent: #DA7D41;
+      --sand: #EAAD74;
+      --cream: #F5EBE0;
+      --cream-muted: #b7a99c;
+      --surface-950: #08050A;
+      --surface-900: #161018;
+      --surface-850: #1e1722;
+      --surface-700: #33293a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Outfit', system-ui, sans-serif;
+      color: var(--cream);
+      min-height: 100vh;
+      background:
+        radial-gradient(1100px 750px at 50% -5%, #3D1010 0%, #1A0808 46%, var(--surface-950) 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 16px 40px;
+      position: relative;
+      overflow-x: hidden;
+    }
+    .glow {
+      position: fixed; top: -160px; left: 50%; transform: translateX(-50%);
+      width: 620px; height: 460px; border-radius: 9999px;
+      background: radial-gradient(circle, rgba(126,48,31,.35) 0%, transparent 70%);
+      filter: blur(60px); pointer-events: none; z-index: 0;
+    }
+    .wrap { position: relative; z-index: 1; width: 100%; max-width: 900px; }
+    header { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 44px; }
+    .mark { font-weight: 700; letter-spacing: .18em; font-size: 15px; }
+    .mark small { display: block; font-weight: 400; font-size: 11px; letter-spacing: .28em; color: var(--cream-muted); }
+    .badge {
+      display: inline-block; font-size: 12px; font-weight: 500; color: var(--sand);
+      background: rgba(218,125,65,.1); border: 1px solid rgba(218,125,65,.25);
+      padding: 5px 14px; border-radius: 9999px; margin-bottom: 18px;
+    }
+    .hero { text-align: center; margin-bottom: 40px; }
+    .hero h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 600; line-height: 1.1; margin-bottom: 14px; }
+    .hero h1 span { color: var(--sand); }
+    .hero p { color: var(--cream-muted); font-size: 17px; max-width: 560px; margin: 0 auto; line-height: 1.6; }
+    .card {
+      background: rgba(30,23,34,.75); backdrop-filter: blur(14px);
+      border: 1px solid var(--surface-700); border-radius: 24px;
+      padding: 34px; max-width: 460px; margin: 0 auto; position: relative; overflow: hidden;
+      box-shadow: 0 30px 60px -20px rgba(0,0,0,.5);
+    }
+    .card::before {
+      content: ''; position: absolute; inset: 0 0 auto 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(218,125,65,.6), transparent);
+    }
+    .plan-name { font-size: 14px; text-transform: uppercase; letter-spacing: .12em; color: var(--cream-muted); }
+    .price { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 4px; }
+    .price b { font-size: 42px; font-weight: 700; }
+    .price span { color: var(--cream-muted); font-size: 15px; }
+    .benefits { list-style: none; margin: 24px 0; display: grid; gap: 12px; }
+    .benefits li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; color: #d9ccbf; }
+    .check {
+      flex-shrink: 0; width: 20px; height: 20px; border-radius: 9999px; margin-top: 1px;
+      background: rgba(126,48,31,.25); border: 1px solid rgba(218,125,65,.35);
+      display: flex; align-items: center; justify-content: center; color: var(--sand); font-size: 12px;
+    }
+    .cta {
+      display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+      background: linear-gradient(135deg, var(--accent), var(--brand));
+      color: #fff; font-family: inherit; font-size: 16px; font-weight: 600;
+      border: none; border-radius: 14px; padding: 15px; cursor: pointer;
+      transition: transform .15s ease, box-shadow .15s ease;
+      box-shadow: 0 10px 24px -10px rgba(218,125,65,.5);
+    }
+    .cta:hover { transform: translateY(-1px); box-shadow: 0 14px 30px -10px rgba(218,125,65,.6); }
+    .fine { text-align: center; color: var(--cream-muted); font-size: 12px; margin-top: 14px; line-height: 1.5; }
+    .fine a { color: var(--brand-300); text-decoration: none; }
+    footer { color: var(--cream-muted); font-size: 12px; margin-top: 44px; text-align: center; z-index: 1; }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <div class="wrap">
+    <header>
+      <div class="mark">SABIDURÍA<small>EMPRESARIAL</small></div>
+    </header>
+
+    <div class="hero">
+      <span class="badge">Membresía privada</span>
+      <h1>Reactiva tu acceso a <span>Sabiduría Empresarial</span></h1>
+      <p>Vuelve a tus inmersiones, mentorías y a tu ruta de aprendizaje. Completa tu pago y tu acceso se reactiva automáticamente.</p>
+    </div>
+
+    <div class="card">
+      <p class="plan-name">Membresía Sabiduría</p>
+      <div class="price"><b>$—</b><span>/ mes</span></div>
+      <p style="color:var(--cream-muted); font-size:14px;">El precio se muestra según tu plan.</p>
+
+      <ul class="benefits">
+        <li><span class="check">✓</span> Acceso a tus hiperfocos, inmersiones y mentorías</li>
+        <li><span class="check">✓</span> Sesiones en vivo y grabaciones</li>
+        <li><span class="check">✓</span> Acompañamiento de tu Business Coach</li>
+        <li><span class="check">✓</span> Comunidad privada y eventos</li>
+      </ul>
+
+      <!-- TODO: enlazar a Stripe Checkout cuando esté la key. -->
+      <button class="cta" onclick="window.location.href='#'">
+        Continuar al pago →
+      </button>
+      <p class="fine">
+        Pago seguro. ¿Dudas? Escribe a tu <a href="#">Business Coach</a>.
+      </p>
+    </div>
+  </div>
+
+  <footer>© 2026 Sabiduría Empresarial · pago.sabiduriaempresarial.com</footer>
+</body>
+</html>
