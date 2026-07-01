@@ -24,6 +24,7 @@ interface CommunityShellProps {
 // (Conversación) y Miembros llegan en sub-entregas posteriores: hoy "Inicio"
 // apunta al dashboard y Miembros/Acerca de son placeholders.
 const TABS: { href: string; label: string; match: (p: string) => boolean }[] = [
+  { href: '/conversacion', label: 'Conversación', match: p => p.startsWith('/conversacion') },
   { href: '/dashboard', label: 'Inicio',      match: p => p === '/dashboard' },
   { href: '/roadmap',   label: 'Aprendizaje', match: p => p.startsWith('/roadmap') || p.startsWith('/recording') },
   { href: '/sessions',  label: 'Eventos',     match: p => p.startsWith('/sessions') },
