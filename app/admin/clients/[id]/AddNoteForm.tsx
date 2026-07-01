@@ -75,7 +75,7 @@ export default function AddNoteForm({ userId }: { userId: string }) {
       />
       <textarea
         className="input min-h-16 resize-y"
-        placeholder="Resumen SOMAI de Fathom (opcional) — pega aquí el summary de la sesión"
+        placeholder="Summary de Fathom (opcional) — pega aquí el resumen de la sesión"
         value={somai}
         onChange={e => setSomai(e.target.value)}
       />
