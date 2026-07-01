@@ -32,7 +32,7 @@ export default async function RecordingPage({ params }: Props) {
       .select('product_id')
       .eq('user_id', user.id)
       .eq('status', 'active')
-      .single(),
+      .limit(1),
     supabase
       .from('user_hiperfoco_mes')
       .select('hiperfoco_id')
@@ -41,7 +41,7 @@ export default async function RecordingPage({ params }: Props) {
   ])
 
   const rec = recRes.data as any
-  const access = accessRes.data
+  const access = (accessRes.data as any[] | null)?.[0]
 
   if (!rec || !access) notFound()
 

@@ -13,12 +13,13 @@ export default async function ProfilePage() {
     .eq('id', user.id)
     .single()
 
-  const { data: access } = await supabase
+  const { data: accessRows } = await supabase
     .from('user_access')
     .select('status, access_until, access_started, products(title)')
     .eq('user_id', user.id)
     .eq('status', 'active')
-    .single()
+    .limit(1)
+  const access = accessRows?.[0]
 
   return (
     <div className="max-w-lg">

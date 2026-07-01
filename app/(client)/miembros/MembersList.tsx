@@ -7,6 +7,7 @@ import { clsx } from 'clsx'
 export interface Member {
   id: string
   name: string
+  handle: string
   role: string
   joined: string | null
   bio: string | null
@@ -34,7 +35,11 @@ export default function MembersList({ members }: { members: Member[] }) {
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
     if (!s) return base
-    return base.filter(m => m.name.toLowerCase().includes(s) || (m.bio ?? '').toLowerCase().includes(s))
+    return base.filter(m =>
+      m.name.toLowerCase().includes(s) ||
+      m.handle.toLowerCase().includes(s.replace(/^@/, '')) ||
+      (m.bio ?? '').toLowerCase().includes(s)
+    )
   }, [base, q])
 
   return (
@@ -85,6 +90,7 @@ export default function MembersList({ members }: { members: Member[] }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-cream truncate">{m.name}</p>
+                  <span className="text-xs text-cream-muted font-mono shrink-0">@{m.handle}</span>
                   {equipoRoles.includes(m.role) && (
                     <span className="badge-brand">{m.role === 'owner' ? 'Owner' : 'Admin'}</span>
                   )}

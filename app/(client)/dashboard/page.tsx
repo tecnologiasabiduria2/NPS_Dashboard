@@ -39,12 +39,13 @@ export default async function DashboardPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: access }] = await Promise.all([
+  const [{ data: profile }, { data: accessRows }] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('id', user.id).single(),
     supabase.from('user_access')
       .select('*, products(title, slug)')
-      .eq('user_id', user.id).eq('status', 'active').single(),
+      .eq('user_id', user.id).eq('status', 'active').limit(1),
   ])
+  const access = accessRows?.[0]
 
   // Periodo del mes actual = primer día del mes en hora local (coincide con la
   // columna DATE user_hiperfoco_mes.periodo, que es siempre date_trunc('month')).

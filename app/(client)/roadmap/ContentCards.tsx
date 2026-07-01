@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ChevronRight, Video, FileText } from 'lucide-react'
+import { ChevronRight, Video, FileText, Lock } from 'lucide-react'
 import { clsx } from 'clsx'
 
 export interface CardRecording {
@@ -20,6 +20,9 @@ export interface ContentCard {
   completed: number
   total: number
   highlighted?: boolean
+  // Hiperfoco aún no habilitado: se muestra pero no se puede abrir (se desbloquea
+  // cuando el cliente termina el hiperfoco en curso / su Business Coach se lo asigna).
+  locked?: boolean
 }
 
 // Grid de "clases" estilo comunidad GHL (Aprendizaje). Cada card tiene portada de
@@ -49,7 +52,10 @@ export default function ContentCards({ cards }: { cards: ContentCard[] }) {
             )}
           >
             {/* Portada */}
-            <div className="relative h-28 bg-gradient-to-br from-sand via-accent to-brand-600 flex items-center justify-center px-4">
+            <div className={clsx(
+              'relative h-28 bg-gradient-to-br from-sand via-accent to-brand-600 flex items-center justify-center px-4',
+              card.locked && 'grayscale opacity-60'
+            )}>
               <Image
                 src="/logo-icon.png"
                 alt=""
@@ -57,6 +63,11 @@ export default function ContentCards({ cards }: { cards: ContentCard[] }) {
                 height={26}
                 className="absolute top-3 right-3 opacity-60"
               />
+              {card.locked && (
+                <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-black/40 flex items-center justify-center">
+                  <Lock size={13} className="text-white" />
+                </span>
+              )}
               <p className="text-center text-lg font-semibold text-white leading-tight drop-shadow">
                 {card.title || '—'}
               </p>
@@ -70,29 +81,37 @@ export default function ContentCards({ cards }: { cards: ContentCard[] }) {
 
               {/* Progreso */}
               <div className="mt-auto">
-                <div className="flex items-center justify-between text-xs text-cream-muted mb-1">
-                  <span>{card.total > 0 ? `${card.completed}/${card.total} vistas` : 'Sin contenido aún'}</span>
-                  {card.total > 0 && <span>{pct}%</span>}
-                </div>
-                <div className="h-1.5 rounded-full bg-surface-800 overflow-hidden">
-                  <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
-                </div>
+                {card.locked ? (
+                  <p className="flex items-center gap-1.5 text-xs text-cream-muted mb-1">
+                    <Lock size={12} /> Termina tu hiperfoco actual para desbloquearlo
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-cream-muted mb-1">
+                      <span>{card.total > 0 ? `${card.completed}/${card.total} vistas` : 'Sin contenido aún'}</span>
+                      {card.total > 0 && <span>{pct}%</span>}
+                    </div>
+                    <div className="h-1.5 rounded-full bg-surface-800 overflow-hidden">
+                      <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </>
+                )}
 
                 <button
                   type="button"
                   onClick={() => toggle(card.key)}
-                  disabled={card.total === 0}
+                  disabled={card.locked || card.total === 0}
                   className={clsx(
                     'w-full justify-center mt-4',
-                    card.total === 0 ? 'btn-secondary opacity-50 cursor-not-allowed' : 'btn-primary'
+                    card.locked || card.total === 0 ? 'btn-secondary opacity-50 cursor-not-allowed' : 'btn-primary'
                   )}
                 >
-                  {card.total === 0 ? 'Próximamente' : isOpen ? 'Ocultar' : 'Abrir'}
+                  {card.locked ? 'Bloqueado' : card.total === 0 ? 'Próximamente' : isOpen ? 'Ocultar' : 'Abrir'}
                 </button>
               </div>
 
               {/* Grabaciones (expandible) */}
-              {isOpen && card.recordings.length > 0 && (
+              {!card.locked && isOpen && card.recordings.length > 0 && (
                 <div className="mt-3 space-y-1.5">
                   {card.recordings.map(rec => (
                     <Link

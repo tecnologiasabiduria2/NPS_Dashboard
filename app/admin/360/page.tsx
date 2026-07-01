@@ -4,10 +4,9 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Lightbulb, AlertTriangle } from 'lucide-react'
 import { formatMonthLong } from '@/lib/format'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import ProductFilter from './ProductFilter'
-
-// Objetivo de sesiones 1:1 por CS por mes. Configurable via settings table (pendiente — ver PENDIENTES.md).
-const CS_SESSION_TARGET_MONTHLY = 20
+import CsTargetEditor from './CsTargetEditor'
 
 // ============================================================================
 // VISTA 360 EJECUTIVA — Diana (rol owner). Boceto: sabiduria_dashboard_360_diana.html
@@ -52,6 +51,12 @@ export default async function Vista360Page({
   // Guard de owner: el panel admin deja entrar a admin+owner, pero la 360 es de Diana.
   const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (me?.role !== 'owner') redirect('/admin/dashboard')
+
+  // B13: objetivo de sesiones 1:1 por CS/mes, configurable por el owner (Diana).
+  // Resiliente: si la migración platform_settings aún no corrió, usa 20.
+  const { data: csTargetRow } = await supabaseAdmin
+    .from('platform_settings').select('value').eq('key', 'cs_session_target_monthly').maybeSingle()
+  const csTarget = Number(csTargetRow?.value) || 20
 
   const periodoActual = periodoKey(0)
   const periodoPrev = periodoKey(-1)
@@ -518,7 +523,7 @@ export default async function Vista360Page({
       <div className="card mb-4">
         <div className="flex items-baseline justify-between mb-3">
           <p className="text-sm font-medium text-cream">Sesiones 1:1 completadas · {formatMonthLong(periodoActual)}</p>
-          <p className="text-xs text-cream-dim">Objetivo: {CS_SESSION_TARGET_MONTHLY} por CS / mes</p>
+          <CsTargetEditor value={csTarget} />
         </div>
         {csList.length === 0 ? (
           <p className="text-sm text-cream-muted">Sin CS asignados a clientes este mes.</p>
@@ -526,9 +531,9 @@ export default async function Vista360Page({
           <>
             <div className="space-y-3">
               {csList.map(cs => {
-                const pct = Math.min(100, (cs.sesiones / CS_SESSION_TARGET_MONTHLY) * 100)
-                const ok = cs.sesiones >= CS_SESSION_TARGET_MONTHLY
-                const warn = cs.sesiones >= CS_SESSION_TARGET_MONTHLY * 0.7
+                const pct = Math.min(100, (cs.sesiones / csTarget) * 100)
+                const ok = cs.sesiones >= csTarget
+                const warn = cs.sesiones >= csTarget * 0.7
                 const barColor = ok ? '#1D9E75' : warn ? '#BA7517' : '#E24B4A'
                 const textColor = ok ? 'text-emerald-400' : warn ? 'text-amber-400' : 'text-red-400'
                 return (
@@ -541,7 +546,7 @@ export default async function Vista360Page({
                       <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
                     </div>
                     <span className={`font-medium text-right ${textColor}`}>
-                      {cs.sesiones} / {CS_SESSION_TARGET_MONTHLY}
+                      {cs.sesiones} / {csTarget}
                     </span>
                   </div>
                 )
@@ -550,21 +555,21 @@ export default async function Vista360Page({
             <div className="pt-3 mt-2 border-t border-surface-700 grid grid-cols-3 gap-3 text-xs text-cream-muted">
               <div>
                 <p>Total sesiones</p>
-                <p className="text-base font-semibold text-cream mt-0.5">{sessions1x1Rows.length} / {csList.length * CS_SESSION_TARGET_MONTHLY}</p>
+                <p className="text-base font-semibold text-cream mt-0.5">{sessions1x1Rows.length} / {csList.length * csTarget}</p>
               </div>
               <div>
                 <p>Cumplimiento global</p>
                 <p className={`text-base font-semibold mt-0.5 ${
-                  csList.length * CS_SESSION_TARGET_MONTHLY > 0
-                    ? sessions1x1Rows.length / (csList.length * CS_SESSION_TARGET_MONTHLY) >= 1
+                  csList.length * csTarget > 0
+                    ? sessions1x1Rows.length / (csList.length * csTarget) >= 1
                       ? 'text-emerald-400'
-                      : sessions1x1Rows.length / (csList.length * CS_SESSION_TARGET_MONTHLY) >= 0.7
+                      : sessions1x1Rows.length / (csList.length * csTarget) >= 0.7
                       ? 'text-amber-400'
                       : 'text-red-400'
                     : 'text-cream'
                 }`}>
-                  {csList.length * CS_SESSION_TARGET_MONTHLY > 0
-                    ? `${Math.round((sessions1x1Rows.length / (csList.length * CS_SESSION_TARGET_MONTHLY)) * 100)}%`
+                  {csList.length * csTarget > 0
+                    ? `${Math.round((sessions1x1Rows.length / (csList.length * csTarget)) * 100)}%`
                     : '—'}
                 </p>
               </div>
@@ -646,7 +651,7 @@ export default async function Vista360Page({
                 return (
                   <p className="text-xs text-cream-muted mt-3 pt-3 border-t border-surface-700 leading-relaxed">
                     <span className="text-amber-400 font-medium">Patrón detectado:</span>{' '}
-                    {peorNpsCS.name} tiene el menor cumplimiento de sesiones ({peorOpCS.sesiones}/{CS_SESSION_TARGET_MONTHLY}) y el NPS más bajo ({peorNpsCS.nps!.toFixed(1)}).
+                    {peorNpsCS.name} tiene el menor cumplimiento de sesiones ({peorOpCS.sesiones}/{csTarget}) y el NPS más bajo ({peorNpsCS.nps!.toFixed(1)}).
                     Posible sobrecarga o necesidad de acompañamiento.
                   </p>
                 )

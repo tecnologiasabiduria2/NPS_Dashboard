@@ -17,13 +17,17 @@ export default async function MiContenidoPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: access } = await supabase
+  // Nota: un cliente puede tener más de un producto activo (el shell soporta
+  // varios en el riel). Tomamos el primero para el contenido de Aprendizaje —
+  // NO usar .single() aquí: con 2+ accesos lanza error y rompía la página.
+  const { data: accessRows } = await supabase
     .from('user_access')
     .select('product_id, products(title)')
     .eq('user_id', user.id)
     .eq('status', 'active')
-    .single()
+    .limit(1)
 
+  const access = accessRows?.[0]
   if (!access) redirect('/access-expired')
 
   const productId: string = (access as any).product_id
@@ -36,12 +40,13 @@ export default async function MiContenidoPage() {
       .eq('user_id', user.id)
       .not('hiperfoco_id', 'is', null)
       .order('periodo', { ascending: false }),
-    supabase.from('hiperfocos').select('id').eq('product_id', productId).eq('is_active', true),
+    supabase.from('hiperfocos').select('id, title').eq('product_id', productId).eq('is_active', true),
   ])
 
   const historial = (historialRaw ?? []) as any[]
   const accessibleIds = new Set<string>(historial.map((h: any) => h.hiperfoco_id))
-  const allProdHfIds = (allProdHfs ?? []).map((h: any) => h.id as string)
+  const allProdHfList = (allProdHfs ?? []) as { id: string; title: string }[]
+  const allProdHfIds = allProdHfList.map(h => h.id)
   const freeAccess = accessibleIds.size === 0
 
   const [{ data: mainRecsRaw }, { data: transversalRecsRaw }] = await Promise.all([
@@ -124,6 +129,16 @@ export default async function MiContenidoPage() {
       total: recs.length,
     })
   }
+  // Hiperfocos del producto que aún NO le han asignado → se muestran pero BLOQUEADOS.
+  // Regla (decisión 2026-07-01): solo el hiperfoco en curso + los ya cerrados están
+  // accesibles; el resto se desbloquea al terminar el actual / cuando el Business
+  // Coach lo asigne. El acceso real ya lo impone /recording/[id] (mira las asignaciones).
+  for (const h of allProdHfList) {
+    if (seen.has(h.id)) continue
+    seen.add(h.id)
+    cards.push({ key: h.id, title: h.title ?? '', recordings: [], completed: 0, total: 0, locked: true })
+  }
+
   // Transversales (siempre visibles, aunque estén vacías)
   cards.push({ key: 'sg', title: 'Sala de Gerencia', recordings: toCardRecs(sgRecs), completed: countDone(sgRecs), total: sgRecs.length })
   cards.push({ key: 'ec', title: 'Entrenamiento Comercial', recordings: toCardRecs(ecRecs), completed: countDone(ecRecs), total: ecRecs.length })

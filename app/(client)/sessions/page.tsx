@@ -11,10 +11,11 @@ export default async function SessionsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: access } = await supabase
+  const { data: accessRows } = await supabase
     .from('user_access')
     .select('product_id, products(title)')
-    .eq('user_id', user.id).eq('status', 'active').single()
+    .eq('user_id', user.id).eq('status', 'active').limit(1)
+  const access = accessRows?.[0]
   if (!access) redirect('/access-expired')
 
   const { data: sessions } = await supabase

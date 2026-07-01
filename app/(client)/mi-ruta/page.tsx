@@ -11,14 +11,14 @@ export default async function MiRutaPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [{ data: access }, { data: historial }, { data: attendance }, { data: nps }, { data: notes }] =
+  const [{ data: accessRows }, { data: historial }, { data: attendance }, { data: nps }, { data: notes }] =
     await Promise.all([
       supabase
         .from('user_access')
         .select('access_started, products(title)')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .maybeSingle(),
+        .limit(1),
       supabase
         .from('user_hiperfoco_mes')
         .select('periodo, estado, hiperfocos(title)')
@@ -39,6 +39,8 @@ export default async function MiRutaPage() {
         .eq('user_id', user.id)
         .order('session_date', { ascending: false }),
     ])
+
+  const access = (accessRows as any[] | null)?.[0]
 
   const timeline = buildTimeline({
     inicio: (access as any)?.access_started,
