@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import CommunityShell, { type ShellProduct } from '@/components/community/CommunityShell'
+import OnboardingOverlay from '@/components/community/OnboardingOverlay'
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -42,11 +43,22 @@ export default async function ClientLayout({ children }: { children: React.React
     .eq('user_id', user.id)
     .then(() => {})
 
+  // Onboarding (5e): overlay de presentación si el cliente aún no tiene bio.
+  // Consulta resiliente: si la columna no existe (migración pendiente), no bloquea.
+  let needsOnboarding = false
+  const { data: bioRow } = await supabase.from('profiles').select('bio').eq('id', user.id).maybeSingle()
+  if (bioRow && !(bioRow as { bio?: string | null }).bio) needsOnboarding = true
+
+  const displayName = profile?.full_name ?? user.email ?? ''
+
   // NPS: ya NO se auto-muestra dentro de la plataforma (decisión reunión
   // 2026-06-30). Se califica vía link público por sesión (/nps/{token}).
   return (
-    <CommunityShell userName={profile?.full_name ?? user.email ?? ''} products={products}>
-      {children}
-    </CommunityShell>
+    <>
+      <CommunityShell userName={displayName} products={products}>
+        {children}
+      </CommunityShell>
+      {needsOnboarding && <OnboardingOverlay userName={displayName} />}
+    </>
   )
 }
