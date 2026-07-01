@@ -2,9 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Video, CalendarClock, ArrowRight } from 'lucide-react'
+import { CalendarClock, ArrowRight } from 'lucide-react'
 import { sessionTipoLabel } from '@/lib/sessionTypes'
-import MiniCalendar from './MiniCalendar'
+import MonthCalendar, { type CalendarEvent } from './MonthCalendar'
 
 export default async function SessionsPage() {
   const supabase = await createClient()
@@ -20,7 +20,7 @@ export default async function SessionsPage() {
   const { data: sessions } = await supabase
     .from('live_sessions')
     .select('id, title, tipo, starts_at, ends_at')
-    .eq('product_id', access.product_id)
+    .eq('product_id', (access as any).product_id)
     .eq('is_published', true)
     .order('starts_at', { ascending: true })
 
@@ -29,106 +29,89 @@ export default async function SessionsPage() {
   const upcoming = all.filter(s => new Date(s.ends_at).getTime() >= now)
   const past = all.filter(s => new Date(s.ends_at).getTime() < now).reverse()
 
-  // Agrupar próximas por día
-  const groups: { key: string; label: string; items: typeof upcoming }[] = []
-  for (const s of upcoming) {
-    const d = new Date(s.starts_at)
-    const key = format(d, 'yyyy-MM-dd')
-    let g = groups.find(x => x.key === key)
-    if (!g) {
-      g = { key, label: format(d, "EEEE d 'de' MMMM", { locale: es }), items: [] }
-      groups.push(g)
-    }
-    g.items.push(s)
-  }
+  const events: CalendarEvent[] = all.map(s => ({
+    date: s.starts_at,
+    label: sessionTipoLabel(s.tipo),
+    tipo: s.tipo,
+  }))
 
   const productTitle = (access as any)?.products?.title ?? ''
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-7xl">
       <div className="mb-8">
         <p className="text-cream-muted text-sm">{productTitle}</p>
-        <h1 className="page-title mt-1">Mis sesiones en vivo</h1>
-        <p className="page-subtitle">Tu calendario de inmersiones, mentorías y demás encuentros.</p>
+        <h1 className="page-title mt-1">Eventos</h1>
+        <p className="page-subtitle">Tu calendario de inmersiones, mentorías y encuentros en vivo.</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
-        {/* Calendario — sticky en desktop, full-width en mobile */}
-        <aside className="w-full lg:w-72 shrink-0 lg:sticky lg:top-6">
-          <MiniCalendar sessionDates={upcoming.map(s => format(new Date(s.starts_at), 'yyyy-MM-dd'))} />
-        </aside>
-
-        {/* Lista de sesiones */}
-        <div className="flex-1 min-w-0">
-          {upcoming.length === 0 && (
-            <div className="card text-center py-10">
-              <CalendarClock size={28} className="text-cream-muted mx-auto mb-3" />
-              <p className="text-cream font-medium">No tienes sesiones programadas</p>
-              <p className="text-cream-muted text-sm mt-1">Cuando se agende una nueva, aparecerá aquí.</p>
-            </div>
-          )}
-
-          {/* Próximas — agrupadas por día */}
-          <div className="space-y-7">
-            {groups.map(group => (
-              <div key={group.key} id={`session-day-${group.key}`}>
-                <p className="section-label flex items-center gap-2 capitalize">
-                  <CalendarClock size={13} className="text-accent" />
-                  {group.label}
-                </p>
-                <div className="space-y-2">
-                  {group.items.map(s => {
-                    const start = new Date(s.starts_at)
-                    const end = new Date(s.ends_at)
-                    return (
-                      <div key={s.id} className="card flex flex-wrap sm:flex-nowrap items-center justify-between gap-4">
-                        <div className="flex items-start gap-3 min-w-0 flex-1">
-                          <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
-                            <Video size={16} className="text-accent" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-cream font-medium leading-snug">{sessionTipoLabel(s.tipo)}</p>
-                            {s.title && <p className="text-xs text-cream-dim mt-0.5 truncate">{s.title}</p>}
-                            <p className="text-sm text-cream-dim mt-0.5">
-                              {format(start, 'HH:mm')}–{format(end, 'HH:mm')}
-                            </p>
-                          </div>
-                        </div>
-                        <a
-                          href={`/api/sessions/${s.id}/join`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-primary shrink-0"
-                        >
-                          Unirme <ArrowRight size={14} />
-                        </a>
-                      </div>
-                    )
-                  })}
-                </div>
+        {/* Lista lateral: próximos + pasados */}
+        <aside className="w-full lg:w-72 shrink-0 space-y-6">
+          <div>
+            <p className="section-label">Próximos eventos</p>
+            {upcoming.length === 0 ? (
+              <div className="card-sm text-center py-6">
+                <CalendarClock size={22} className="text-cream-muted mx-auto mb-2" />
+                <p className="text-sm text-cream-muted">Sin sesiones programadas</p>
               </div>
-            ))}
+            ) : (
+              <div className="space-y-2">
+                {upcoming.map(s => {
+                  const d = new Date(s.starts_at)
+                  return (
+                    <div key={s.id} className="card-sm flex items-center gap-3">
+                      <div className="text-center shrink-0 w-10">
+                        <p className="text-lg font-semibold text-cream leading-none">{format(d, 'dd')}</p>
+                        <p className="text-[10px] text-cream-muted uppercase">{format(d, 'MMM', { locale: es })}</p>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-cream font-medium leading-snug truncate">{sessionTipoLabel(s.tipo)}</p>
+                        <p className="text-xs text-cream-muted">{format(d, 'HH:mm')}–{format(new Date(s.ends_at), 'HH:mm')}</p>
+                      </div>
+                      <a
+                        href={`/api/sessions/${s.id}/join`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-primary shrink-0 py-1.5 px-3 text-xs"
+                        aria-label="Unirme"
+                      >
+                        <ArrowRight size={13} />
+                      </a>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Anteriores */}
           {past.length > 0 && (
-            <div className="mt-10">
-              <p className="section-label">Anteriores</p>
+            <div>
+              <p className="section-label">Eventos pasados</p>
               <div className="space-y-2">
-                {past.map(s => (
-                  <div key={s.id} className="card-sm flex flex-wrap items-center justify-between gap-3 opacity-60">
-                    <div className="min-w-0">
-                      <p className="text-cream-dim text-sm">{sessionTipoLabel(s.tipo)}</p>
-                      {s.title && <p className="text-xs text-cream-muted truncate">{s.title}</p>}
-                      <p className="text-xs text-cream-muted mt-0.5">
-                        {format(new Date(s.starts_at), "d 'de' MMMM · HH:mm", { locale: es })} · terminada
-                      </p>
+                {past.slice(0, 8).map(s => {
+                  const d = new Date(s.starts_at)
+                  return (
+                    <div key={s.id} className="card-sm flex items-center gap-3 opacity-60">
+                      <div className="text-center shrink-0 w-10">
+                        <p className="text-lg font-semibold text-cream-dim leading-none">{format(d, 'dd')}</p>
+                        <p className="text-[10px] text-cream-muted uppercase">{format(d, 'MMM', { locale: es })}</p>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-cream-dim leading-snug truncate">{sessionTipoLabel(s.tipo)}</p>
+                        <p className="text-xs text-cream-muted">terminada</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
+        </aside>
+
+        {/* Calendario grande */}
+        <div className="flex-1 min-w-0 w-full">
+          <MonthCalendar events={events} />
         </div>
       </div>
     </div>

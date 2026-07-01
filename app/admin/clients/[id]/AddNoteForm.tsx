@@ -15,6 +15,7 @@ export default function AddNoteForm({ userId }: { userId: string }) {
   const [content, setContent] = useState('')
   const [date, setDate] = useState(localToday())
   const [fathom, setFathom] = useState('')
+  const [somai, setSomai] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -32,6 +33,7 @@ export default function AddNoteForm({ userId }: { userId: string }) {
         content,
         session_date: date,
         fathom_share_id: fathom,
+        somai,
       }),
     })
 
@@ -45,6 +47,7 @@ export default function AddNoteForm({ userId }: { userId: string }) {
     setContent('')
     setDate(localToday())
     setFathom('')
+    setSomai('')
     setLoading(false)
     router.refresh()
   }
@@ -69,6 +72,12 @@ export default function AddNoteForm({ userId }: { userId: string }) {
         placeholder="Fathom share ID de la grabación 1:1 (opcional)"
         value={fathom}
         onChange={e => setFathom(e.target.value)}
+      />
+      <textarea
+        className="input min-h-16 resize-y"
+        placeholder="Resumen SOMAI de Fathom (opcional) — pega aquí el summary de la sesión"
+        value={somai}
+        onChange={e => setSomai(e.target.value)}
       />
       {error && <p className="text-red-400 text-xs">{error}</p>}
       <div className="flex justify-end">
