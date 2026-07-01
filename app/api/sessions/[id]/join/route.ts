@@ -28,12 +28,28 @@ export async function GET(req: NextRequest, { params }: Props) {
   // 1. Obtener la sesión (service role: 404 sólo si realmente no existe).
   const { data: session } = await supabaseAdmin
     .from('live_sessions')
-    .select('id, zoom_url, starts_at, ends_at')
+    .select('id, zoom_url, starts_at, ends_at, product_id')
     .eq('id', id)
     .single()
 
   if (!session) {
     return NextResponse.redirect(new URL('/dashboard?error=session_not_found', req.url))
+  }
+
+  // 1b. GATING (5c): solo entra quien tiene acceso ACTIVO a ese producto.
+  // Sin acceso (vencido / nunca lo tuvo / es de otro producto) → paywall.
+  // El zoom_url NUNCA se revela a un inactivo (se entrega link de plataforma,
+  // no el Meet directo — decisión Diana 2026-06-30).
+  const { data: access } = await supabase
+    .from('user_access')
+    .select('status')
+    .eq('user_id', user.id)
+    .eq('product_id', session.product_id)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (!access) {
+    return NextResponse.redirect(new URL('/access-expired?reason=session', req.url))
   }
 
   // 2. ¿El clic cae dentro de la ventana de asistencia?

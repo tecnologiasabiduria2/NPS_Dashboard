@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import SessionForm from './SessionForm'
 import DeleteSessionButton from './DeleteSessionButton'
 import CopyNpsLink from './CopyNpsLink'
+import CopyJoinLink from './CopyJoinLink'
 import { Calendar, Video } from 'lucide-react'
 import { sessionTipoLabel } from '@/lib/sessionTypes'
 
@@ -72,6 +73,7 @@ export default async function AdminSessionsPage() {
                             <span className={s.is_published ? 'badge-active' : 'badge-pending'}>
                               {s.is_published ? 'Pub.' : 'Borrador'}
                             </span>
+                            <CopyJoinLink sessionId={s.id} />
                             {npsTokenById[s.id] && <CopyNpsLink token={npsTokenById[s.id]} />}
                             <DeleteSessionButton sessionId={s.id} />
                           </div>
