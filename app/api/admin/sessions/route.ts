@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
   const starts_at: string = body?.starts_at
   const ends_at: string = body?.ends_at
   const is_published = !!body?.is_published
+  const descripcion: string = (body?.descripcion ?? '').trim()
 
   if (!product_id || !starts_at || !ends_at || !zoom_url) {
     return NextResponse.json({ error: 'Producto, inicio, fin y link de Zoom son obligatorios' }, { status: 400 })
@@ -32,17 +33,21 @@ export async function POST(req: NextRequest) {
   const { data: product } = await supabaseAdmin.from('products').select('id').eq('id', product_id).single()
   if (!product) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 400 })
 
-  const payload = { product_id, title, tipo, zoom_url, starts_at, ends_at, is_published, updated_at: new Date().toISOString() }
+  const payload: Record<string, any> = { product_id, title, tipo, zoom_url, starts_at, ends_at, is_published, descripcion: descripcion || null, updated_at: new Date().toISOString() }
+  // Si la columna descripcion aún no existe (migración pendiente), reintenta sin ella.
+  const stripDesc = (p: Record<string, any>) => { const { descripcion: _d, ...rest } = p; return rest }
 
   if (id) {
-    const { error } = await supabaseAdmin.from('live_sessions').update(payload).eq('id', id)
+    let { error } = await supabaseAdmin.from('live_sessions').update(payload).eq('id', id)
+    if (error?.code === '42703') ({ error } = await supabaseAdmin.from('live_sessions').update(stripDesc(payload)).eq('id', id))
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     return NextResponse.json({ ok: true, updated: true })
   }
 
-  const { data, error } = await supabaseAdmin.from('live_sessions').insert(payload).select('id').single()
+  let { data, error } = await supabaseAdmin.from('live_sessions').insert(payload).select('id').single()
+  if (error?.code === '42703') ({ data, error } = await supabaseAdmin.from('live_sessions').insert(stripDesc(payload)).select('id').single())
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json({ ok: true, created: true, id: data.id })
+  return NextResponse.json({ ok: true, created: true, id: data?.id })
 }
 
 // DELETE /api/admin/sessions?id=<uuid> — elimina una sesión

@@ -1,13 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Clock, Video, ArrowRight, AlignLeft } from 'lucide-react'
 import { clsx } from 'clsx'
 
 export interface CalendarEvent {
+  id: string
   date: string // ISO (starts_at)
-  label: string
+  endsAt: string
+  label: string // tipo legible
+  subtitle?: string // título de la sesión
   tipo: string
+  descripcion?: string | null
+  joinHref: string
 }
 
 const DOW = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
@@ -16,7 +21,6 @@ const MONTHS = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ]
 
-// Color del chip por tipo de sesión (SG azul, EC naranja, resto ámbar/marca).
 function chipClass(tipo: string) {
   if (tipo === 'sala_gerencia') return 'bg-blue-600/80 text-white'
   if (tipo === 'entrenamiento_comercial') return 'bg-orange-600/80 text-white'
@@ -28,14 +32,16 @@ function dayKey(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
+const timeFmt = (iso: string) => new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+
 export default function MonthCalendar({ events }: { events: CalendarEvent[] }) {
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
+  const [selected, setSelected] = useState<CalendarEvent | null>(null)
 
   const todayKey = dayKey(today.getFullYear(), today.getMonth(), today.getDate())
 
-  // Eventos por día
   const byDay = new Map<string, CalendarEvent[]>()
   for (const e of events) {
     const d = new Date(e.date)
@@ -55,12 +61,12 @@ export default function MonthCalendar({ events }: { events: CalendarEvent[] }) {
   const next = () => (month === 11 ? (setMonth(0), setYear(y => y + 1)) : setMonth(m => m + 1))
   const goToday = () => { setYear(today.getFullYear()); setMonth(today.getMonth()) }
 
+  const isPast = selected ? new Date(selected.endsAt).getTime() < Date.now() : false
+
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <p className="text-lg font-semibold text-cream capitalize">{MONTHS[month]} {year}</p>
-        </div>
+        <p className="text-lg font-semibold text-cream capitalize">{MONTHS[month]} {year}</p>
         <div className="flex items-center gap-1.5">
           <button onClick={goToday} className="btn-secondary py-1.5 px-3 text-xs">Hoy</button>
           <button onClick={prev} className="btn-ghost p-1.5" aria-label="Mes anterior"><ChevronLeft size={16} /></button>
@@ -80,10 +86,16 @@ export default function MonthCalendar({ events }: { events: CalendarEvent[] }) {
           return (
             <div key={k} className={clsx('bg-surface-850 min-h-[76px] p-1.5 flex flex-col gap-1', isToday && 'ring-1 ring-inset ring-accent/50')}>
               <span className={clsx('text-[11px]', isToday ? 'text-accent font-semibold' : 'text-cream-dim')}>{day}</span>
-              {dayEvents.slice(0, 3).map((e, idx) => (
-                <span key={idx} className={clsx('text-[10px] leading-tight rounded px-1 py-0.5 truncate', chipClass(e.tipo))} title={e.label}>
-                  {new Date(e.date).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} {e.label}
-                </span>
+              {dayEvents.slice(0, 3).map(e => (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => setSelected(e)}
+                  className={clsx('text-[10px] leading-tight rounded px-1 py-0.5 truncate text-left w-full hover:brightness-110 transition', chipClass(e.tipo))}
+                  title={e.label}
+                >
+                  {timeFmt(e.date)} {e.label}
+                </button>
               ))}
               {dayEvents.length > 3 && (
                 <span className="text-[10px] text-cream-muted">+{dayEvents.length - 3} más</span>
@@ -92,6 +104,49 @@ export default function MonthCalendar({ events }: { events: CalendarEvent[] }) {
           )
         })}
       </div>
+
+      {/* Modal de detalle del evento */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelected(null)} />
+          <div className="relative w-full max-w-md card">
+            <button onClick={() => setSelected(null)} className="absolute top-4 right-4 text-cream-muted hover:text-cream" aria-label="Cerrar">
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-2 mb-1">
+              <span className={clsx('text-[10px] px-2 py-0.5 rounded-full font-medium', chipClass(selected.tipo))}>{selected.label}</span>
+            </div>
+            {selected.subtitle && <h3 className="text-lg font-semibold text-cream leading-snug mb-3">{selected.subtitle}</h3>}
+
+            <div className="space-y-2.5 text-sm">
+              <div className="flex items-center gap-2 text-cream-dim">
+                <Clock size={15} className="text-cream-muted shrink-0" />
+                <span>
+                  {new Date(selected.date).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {' · '}{timeFmt(selected.date)}–{timeFmt(selected.endsAt)}
+                </span>
+              </div>
+              {selected.descripcion && (
+                <div className="flex items-start gap-2 text-cream-dim">
+                  <AlignLeft size={15} className="text-cream-muted shrink-0 mt-0.5" />
+                  <p className="whitespace-pre-wrap">{selected.descripcion}</p>
+                </div>
+              )}
+            </div>
+
+            <a
+              href={selected.joinHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={clsx('w-full justify-center mt-5', isPast ? 'btn-secondary opacity-60 pointer-events-none' : 'btn-primary')}
+            >
+              {isPast ? 'Sesión finalizada' : <>Unirme <ArrowRight size={14} /></>}
+              {!isPast && <Video size={14} className="hidden" />}
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

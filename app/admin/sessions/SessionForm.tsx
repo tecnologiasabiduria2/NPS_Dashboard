@@ -13,6 +13,7 @@ interface Session {
   ends_at: string
   zoom_url: string
   is_published: boolean
+  descripcion?: string | null
 }
 
 interface Props {
@@ -27,7 +28,7 @@ function toLocalInput(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-const EMPTY = { sessionId: '', title: '', tipo: 'inmersion_1', starts_at: '', ends_at: '', zoom_url: '', is_published: true }
+const EMPTY = { sessionId: '', title: '', tipo: 'inmersion_1', starts_at: '', ends_at: '', zoom_url: '', is_published: true, descripcion: '' }
 
 export default function SessionForm({ products, sessionsByProduct }: Props) {
   const router = useRouter()
@@ -63,6 +64,7 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
       ends_at: toLocalInput(s.ends_at),
       zoom_url: s.zoom_url,
       is_published: s.is_published,
+      descripcion: s.descripcion ?? '',
     })
     setSuccess(''); setError('')
   }
@@ -83,6 +85,7 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
         ends_at: f.ends_at ? new Date(f.ends_at).toISOString() : '',
         zoom_url: f.zoom_url,
         is_published: f.is_published,
+        descripcion: f.descripcion,
       }),
     })
     const data = await res.json().catch(() => ({}))
@@ -150,6 +153,12 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
           <label className="label">Título</label>
           <input type="text" className="input" placeholder="Sesión en vivo"
             value={f.title} onChange={e => set('title', e.target.value)} disabled={!productId} />
+        </div>
+
+        <div>
+          <label className="label">Descripción</label>
+          <textarea className="input min-h-16 resize-y" placeholder="Qué se verá en la sesión (opcional) — se muestra al cliente en el calendario"
+            value={f.descripcion} onChange={e => set('descripcion', e.target.value)} disabled={!productId} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

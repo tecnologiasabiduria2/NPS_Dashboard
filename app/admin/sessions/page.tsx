@@ -13,13 +13,20 @@ export default async function AdminSessionsPage() {
     .select('id, title, slug, order, live_sessions(id, title, tipo, starts_at, ends_at, zoom_url, is_published)')
     .order('order')
 
+  // Descripción por sesión (consulta aparte, resiliente si la migración no corrió).
+  const descById: Record<string, string> = {}
+  const { data: descRows } = await supabase.from('live_sessions').select('id, descripcion')
+  for (const r of (descRows ?? []) as { id: string; descripcion?: string | null }[]) {
+    if (r.descripcion) descById[r.id] = r.descripcion
+  }
+
   const productOptions: { id: string; label: string }[] = []
   const sessionsByProduct: Record<string, any[]> = {}
   for (const p of (products ?? []) as any[]) {
     productOptions.push({ id: p.id, label: p.title })
-    sessionsByProduct[p.id] = [...(p.live_sessions ?? [])].sort(
-      (a: any, b: any) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
-    )
+    sessionsByProduct[p.id] = [...(p.live_sessions ?? [])]
+      .map((s: any) => ({ ...s, descripcion: descById[s.id] ?? null }))
+      .sort((a: any, b: any) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
   }
 
   // Token público de NPS por sesión, en consulta aparte: si la migración 5b aún

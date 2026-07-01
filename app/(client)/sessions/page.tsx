@@ -29,10 +29,23 @@ export default async function SessionsPage() {
   const upcoming = all.filter(s => new Date(s.ends_at).getTime() >= now)
   const past = all.filter(s => new Date(s.ends_at).getTime() < now).reverse()
 
+  // Descripción en consulta aparte: si la migración aún no corrió, degrada (sin
+  // descripción) sin romper la página.
+  const descById: Record<string, string> = {}
+  const { data: descRows } = await supabase.from('live_sessions').select('id, descripcion')
+  for (const r of (descRows ?? []) as { id: string; descripcion?: string | null }[]) {
+    if (r.descripcion) descById[r.id] = r.descripcion
+  }
+
   const events: CalendarEvent[] = all.map(s => ({
+    id: s.id,
     date: s.starts_at,
+    endsAt: s.ends_at,
     label: sessionTipoLabel(s.tipo),
+    subtitle: s.title || undefined,
     tipo: s.tipo,
+    descripcion: descById[s.id] ?? null,
+    joinHref: `/api/sessions/${s.id}/join`,
   }))
 
   const productTitle = (access as any)?.products?.title ?? ''
