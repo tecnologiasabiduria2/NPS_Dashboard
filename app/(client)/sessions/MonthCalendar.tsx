@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, X, Clock, Video, ArrowRight, AlignLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Clock, ArrowRight, AlignLeft } from 'lucide-react'
 import { clsx } from 'clsx'
 
 export interface CalendarEvent {
@@ -13,6 +13,7 @@ export interface CalendarEvent {
   tipo: string
   descripcion?: string | null
   joinHref: string
+  pending?: boolean // link aún no asignado (sesión variable)
 }
 
 const DOW = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
@@ -135,15 +136,20 @@ export default function MonthCalendar({ events }: { events: CalendarEvent[] }) {
               )}
             </div>
 
-            <a
-              href={selected.joinHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={clsx('w-full justify-center mt-5', isPast ? 'btn-secondary opacity-60 pointer-events-none' : 'btn-primary')}
-            >
-              {isPast ? 'Sesión finalizada' : <>Unirme <ArrowRight size={14} /></>}
-              {!isPast && <Video size={14} className="hidden" />}
-            </a>
+            {!isPast && selected.pending ? (
+              <div className="w-full justify-center mt-5 btn-secondary opacity-70 pointer-events-none flex items-center gap-1.5">
+                <Clock size={14} /> Link próximamente
+              </div>
+            ) : (
+              <a
+                href={selected.joinHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={clsx('w-full justify-center mt-5', isPast ? 'btn-secondary opacity-60 pointer-events-none' : 'btn-primary')}
+              >
+                {isPast ? 'Sesión finalizada' : <>Unirme <ArrowRight size={14} /></>}
+              </a>
+            )}
           </div>
         </div>
       )}

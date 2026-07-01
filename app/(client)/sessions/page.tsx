@@ -6,7 +6,12 @@ import { CalendarClock, ArrowRight } from 'lucide-react'
 import { sessionTipoLabel } from '@/lib/sessionTypes'
 import MonthCalendar, { type CalendarEvent } from './MonthCalendar'
 
-export default async function SessionsPage() {
+export default async function SessionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pending?: string }>
+}) {
+  const { pending } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -20,7 +25,7 @@ export default async function SessionsPage() {
 
   const { data: sessions } = await supabase
     .from('live_sessions')
-    .select('id, title, tipo, starts_at, ends_at')
+    .select('id, title, tipo, starts_at, ends_at, zoom_url')
     .eq('product_id', (access as any).product_id)
     .eq('is_published', true)
     .order('starts_at', { ascending: true })
@@ -47,6 +52,7 @@ export default async function SessionsPage() {
     tipo: s.tipo,
     descripcion: descById[s.id] ?? null,
     joinHref: `/api/sessions/${s.id}/join`,
+    pending: !(s as any).zoom_url,
   }))
 
   const productTitle = (access as any)?.products?.title ?? ''
@@ -58,6 +64,12 @@ export default async function SessionsPage() {
         <h1 className="page-title mt-1">Eventos</h1>
         <p className="page-subtitle">Tu calendario de inmersiones, mentorías y encuentros en vivo.</p>
       </div>
+
+      {pending === '1' && (
+        <div className="bg-accent/10 border border-accent/25 rounded-xl px-4 py-3 mb-6">
+          <p className="text-sm text-sand">El link de esta sesión aún no está disponible. Se publica cerca del evento — vuelve a entrar más tarde.</p>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Lista lateral: próximos + pasados */}
@@ -83,15 +95,24 @@ export default async function SessionsPage() {
                         <p className="text-sm text-cream font-medium leading-snug truncate">{sessionTipoLabel(s.tipo)}</p>
                         <p className="text-xs text-cream-muted">{format(d, 'HH:mm')}–{format(new Date(s.ends_at), 'HH:mm')}</p>
                       </div>
-                      <a
-                        href={`/api/sessions/${s.id}/join`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary shrink-0 py-1.5 px-3 text-xs"
-                        aria-label="Unirme"
-                      >
-                        <ArrowRight size={13} />
-                      </a>
+                      {(s as any).zoom_url ? (
+                        <a
+                          href={`/api/sessions/${s.id}/join`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary shrink-0 py-1.5 px-3 text-xs"
+                          aria-label="Unirme"
+                        >
+                          <ArrowRight size={13} />
+                        </a>
+                      ) : (
+                        <span
+                          className="shrink-0 text-[10px] text-cream-muted px-2 py-1 rounded-lg bg-surface-800 whitespace-nowrap"
+                          title="El link se publica cerca del evento"
+                        >
+                          Próx.
+                        </span>
+                      )}
                     </div>
                   )
                 })}

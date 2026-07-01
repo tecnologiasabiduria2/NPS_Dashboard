@@ -52,6 +52,13 @@ export async function GET(req: NextRequest, { params }: Props) {
     return NextResponse.redirect(new URL('/access-expired?reason=session', req.url))
   }
 
+  // Sesión "variable" cuyo link aún no se asigna → aviso, sin redirigir a una URL
+  // vacía (que rompería). El cliente ya ve "Link próximamente" en la UI; esto es el
+  // respaldo si igual llega aquí (ej. link viejo).
+  if (!session.zoom_url) {
+    return NextResponse.redirect(new URL('/sessions?pending=1', req.url))
+  }
+
   // 2. ¿El clic cae dentro de la ventana de asistencia?
   const now = Date.now()
   const windowStart = new Date(session.starts_at).getTime() - ATTENDANCE_MARGIN_BEFORE_MIN * 60_000

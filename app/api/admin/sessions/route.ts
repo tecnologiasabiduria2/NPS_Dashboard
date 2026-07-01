@@ -19,8 +19,11 @@ export async function POST(req: NextRequest) {
   const is_published = !!body?.is_published
   const descripcion: string = (body?.descripcion ?? '').trim()
 
-  if (!product_id || !starts_at || !ends_at || !zoom_url) {
-    return NextResponse.json({ error: 'Producto, inicio, fin y link de Zoom son obligatorios' }, { status: 400 })
+  // El link es OPCIONAL: las sesiones "variables" se crean sin link y el coach lo
+  // pega después (mientras, el cliente ve "Link próximamente"). Las "recurrentes"
+  // llevan el link fijo desde el inicio.
+  if (!product_id || !starts_at || !ends_at) {
+    return NextResponse.json({ error: 'Producto, inicio y fin son obligatorios' }, { status: 400 })
   }
   if (!SESSION_TIPO_VALUES.includes(tipo as any)) {
     return NextResponse.json({ error: 'Tipo de sesión inválido' }, { status: 400 })

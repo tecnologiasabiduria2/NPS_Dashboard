@@ -175,9 +175,13 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
         </div>
 
         <div>
-          <label className="label">Link de Zoom *</label>
+          <label className="label">Link de Zoom / Meet</label>
           <input type="url" className="input" placeholder="https://zoom.us/j/..."
-            value={f.zoom_url} onChange={e => set('zoom_url', e.target.value)} disabled={!productId} required />
+            value={f.zoom_url} onChange={e => set('zoom_url', e.target.value)} disabled={!productId} />
+          <p className="text-xs text-cream-muted mt-1.5">
+            <span className="text-cream-dim">Recurrente:</span> pega el link fijo.{' '}
+            <span className="text-cream-dim">Variable:</span> déjalo vacío ahora y edítalo cuando lo tengas — mientras, el cliente verá <span className="text-cream-dim">"Link próximamente"</span>.
+          </p>
         </div>
 
         <label className="flex items-center gap-2 cursor-pointer select-none">
