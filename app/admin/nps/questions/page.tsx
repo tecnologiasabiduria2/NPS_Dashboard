@@ -32,11 +32,6 @@ export default async function NpsQuestionsPage() {
           label="Post-sesión (al terminar una sesión en vivo)"
           initial={copyFor('post_sesion')}
         />
-        <NpsQuestionsForm
-          trigger="semanal"
-          label="Semanal (seguimiento macro)"
-          initial={copyFor('semanal')}
-        />
       </div>
     </div>
   )

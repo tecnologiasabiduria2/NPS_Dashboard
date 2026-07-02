@@ -26,7 +26,6 @@ function barColor(avg: number) {
 
 export default function NpsResults({ responses }: { responses: Resp[] }) {
   const [hiperfocoFilter, setHiperfocoFilter] = useState('')
-  const [triggerFilter, setTriggerFilter] = useState('')
 
   // Etiqueta de hiperfoco por respuesta = "Título · Producto" (B16: separa hiperfocos
   // homónimos entre productos). Cae a "Sin hiperfoco" si no hay hiperfoco.
@@ -72,11 +71,10 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
 
   const filtered = useMemo(() => {
     let list = responses
-    if (triggerFilter) list = list.filter(r => r.trigger === triggerFilter)
     if (hiperfocoFilter === SIN) list = list.filter(r => !labelOf(r))
     else if (hiperfocoFilter) list = list.filter(r => labelOf(r) === hiperfocoFilter)
     return list
-  }, [responses, hiperfocoFilter, triggerFilter])
+  }, [responses, hiperfocoFilter])
 
   const filteredAvg = useMemo(() => {
     if (filtered.length === 0) return null
@@ -127,12 +125,7 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
-        <select className="select w-auto" value={triggerFilter} onChange={e => setTriggerFilter(e.target.value)}>
-          <option value="">Todos los disparadores</option>
-          <option value="post_sesion">Post-sesión</option>
-          <option value="semanal">Semanal</option>
-        </select>
-        {(hiperfocoFilter || triggerFilter) && filteredAvg !== null && (
+        {hiperfocoFilter && filteredAvg !== null && (
           <span className="text-xs text-zinc-500">
             Promedio filtrado: <span className={`font-bold ${scoreColor(filteredAvg)}`}>{filteredAvg}</span>
             {' · '}{filtered.length} resp.
@@ -149,8 +142,6 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
                 <p className="text-sm font-medium text-cream">{r.profiles?.full_name ?? '—'}</p>
                 <p className="text-xs text-zinc-500 mt-0.5">
                   {labelOf(r) ?? <span className="italic">Sin hiperfoco</span>}
-                  {' · '}
-                  {r.trigger === 'post_sesion' ? 'Post-sesión' : 'Semanal'}
                   {' · '}
                   {new Date(r.created_at).toLocaleDateString('es-CO')}
                 </p>

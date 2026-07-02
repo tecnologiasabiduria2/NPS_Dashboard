@@ -7,7 +7,6 @@ import { clsx } from 'clsx'
 export interface Member {
   id: string
   name: string
-  handle: string
   role: string
   joined: string | null
   bio: string | null
@@ -37,7 +36,6 @@ export default function MembersList({ members }: { members: Member[] }) {
     if (!s) return base
     return base.filter(m =>
       m.name.toLowerCase().includes(s) ||
-      m.handle.toLowerCase().includes(s.replace(/^@/, '')) ||
       (m.bio ?? '').toLowerCase().includes(s)
     )
   }, [base, q])
@@ -76,7 +74,7 @@ export default function MembersList({ members }: { members: Member[] }) {
           <p className="text-sm text-cream-muted">No hay miembros que mostrar.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="space-y-2.5">
           {filtered.map(m => (
             <div key={m.id} className="card flex items-start gap-3.5">
               <div className="w-11 h-11 rounded-full overflow-hidden bg-brand-700/50 border border-brand-600/30 flex items-center justify-center shrink-0">
@@ -90,7 +88,6 @@ export default function MembersList({ members }: { members: Member[] }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-cream truncate">{m.name}</p>
-                  <span className="text-xs text-cream-muted font-mono shrink-0">@{m.handle}</span>
                   {equipoRoles.includes(m.role) && (
                     <span className="badge-brand">{m.role === 'owner' ? 'Owner' : 'Admin'}</span>
                   )}

@@ -18,6 +18,7 @@ export default function CreateClientPage() {
   })
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [existingClient, setExistingClient] = useState(false)
   const [error, setError] = useState('')
 
   function handle(field: string, value: string) {
@@ -47,6 +48,7 @@ export default function CreateClientPage() {
       return
     }
 
+    setExistingClient(Boolean(data?.existing))
     setSuccess(true)
     setLoading(false)
   }
@@ -58,13 +60,16 @@ export default function CreateClientPage() {
           <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 size={28} className="text-emerald-400" />
           </div>
-          <h2 className="text-xl font-semibold text-cream mb-2">Cliente creado</h2>
+          <h2 className="text-xl font-semibold text-cream mb-2">{existingClient ? 'Acceso actualizado' : 'Cliente creado'}</h2>
           <p className="text-cream-muted text-sm mb-6">
-            Se envió el email de invitación a <strong className="text-cream">{form.email}</strong>.
-            El cliente recibirá un enlace para activar su cuenta.
+            {existingClient ? (
+              <>El correo <strong className="text-cream">{form.email}</strong> ya tenía cuenta. Se <strong className="text-cream">actualizó su acceso</strong> — no se envía una nueva invitación (ya puede iniciar sesión).</>
+            ) : (
+              <>Se envió el email de invitación a <strong className="text-cream">{form.email}</strong>. El cliente recibirá un enlace para activar su cuenta.</>
+            )}
           </p>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => { setSuccess(false); setForm({ email: '', full_name: '', phone: '', product_access: 'sabiduria', access_until: '', ghl_contact_id: '' }) }}
+            <button onClick={() => { setSuccess(false); setExistingClient(false); setForm({ email: '', full_name: '', phone: '', product_access: 'sabiduria', access_until: '', ghl_contact_id: '' }) }}
               className="btn-secondary">
               Crear otro
             </button>
@@ -119,7 +124,6 @@ export default function CreateClientPage() {
             <select className="select" value={form.product_access}
               onChange={e => handle('product_access', e.target.value)}>
               <option value="sabiduria">Sabiduría</option>
-              <option value="workshop">Workshop</option>
               <option value="desafio">Desafío</option>
             </select>
           </div>

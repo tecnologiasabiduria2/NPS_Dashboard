@@ -46,8 +46,13 @@ export default async function ClientLayout({ children }: { children: React.React
   // Onboarding (5e): overlay de presentación si el cliente aún no tiene bio.
   // Consulta resiliente: si la columna no existe (migración pendiente), no bloquea.
   let needsOnboarding = false
-  const { data: bioRow } = await supabase.from('profiles').select('bio').eq('id', user.id).maybeSingle()
-  if (bioRow && !(bioRow as { bio?: string | null }).bio) needsOnboarding = true
+  let avatarUrl: string | null = null
+  const { data: bioRow } = await supabase.from('profiles').select('bio, avatar_url').eq('id', user.id).maybeSingle()
+  if (bioRow) {
+    const b = bioRow as { bio?: string | null; avatar_url?: string | null }
+    if (!b.bio) needsOnboarding = true
+    avatarUrl = b.avatar_url ?? null
+  }
 
   const displayName = profile?.full_name ?? user.email ?? ''
 
@@ -55,7 +60,7 @@ export default async function ClientLayout({ children }: { children: React.React
   // 2026-06-30). Se califica vía link público por sesión (/nps/{token}).
   return (
     <>
-      <CommunityShell userName={displayName} products={products}>
+      <CommunityShell userName={displayName} avatarUrl={avatarUrl} products={products}>
         {children}
       </CommunityShell>
       {needsOnboarding && <OnboardingOverlay userName={displayName} />}

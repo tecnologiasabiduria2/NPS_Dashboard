@@ -16,6 +16,7 @@ export interface ShellProduct {
 
 interface CommunityShellProps {
   userName: string
+  avatarUrl?: string | null
   products: ShellProduct[]
   children: React.ReactNode
 }
@@ -33,7 +34,7 @@ const TABS: { href: string; label: string; match: (p: string) => boolean }[] = [
   { href: '/acerca',    label: 'Acerca de',   match: p => p.startsWith('/acerca') },
 ]
 
-export default function CommunityShell({ userName, products, children }: CommunityShellProps) {
+export default function CommunityShell({ userName, avatarUrl, products, children }: CommunityShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -130,8 +131,13 @@ export default function CommunityShell({ userName, products, children }: Communi
                 className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-surface-800 transition-colors"
                 aria-label="Menú de usuario"
               >
-                <span className="w-8 h-8 rounded-full bg-brand-700/50 border border-brand-600/30 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-semibold text-brand-300">{initials}</span>
+                <span className="w-8 h-8 rounded-full overflow-hidden bg-brand-700/50 border border-brand-600/30 flex items-center justify-center shrink-0">
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt={userName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-semibold text-brand-300">{initials}</span>
+                  )}
                 </span>
                 <ChevronDown size={15} className="text-cream-muted hidden sm:block" />
               </button>

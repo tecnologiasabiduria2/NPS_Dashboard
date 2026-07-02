@@ -32,9 +32,6 @@ export default function LoginPage() {
   return (
     <div>
       <div className="mb-8">
-        <span className="inline-flex items-center rounded-full bg-brand-600/10 border border-brand-600/20 px-3 py-1 text-xs font-medium text-brand-300 mb-4">
-          Plataforma privada
-        </span>
         <h1 className="text-3xl font-semibold text-cream mb-2">Bienvenido de nuevo</h1>
         <p className="text-cream-muted text-sm">Ingresa a tu comunidad de aprendizaje.</p>
       </div>
