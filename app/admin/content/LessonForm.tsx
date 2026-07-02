@@ -37,9 +37,13 @@ const EMPTY = {
   title: '',
   type: 'video' as LessonType,
   fathom_share_id: '',
-  storage_path: '',
+  storage_path: '', // documento existente (edición) — solo referencia, no editable a mano
   order: '',
   is_published: false,
+}
+
+function fileNameFromPath(path: string): string {
+  return path.split('/').pop() ?? path
 }
 
 export default function LessonForm({ products, hiperfocos }: Props) {
@@ -48,6 +52,7 @@ export default function LessonForm({ products, hiperfocos }: Props) {
   const [hiperfocoId, setHiperfocoId] = useState('')
   const [tipo, setTipo] = useState('')  // value: 'inmersion', 'mentoria', etc.
   const [f, setF] = useState({ ...EMPTY })
+  const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -64,7 +69,7 @@ export default function LessonForm({ products, hiperfocos }: Props) {
     return h?.tipos.find(t => t.tipo === tipo) ?? null
   }, [hiperfocoId, tipo, hiperfocos])
 
-  function reset() { setF({ ...EMPTY }); setSuccess(''); setError(''); setConfirmDelete(false) }
+  function reset() { setF({ ...EMPTY }); setFile(null); setSuccess(''); setError(''); setConfirmDelete(false) }
 
   function set<K extends keyof typeof f>(key: K, value: (typeof f)[K]) {
     setF(prev => ({ ...prev, [key]: value }))
@@ -94,23 +99,24 @@ export default function LessonForm({ products, hiperfocos }: Props) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (f.type === 'document' && !file && !f.storage_path) {
+      setError('Sube un archivo para el documento'); return
+    }
     setLoading(true); setError(''); setSuccess('')
 
-    const res = await fetch('/api/admin/lessons', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: f.recordingId || undefined,
-        hiperfoco_id: hiperfocoId,
-        tipo,  // value
-        title: f.title,
-        type: f.type,
-        fathom_share_id: f.fathom_share_id,
-        storage_path: f.storage_path,
-        order: f.order,
-        is_published: f.is_published,
-      }),
-    })
+    const body = new FormData()
+    if (f.recordingId) body.set('id', f.recordingId)
+    body.set('hiperfoco_id', hiperfocoId)
+    body.set('tipo', tipo)
+    body.set('title', f.title)
+    body.set('type', f.type)
+    body.set('fathom_share_id', f.fathom_share_id)
+    body.set('existing_storage_path', f.storage_path)
+    body.set('order', f.order)
+    body.set('is_published', String(f.is_published))
+    if (file) body.set('file', file)
+
+    const res = await fetch('/api/admin/lessons', { method: 'POST', body })
     const data = await res.json().catch(() => ({}))
     setLoading(false)
 
@@ -233,10 +239,19 @@ export default function LessonForm({ products, hiperfocos }: Props) {
 
             {f.type === 'document' && (
               <div>
-                <label className="label">storage_path</label>
-                <input type="text" className="input" placeholder="Ej. ventas-sabias/plantilla-flujo.pdf"
-                  value={f.storage_path} onChange={e => set('storage_path', e.target.value)} />
-                <p className="text-xs text-cream-muted mt-1.5">Ruta dentro del bucket privado <code>content</code>.</p>
+                <label className="label">Archivo (PDF u otro documento) *</label>
+                {f.storage_path && !file && (
+                  <p className="text-xs text-cream-dim mb-1.5">
+                    Actual: <span className="text-cream">{fileNameFromPath(f.storage_path)}</span> — elige uno nuevo para reemplazarlo.
+                  </p>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+                  className="input file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-600/20 file:text-brand-300 file:text-sm"
+                  onChange={e => setFile(e.target.files?.[0] ?? null)}
+                />
+                <p className="text-xs text-cream-muted mt-1.5">Se sube directo a la plataforma (bucket privado); el cliente lo descarga por un link temporal.</p>
               </div>
             )}
 

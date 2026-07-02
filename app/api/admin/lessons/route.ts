@@ -4,21 +4,34 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { CONTENT_TIPO_VALUES } from '@/lib/sessionTypes'
 
 const VALID_FILE_TYPES = ['video', 'document'] as const
+const MAX_DOC_BYTES = 50 * 1024 * 1024 // 50MB
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 60) || 'documento'
+}
 
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
   if ('error' in auth) return auth.error
 
-  const body = await req.json().catch(() => null)
-  const id: string | undefined = body?.id || undefined
-  const tipo: string = body?.tipo
-  const hiperfoco_id: string = body?.hiperfoco_id
-  const title: string = (body?.title ?? '').trim()
-  const type: string = body?.type
-  const fathom_share_id: string | null = (body?.fathom_share_id ?? '').trim() || null
-  const storage_path: string | null = (body?.storage_path ?? '').trim() || null
-  const is_published = !!body?.is_published
-  const orderRaw = body?.order
+  const form = await req.formData().catch(() => null)
+  if (!form) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+
+  const id = String(form.get('id') ?? '').trim() || undefined
+  const tipo = String(form.get('tipo') ?? '')
+  const hiperfoco_id = String(form.get('hiperfoco_id') ?? '')
+  const title = String(form.get('title') ?? '').trim()
+  const type = String(form.get('type') ?? '')
+  const fathom_share_id: string | null = String(form.get('fathom_share_id') ?? '').trim() || null
+  const existingStoragePath: string | null = String(form.get('existing_storage_path') ?? '').trim() || null
+  const is_published = form.get('is_published') === 'true'
+  const orderRaw = form.get('order')
+  const file = form.get('file')
 
   if (!hiperfoco_id || !tipo || !title || !type) {
     return NextResponse.json({ error: 'Hiperfoco, tipo, título y tipo de archivo son obligatorios' }, { status: 400 })
@@ -59,13 +72,40 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Documento: sube el archivo real al bucket privado `content` (mismo patrón que
+  // el avatar de onboarding). Si no llega un archivo nuevo, conserva la ruta
+  // existente (edición sin reemplazar el PDF).
+  let storage_path: string | null = existingStoragePath
+  if (type === 'document') {
+    if (file instanceof File && file.size > 0) {
+      if (file.size > MAX_DOC_BYTES) {
+        return NextResponse.json({ error: 'El archivo supera el máximo de 50MB' }, { status: 400 })
+      }
+      const ext = (file.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '') || 'pdf'
+      const path = `${hiperfoco_id}/${tipo}/${Date.now()}-${slugify(title)}.${ext}`
+      const buf = Buffer.from(await file.arrayBuffer())
+      const { error: upErr } = await supabaseAdmin.storage
+        .from('content')
+        .upload(path, buf, { contentType: file.type || 'application/octet-stream', upsert: true })
+      if (upErr) {
+        return NextResponse.json({ error: 'No se pudo subir el archivo: ' + upErr.message }, { status: 400 })
+      }
+      storage_path = path
+    }
+    if (!storage_path) {
+      return NextResponse.json({ error: 'Sube un archivo para el documento' }, { status: 400 })
+    }
+  } else {
+    storage_path = null
+  }
+
   const payload: Record<string, any> = {
     hiperfoco_id,
     tipo,
     title,
     type,
     fathom_share_id: type === 'video' ? fathom_share_id : null,
-    storage_path: type === 'document' ? storage_path : null,
+    storage_path,
     is_published,
   }
 
