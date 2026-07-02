@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect, Suspense, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
 function ActivateForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -14,32 +16,39 @@ function ActivateForm() {
   const [sessionReady, setSessionReady] = useState(false)
   const [expired, setExpired] = useState(false)
   const supabaseRef = useRef(createClient())
+  const verifyStarted = useRef(false)
 
   useEffect(() => {
+    // Guarda contra doble ejecución del efecto (React Strict Mode en dev monta
+    // dos veces a propósito; verifyOtp es de un solo uso, así que una segunda
+    // llamada con el mismo token_hash fallaría y pisaría el estado a "expirado"
+    // aunque la primera sí hubiera funcionado). Sin esto se ve "expirado" en dev
+    // incluso cuando el token es válido.
+    if (verifyStarted.current) return
+    verifyStarted.current = true
+
     const supabase = supabaseRef.current
 
-    // Extraer tokens del hash fragment EXPLÍCITAMENTE. No confiar en auto-detección
-    // de createBrowserClient, porque si el usuario ya tiene sesión abierta (ej. admin),
-    // getSession() devuelve ESA sesión vieja antes de que el hash se procese, y
-    // updateUser correría sobre el usuario equivocado.
-    const hash = window.location.hash.substring(1)
-    const params = new URLSearchParams(hash)
-    const accessToken = params.get('access_token')
-    const refreshToken = params.get('refresh_token')
+    // Verificamos el token NOSOTROS (verifyOtp, client-side) en vez de dejar que
+    // el correo apunte directo al endpoint /auth/v1/verify de Supabase: ese
+    // endpoint consume el token con un simple GET, sin JS, así que cualquier
+    // escáner de enlaces del correo (Gmail/Outlook) lo quema antes de que la
+    // persona haga clic de verdad. Al verificar aquí, el consumo solo ocurre si
+    // se ejecuta este JS (un escáner normal no lo hace). Ver PENDIENTES.md.
+    const tokenHash = searchParams.get('token_hash')
+    const type = searchParams.get('type') as EmailOtpType | null
 
-    if (!accessToken || !refreshToken) {
+    if (!tokenHash || !type) {
       setExpired(true)
       return
     }
 
-    // Limpiar el hash de la URL (no exponer tokens en la barra de direcciones).
+    // Limpiar los params de la URL (no dejar el token expuesto en la barra).
     window.history.replaceState(null, '', window.location.pathname)
 
-    // Establecer la sesión del invite EXPLÍCITAMENTE, reemplazando cualquier
-    // sesión preexistente (ej. admin logueado en el mismo navegador).
-    supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-      .then(({ data, error: sessionError }) => {
-        if (sessionError || !data.session) {
+    supabase.auth.verifyOtp({ token_hash: tokenHash, type })
+      .then(({ data, error: verifyError }) => {
+        if (verifyError || !data.session) {
           setExpired(true)
           return
         }
@@ -47,7 +56,7 @@ function ActivateForm() {
         const meta = data.session.user.user_metadata
         if (meta?.full_name) setName(meta.full_name)
       })
-  }, [])
+  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
