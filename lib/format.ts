@@ -29,3 +29,35 @@ export function formatMonthShort(
 ): string {
   return formatDateOnly(value, { month: 'short', year: 'numeric' }, locale)
 }
+
+// ── Hora Colombia ──────────────────────────────────────────────────────────
+// Las sesiones en vivo se manejan SIEMPRE en hora Colombia (America/Bogota,
+// UTC-5 fijo, sin horario de verano) y se muestran así con la etiqueta
+// "(hora Colombia)", para que no haya ambigüedad entre husos.
+export const CO_TZ = 'America/Bogota'
+export const CO_OFFSET = '-05:00' // Colombia no cambia de hora en el año
+
+// Convierte un valor de <input type="datetime-local"> (hora de pared, ej.
+// "2026-07-01T21:00") a ISO/UTC interpretándolo como hora Colombia.
+export function coLocalToISO(localValue: string): string {
+  if (!localValue) return ''
+  const d = new Date(`${localValue}:00${CO_OFFSET}`)
+  return isNaN(d.getTime()) ? '' : d.toISOString()
+}
+
+export function formatCOTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('es-CO', { timeZone: CO_TZ, hour: '2-digit', minute: '2-digit' })
+}
+export function formatCODateTime(iso: string): string {
+  return new Date(iso).toLocaleString('es-CO', { timeZone: CO_TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+export function formatCODateLong(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-CO', { timeZone: CO_TZ, weekday: 'long', day: 'numeric', month: 'long' })
+}
+// Día del mes y mes corto en hora Colombia (para las tarjetas de la lista lateral).
+export function formatCODayNum(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-CO', { timeZone: CO_TZ, day: '2-digit' })
+}
+export function formatCOMonthShort(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-CO', { timeZone: CO_TZ, month: 'short' })
+}

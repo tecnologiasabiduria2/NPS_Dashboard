@@ -31,22 +31,28 @@ async function deriveHiperfocoId(
   if (trigger === 'post_sesion' && liveSessionId) {
     const { data: session } = await supabase
       .from('live_sessions')
-      .select('product_id, starts_at')
+      .select('product_id, hiperfoco_nombre, starts_at')
       .eq('id', liveSessionId)
       .maybeSingle()
 
     if (!session) return null
 
-    const { data: row } = await supabase
+    // Hiperfocos del cliente en el mes de la sesión (título + producto).
+    const { data: rows } = await supabase
       .from('user_hiperfoco_mes')
-      .select('hiperfoco_id')
+      .select('hiperfoco_id, product_id, hiperfocos(title)')
       .eq('user_id', userId)
-      .eq('product_id', session.product_id)
       .eq('periodo', firstOfMonth(new Date(session.starts_at)))
       .not('hiperfoco_id', 'is', null)
-      .maybeSingle()
 
-    return row?.hiperfoco_id ?? null
+    const title = (r: any) => (Array.isArray(r.hiperfocos) ? r.hiperfocos[0]?.title : r.hiperfocos?.title)
+    let candidates = (rows ?? []) as any[]
+    // Si la sesión es de un hiperfoco (por nombre) → matchear por título.
+    if ((session as any).hiperfoco_nombre) candidates = candidates.filter(r => title(r) === (session as any).hiperfoco_nombre)
+    // Si la sesión restringe producto → matchear por producto.
+    if (session.product_id) candidates = candidates.filter(r => r.product_id === session.product_id)
+
+    return candidates[0]?.hiperfoco_id ?? null
   }
 
   // semanal → hiperfoco del mes en curso (cualquier producto activo).

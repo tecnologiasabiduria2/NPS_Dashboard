@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, X, Clock, ArrowRight, AlignLeft } from 'lucide-react'
 import { clsx } from 'clsx'
+import { formatCOTime, formatCODateLong } from '@/lib/format'
 
 export interface CalendarEvent {
   id: string
@@ -33,7 +34,7 @@ function dayKey(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
-const timeFmt = (iso: string) => new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+const timeFmt = (iso: string) => formatCOTime(iso)
 
 export default function MonthCalendar({ events }: { events: CalendarEvent[] }) {
   const today = new Date()
@@ -67,7 +68,10 @@ export default function MonthCalendar({ events }: { events: CalendarEvent[] }) {
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-lg font-semibold text-cream capitalize">{MONTHS[month]} {year}</p>
+        <div>
+          <p className="text-lg font-semibold text-cream capitalize">{MONTHS[month]} {year}</p>
+          <p className="text-[11px] text-cream-muted">Horarios en hora Colombia</p>
+        </div>
         <div className="flex items-center gap-1.5">
           <button onClick={goToday} className="btn-secondary py-1.5 px-3 text-xs">Hoy</button>
           <button onClick={prev} className="btn-ghost p-1.5" aria-label="Mes anterior"><ChevronLeft size={16} /></button>
@@ -124,16 +128,17 @@ export default function MonthCalendar({ events }: { events: CalendarEvent[] }) {
               <div className="flex items-center gap-2 text-cream-dim">
                 <Clock size={15} className="text-cream-muted shrink-0" />
                 <span>
-                  {new Date(selected.date).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {formatCODateLong(selected.date)}
                   {' · '}{timeFmt(selected.date)}–{timeFmt(selected.endsAt)}
+                  <span className="text-cream-muted"> (hora Colombia)</span>
                 </span>
               </div>
-              {selected.descripcion && (
-                <div className="flex items-start gap-2 text-cream-dim">
-                  <AlignLeft size={15} className="text-cream-muted shrink-0 mt-0.5" />
-                  <p className="whitespace-pre-wrap">{selected.descripcion}</p>
-                </div>
-              )}
+              <div className="flex items-start gap-2 text-cream-dim">
+                <AlignLeft size={15} className="text-cream-muted shrink-0 mt-0.5" />
+                {selected.descripcion
+                  ? <p className="whitespace-pre-wrap">{selected.descripcion}</p>
+                  : <p className="italic text-cream-muted">El anfitrión no agregó una descripción.</p>}
+              </div>
             </div>
 
             {!isPast && selected.pending ? (

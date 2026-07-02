@@ -36,19 +36,22 @@ export async function GET(req: NextRequest, { params }: Props) {
     return NextResponse.redirect(new URL('/dashboard?error=session_not_found', req.url))
   }
 
-  // 1b. GATING (5c): solo entra quien tiene acceso ACTIVO a ese producto.
-  // Sin acceso (vencido / nunca lo tuvo / es de otro producto) → paywall.
-  // El zoom_url NUNCA se revela a un inactivo (se entrega link de plataforma,
-  // no el Meet directo — decisión Diana 2026-06-30).
-  const { data: access } = await supabase
-    .from('user_access')
-    .select('status')
-    .eq('user_id', user.id)
-    .eq('product_id', session.product_id)
-    .eq('status', 'active')
-    .maybeSingle()
+  // 1b. GATING (5c): solo entra quien tiene acceso ACTIVO. Si la sesión restringe
+  // producto → acceso activo a ESE producto; si es de todos (product_id NULL) →
+  // cualquier acceso activo. El zoom_url NUNCA se revela a un inactivo.
+  let hasAccess = false
+  if (session.product_id) {
+    const { data } = await supabase
+      .from('user_access').select('status')
+      .eq('user_id', user.id).eq('product_id', session.product_id).eq('status', 'active').maybeSingle()
+    hasAccess = !!data
+  } else {
+    const { data } = await supabase
+      .from('user_access').select('id').eq('user_id', user.id).eq('status', 'active').limit(1)
+    hasAccess = !!(data && data.length)
+  }
 
-  if (!access) {
+  if (!hasAccess) {
     return NextResponse.redirect(new URL('/access-expired?reason=session', req.url))
   }
 
@@ -57,6 +60,25 @@ export async function GET(req: NextRequest, { params }: Props) {
   // respaldo si igual llega aquí (ej. link viejo).
   if (!session.zoom_url) {
     return NextResponse.redirect(new URL('/sessions?pending=1', req.url))
+  }
+
+  // #8v2: si la sesión es de un hiperfoco (por nombre), solo entra quien tiene un
+  // hiperfoco de ese nombre asignado (las generales las ve cualquiera). Consulta
+  // resiliente: si la columna aún no existe, no bloquea.
+  const { data: hfRow } = await supabaseAdmin
+    .from('live_sessions').select('hiperfoco_nombre').eq('id', id).maybeSingle()
+  const sessionHfName = (hfRow as { hiperfoco_nombre?: string | null } | null)?.hiperfoco_nombre
+  if (sessionHfName) {
+    const { data: myHf } = await supabase
+      .from('user_hiperfoco_mes').select('hiperfocos(title)').eq('user_id', user.id).not('hiperfoco_id', 'is', null)
+    const names = new Set(
+      ((myHf ?? []) as any[])
+        .map(r => (Array.isArray(r.hiperfocos) ? r.hiperfocos[0]?.title : r.hiperfocos?.title))
+        .filter(Boolean)
+    )
+    if (!names.has(sessionHfName)) {
+      return NextResponse.redirect(new URL('/sessions', req.url))
+    }
   }
 
   // 2. ¿El clic cae dentro de la ventana de asistencia?

@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   // Sesión por token (service role → sin RLS).
   const { data: session } = await supabaseAdmin
     .from('live_sessions')
-    .select('id, product_id, starts_at')
+    .select('id, product_id, hiperfoco_nombre, starts_at')
     .eq('nps_token', token)
     .maybeSingle()
   if (!session) return NextResponse.json({ error: 'Link inválido o vencido' }, { status: 404 })
@@ -37,17 +37,20 @@ export async function POST(req: NextRequest) {
   }
 
   // Hiperfoco: solo si sabemos el cliente (es por usuario-mes). Anónimo → null.
+  // Matchea por nombre de hiperfoco de la sesión (y producto si restringe).
   let hiperfocoId: string | null = null
   if (userId) {
-    const { data: row } = await supabaseAdmin
+    const { data: rows } = await supabaseAdmin
       .from('user_hiperfoco_mes')
-      .select('hiperfoco_id')
+      .select('hiperfoco_id, product_id, hiperfocos(title)')
       .eq('user_id', userId)
-      .eq('product_id', session.product_id)
       .eq('periodo', firstOfMonth(new Date(session.starts_at)))
       .not('hiperfoco_id', 'is', null)
-      .maybeSingle()
-    hiperfocoId = row?.hiperfoco_id ?? null
+    const title = (r: any) => (Array.isArray(r.hiperfocos) ? r.hiperfocos[0]?.title : r.hiperfocos?.title)
+    let candidates = (rows ?? []) as any[]
+    if ((session as any).hiperfoco_nombre) candidates = candidates.filter(r => title(r) === (session as any).hiperfoco_nombre)
+    if (session.product_id) candidates = candidates.filter(r => r.product_id === session.product_id)
+    hiperfocoId = candidates[0]?.hiperfoco_id ?? null
   }
 
   const { error } = await supabaseAdmin.from('nps_responses').insert({

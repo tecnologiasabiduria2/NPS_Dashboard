@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
 import { CalendarClock, ArrowRight } from 'lucide-react'
 import { sessionTipoLabel } from '@/lib/sessionTypes'
+import { formatCOTime, formatCODayNum, formatCOMonthShort } from '@/lib/format'
 import MonthCalendar, { type CalendarEvent } from './MonthCalendar'
 
 export default async function SessionsPage({
@@ -23,15 +22,32 @@ export default async function SessionsPage({
   const access = accessRows?.[0]
   if (!access) redirect('/access-expired')
 
+  const productId = (access as any).product_id
   const { data: sessions } = await supabase
     .from('live_sessions')
     .select('id, title, tipo, starts_at, ends_at, zoom_url')
-    .eq('product_id', (access as any).product_id)
+    .or(`product_id.is.null,product_id.eq.${productId}`)
     .eq('is_published', true)
     .order('starts_at', { ascending: true })
 
+  // Filtro por hiperfoco (#8v2): el cliente ve las GENERALES (sin hiperfoco) + las de
+  // un hiperfoco con su mismo nombre (cualquier producto). Consultas aparte,
+  // resilientes si la migración aún no corrió (→ todas se tratan como generales).
+  const hfNombreBySession: Record<string, string> = {}
+  const { data: hfRows } = await supabase.from('live_sessions').select('id, hiperfoco_nombre')
+  for (const r of (hfRows ?? []) as { id: string; hiperfoco_nombre?: string | null }[]) {
+    if (r.hiperfoco_nombre) hfNombreBySession[r.id] = r.hiperfoco_nombre
+  }
+  const { data: myHfRows } = await supabase
+    .from('user_hiperfoco_mes').select('hiperfocos(title)').eq('user_id', user.id).not('hiperfoco_id', 'is', null)
+  const myHfNames = new Set<string>(
+    ((myHfRows ?? []) as any[])
+      .map(r => (Array.isArray(r.hiperfocos) ? r.hiperfocos[0]?.title : r.hiperfocos?.title))
+      .filter(Boolean)
+  )
+
   const now = Date.now()
-  const all = sessions ?? []
+  const all = (sessions ?? []).filter(s => { const hf = hfNombreBySession[(s as any).id]; return !hf || myHfNames.has(hf) })
   const upcoming = all.filter(s => new Date(s.ends_at).getTime() >= now)
   const past = all.filter(s => new Date(s.ends_at).getTime() < now).reverse()
 
@@ -84,16 +100,15 @@ export default async function SessionsPage({
             ) : (
               <div className="space-y-2">
                 {upcoming.map(s => {
-                  const d = new Date(s.starts_at)
                   return (
                     <div key={s.id} className="card-sm flex items-center gap-3">
                       <div className="text-center shrink-0 w-10">
-                        <p className="text-lg font-semibold text-cream leading-none">{format(d, 'dd')}</p>
-                        <p className="text-[10px] text-cream-muted uppercase">{format(d, 'MMM', { locale: es })}</p>
+                        <p className="text-lg font-semibold text-cream leading-none">{formatCODayNum(s.starts_at)}</p>
+                        <p className="text-[10px] text-cream-muted uppercase">{formatCOMonthShort(s.starts_at)}</p>
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-cream font-medium leading-snug truncate">{sessionTipoLabel(s.tipo)}</p>
-                        <p className="text-xs text-cream-muted">{format(d, 'HH:mm')}–{format(new Date(s.ends_at), 'HH:mm')}</p>
+                        <p className="text-xs text-cream-muted">{formatCOTime(s.starts_at)}–{formatCOTime(s.ends_at)}</p>
                       </div>
                       {(s as any).zoom_url ? (
                         <a
@@ -125,12 +140,11 @@ export default async function SessionsPage({
               <p className="section-label">Eventos pasados</p>
               <div className="space-y-2">
                 {past.slice(0, 8).map(s => {
-                  const d = new Date(s.starts_at)
                   return (
                     <div key={s.id} className="card-sm flex items-center gap-3 opacity-60">
                       <div className="text-center shrink-0 w-10">
-                        <p className="text-lg font-semibold text-cream-dim leading-none">{format(d, 'dd')}</p>
-                        <p className="text-[10px] text-cream-muted uppercase">{format(d, 'MMM', { locale: es })}</p>
+                        <p className="text-lg font-semibold text-cream-dim leading-none">{formatCODayNum(s.starts_at)}</p>
+                        <p className="text-[10px] text-cream-muted uppercase">{formatCOMonthShort(s.starts_at)}</p>
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-cream-dim leading-snug truncate">{sessionTipoLabel(s.tipo)}</p>

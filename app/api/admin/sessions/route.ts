@@ -10,7 +10,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null)
   const id: string | undefined = body?.id || undefined
-  const product_id: string = body?.product_id
+  // Producto OPCIONAL (#8v2): vacío = todos los productos. Solo se usa para restringir.
+  const product_id: string = (body?.product_id ?? '').trim()
   const title: string = (body?.title ?? '').trim() || 'Sesión en vivo'
   const tipo: string = body?.tipo
   const zoom_url: string = (body?.zoom_url ?? '').trim()
@@ -18,12 +19,16 @@ export async function POST(req: NextRequest) {
   const ends_at: string = body?.ends_at
   const is_published = !!body?.is_published
   const descripcion: string = (body?.descripcion ?? '').trim()
+  // Hiperfoco por NOMBRE (#8v2): vacío = General (la ven todos). Con valor, la ven
+  // solo los clientes con un hiperfoco de ese nombre (cualquier producto).
+  const hiperfoco_nombre: string = (body?.hiperfoco_nombre ?? '').trim()
+  // Link recurrente: si viene, se guarda el link como el fijo de este tipo.
+  const save_recurring = !!body?.save_recurring
 
   // El link es OPCIONAL: las sesiones "variables" se crean sin link y el coach lo
-  // pega después (mientras, el cliente ve "Link próximamente"). Las "recurrentes"
-  // llevan el link fijo desde el inicio.
-  if (!product_id || !starts_at || !ends_at) {
-    return NextResponse.json({ error: 'Producto, inicio y fin son obligatorios' }, { status: 400 })
+  // pega después (mientras, el cliente ve "Link próximamente").
+  if (!starts_at || !ends_at) {
+    return NextResponse.json({ error: 'Inicio y fin son obligatorios' }, { status: 400 })
   }
   if (!SESSION_TIPO_VALUES.includes(tipo as any)) {
     return NextResponse.json({ error: 'Tipo de sesión inválido' }, { status: 400 })
@@ -32,24 +37,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'La hora de fin debe ser posterior a la de inicio' }, { status: 400 })
   }
 
-  // El producto debe existir
-  const { data: product } = await supabaseAdmin.from('products').select('id').eq('id', product_id).single()
-  if (!product) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 400 })
+  // Si se restringió a un producto, debe existir.
+  if (product_id) {
+    const { data: product } = await supabaseAdmin.from('products').select('id').eq('id', product_id).single()
+    if (!product) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 400 })
+  }
 
-  const payload: Record<string, any> = { product_id, title, tipo, zoom_url, starts_at, ends_at, is_published, descripcion: descripcion || null, updated_at: new Date().toISOString() }
-  // Si la columna descripcion aún no existe (migración pendiente), reintenta sin ella.
-  const stripDesc = (p: Record<string, any>) => { const { descripcion: _d, ...rest } = p; return rest }
+  const payload: Record<string, any> = { product_id: product_id || null, title, tipo, zoom_url, starts_at, ends_at, is_published, descripcion: descripcion || null, hiperfoco_nombre: hiperfoco_nombre || null, updated_at: new Date().toISOString() }
+  // Reintento resiliente si faltan columnas opcionales (migración no corrida):
+  // primero sin hiperfoco_nombre, luego además sin descripcion.
+  const stripHf = (p: Record<string, any>) => { const { hiperfoco_nombre: _h, ...rest } = p; return rest }
+  const stripHfDesc = (p: Record<string, any>) => { const { hiperfoco_nombre: _h, descripcion: _d, ...rest } = p; return rest }
+
+  // Guarda el link como el recurrente del tipo (para autocompletar la próxima).
+  async function persistRecurring() {
+    if (save_recurring && zoom_url) {
+      await supabaseAdmin.from('platform_settings').upsert(
+        { key: `zoom_link_${tipo}`, value: zoom_url, updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      )
+    }
+  }
 
   if (id) {
     let { error } = await supabaseAdmin.from('live_sessions').update(payload).eq('id', id)
-    if (error?.code === '42703') ({ error } = await supabaseAdmin.from('live_sessions').update(stripDesc(payload)).eq('id', id))
+    if (error?.code === '42703') ({ error } = await supabaseAdmin.from('live_sessions').update(stripHf(payload)).eq('id', id))
+    if (error?.code === '42703') ({ error } = await supabaseAdmin.from('live_sessions').update(stripHfDesc(payload)).eq('id', id))
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    await persistRecurring()
     return NextResponse.json({ ok: true, updated: true })
   }
 
   let { data, error } = await supabaseAdmin.from('live_sessions').insert(payload).select('id').single()
-  if (error?.code === '42703') ({ data, error } = await supabaseAdmin.from('live_sessions').insert(stripDesc(payload)).select('id').single())
+  if (error?.code === '42703') ({ data, error } = await supabaseAdmin.from('live_sessions').insert(stripHf(payload)).select('id').single())
+  if (error?.code === '42703') ({ data, error } = await supabaseAdmin.from('live_sessions').insert(stripHfDesc(payload)).select('id').single())
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  await persistRecurring()
   return NextResponse.json({ ok: true, created: true, id: data?.id })
 }
 

@@ -1,9 +1,20 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarPlus, CheckCircle2, Trash2 } from 'lucide-react'
 import { SESSION_TIPOS } from '@/lib/sessionTypes'
+import { coLocalToISO } from '@/lib/format'
+
+// Suma horas a un valor de <input datetime-local> manteniendo la hora de pared.
+function addHoursLocal(localStr: string, hours: number): string {
+  if (!localStr) return ''
+  const d = new Date(localStr)
+  if (isNaN(d.getTime())) return ''
+  d.setHours(d.getHours() + hours)
+  const pad = (n: number) => `${n}`.padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 interface Session {
   id: string
@@ -13,13 +24,19 @@ interface Session {
   ends_at: string
   zoom_url: string
   is_published: boolean
+  product_id: string
   descripcion?: string | null
+  hiperfoco_nombre?: string | null
 }
 
 interface Props {
   products: { id: string; label: string }[]
-  sessionsByProduct: Record<string, Session[]>
+  hiperfocoNames: string[]
+  sessions: Session[]
+  recurringLinks: Record<string, string> // link fijo por tipo (zoom_link_<tipo>)
 }
+
+type LinkMode = 'recurrente' | 'unico' | 'pendiente'
 
 // ISO (timestamptz) -> valor para <input type="datetime-local"> en hora local
 function toLocalInput(iso: string): string {
@@ -28,33 +45,51 @@ function toLocalInput(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-const EMPTY = { sessionId: '', title: '', tipo: 'inmersion_1', starts_at: '', ends_at: '', zoom_url: '', is_published: true, descripcion: '' }
+const EMPTY = {
+  sessionId: '', title: '', tipo: 'inmersion_1', starts_at: '', ends_at: '',
+  zoom_url: '', is_published: true, descripcion: '', hiperfoco_nombre: '', product_id: '',
+}
 
-export default function SessionForm({ products, sessionsByProduct }: Props) {
+export default function SessionForm({ products, hiperfocoNames, sessions, recurringLinks }: Props) {
   const router = useRouter()
-  const [productId, setProductId] = useState('')
   const [f, setF] = useState({ ...EMPTY })
+  const [linkMode, setLinkMode] = useState<LinkMode>('unico')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-
-  const productSessions = useMemo(
-    () => (productId ? sessionsByProduct[productId] ?? [] : []),
-    [productId, sessionsByProduct]
-  )
 
   function set<K extends keyof typeof f>(key: K, value: (typeof f)[K]) {
     setF(prev => ({ ...prev, [key]: value }))
     setSuccess(''); setError('')
   }
 
-  function changeProduct(id: string) {
-    setProductId(id); setF({ ...EMPTY }); setSuccess(''); setError('')
+  // Al cambiar el tipo, si el link es "recurrente" trae el link fijo de ese tipo.
+  function setTipo(value: string) {
+    setF(prev => ({ ...prev, tipo: value, zoom_url: linkMode === 'recurrente' ? (recurringLinks[value] ?? '') : prev.zoom_url }))
+    setSuccess(''); setError('')
+  }
+
+  // Cambio de modo de link: recurrente → trae el link del tipo; pendiente → vacío.
+  function changeLinkMode(mode: LinkMode) {
+    setLinkMode(mode)
+    setF(prev => ({
+      ...prev,
+      zoom_url: mode === 'recurrente' ? (recurringLinks[prev.tipo] ?? '') : mode === 'pendiente' ? '' : prev.zoom_url,
+    }))
+    setSuccess(''); setError('')
+  }
+
+  // Al fijar/cambiar el inicio, el fin se recalcula SIEMPRE a +2h (se puede
+  // ajustar después manualmente sin que se vuelva a mover, hasta el próximo
+  // cambio de inicio).
+  function setStart(value: string) {
+    setF(prev => ({ ...prev, starts_at: value, ends_at: value ? addHoursLocal(value, 2) : prev.ends_at }))
+    setSuccess(''); setError('')
   }
 
   function pickSession(sessionId: string) {
-    if (!sessionId) { setF({ ...EMPTY }); return }
-    const s = productSessions.find(x => x.id === sessionId)
+    if (!sessionId) { setF({ ...EMPTY }); setLinkMode('unico'); setSuccess(''); setError(''); return }
+    const s = sessions.find(x => x.id === sessionId)
     if (!s) return
     setF({
       sessionId: s.id,
@@ -65,7 +100,12 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
       zoom_url: s.zoom_url,
       is_published: s.is_published,
       descripcion: s.descripcion ?? '',
+      hiperfoco_nombre: s.hiperfoco_nombre ?? '',
+      product_id: s.product_id ?? '',
     })
+    // Inferir el modo de link de la sesión existente.
+    const rl = recurringLinks[s.tipo || 'inmersion_1']
+    setLinkMode(!s.zoom_url ? 'pendiente' : (rl && s.zoom_url === rl ? 'recurrente' : 'unico'))
     setSuccess(''); setError('')
   }
 
@@ -77,22 +117,24 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: f.sessionId || undefined,
-        product_id: productId,
+        hiperfoco_nombre: f.hiperfoco_nombre,
+        product_id: f.product_id,
         title: f.title,
         tipo: f.tipo,
-        // datetime-local (hora local) -> ISO UTC
-        starts_at: f.starts_at ? new Date(f.starts_at).toISOString() : '',
-        ends_at: f.ends_at ? new Date(f.ends_at).toISOString() : '',
-        zoom_url: f.zoom_url,
+        starts_at: coLocalToISO(f.starts_at),
+        ends_at: coLocalToISO(f.ends_at),
+        zoom_url: linkMode === 'pendiente' ? '' : f.zoom_url,
         is_published: f.is_published,
         descripcion: f.descripcion,
+        // Si el link es recurrente, guardarlo como el fijo de este tipo.
+        save_recurring: linkMode === 'recurrente',
       }),
     })
     const data = await res.json().catch(() => ({}))
     setLoading(false)
     if (!res.ok) { setError(data.error ?? 'No se pudo guardar la sesión'); return }
     setSuccess(f.sessionId ? 'Sesión actualizada.' : 'Sesión creada.')
-    setF({ ...EMPTY })
+    setF({ ...EMPTY }); setLinkMode('unico')
     router.refresh()
   }
 
@@ -115,36 +157,37 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
         <h2 className="text-lg font-semibold text-cream">Programar / editar sesión en vivo</h2>
       </div>
       <p className="text-sm text-cream-muted mb-5">
-        Define el horario y el link de Zoom por producto. De aquí en adelante solo cambias estos datos.
+        Define el hiperfoco, el horario y el link. La ven los clientes con ese hiperfoco (o todos, si es General).
       </p>
 
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="label">Producto *</label>
-          <select className="select" value={productId} onChange={e => changeProduct(e.target.value)} required>
-            <option value="">— Selecciona un producto —</option>
-            {products.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+          <label className="label">Sesión</label>
+          <select className="select" value={f.sessionId} onChange={e => pickSession(e.target.value)}>
+            <option value="">— Nueva sesión —</option>
+            {sessions.map(s => (
+              <option key={s.id} value={s.id}>
+                {new Date(s.starts_at).toLocaleString('es-CO')} · {s.hiperfoco_nombre ?? 'General'} · {s.title}
+              </option>
+            ))}
           </select>
+          {f.sessionId && <p className="text-xs text-accent mt-1.5">Editando una sesión existente</p>}
         </div>
 
-        {productId && (
-          <div>
-            <label className="label">Sesión</label>
-            <select className="select" value={f.sessionId} onChange={e => pickSession(e.target.value)}>
-              <option value="">— Nueva sesión —</option>
-              {productSessions.map(s => (
-                <option key={s.id} value={s.id}>
-                  {new Date(s.starts_at).toLocaleString('es-CO')} · {s.title}
-                </option>
-              ))}
-            </select>
-            {f.sessionId && <p className="text-xs text-accent mt-1.5">Editando una sesión existente</p>}
-          </div>
-        )}
+        <div>
+          <label className="label">Hiperfoco *</label>
+          <select className="select" value={f.hiperfoco_nombre} onChange={e => set('hiperfoco_nombre', e.target.value)}>
+            <option value="">General (todos los clientes)</option>
+            {hiperfocoNames.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <p className="text-xs text-cream-muted mt-1.5">
+            La sesión llega a todos los clientes con este hiperfoco, sin importar el producto. "General" la ven todos (ej. Sala de Gerencia).
+          </p>
+        </div>
 
         <div>
           <label className="label">Tipo de sesión *</label>
-          <select className="select" value={f.tipo} onChange={e => set('tipo', e.target.value)} disabled={!productId} required>
+          <select className="select" value={f.tipo} onChange={e => setTipo(e.target.value)} required>
             {SESSION_TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
@@ -152,41 +195,65 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
         <div>
           <label className="label">Título</label>
           <input type="text" className="input" placeholder="Sesión en vivo"
-            value={f.title} onChange={e => set('title', e.target.value)} disabled={!productId} />
+            value={f.title} onChange={e => set('title', e.target.value)} />
         </div>
 
         <div>
           <label className="label">Descripción</label>
           <textarea className="input min-h-16 resize-y" placeholder="Qué se verá en la sesión (opcional) — se muestra al cliente en el calendario"
-            value={f.descripcion} onChange={e => set('descripcion', e.target.value)} disabled={!productId} />
+            value={f.descripcion} onChange={e => set('descripcion', e.target.value)} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="label">Inicio *</label>
+            <label className="label">Inicio * <span className="text-cream-muted font-normal">(hora Colombia)</span></label>
             <input type="datetime-local" className="input"
-              value={f.starts_at} onChange={e => set('starts_at', e.target.value)} disabled={!productId} required />
+              value={f.starts_at} onChange={e => setStart(e.target.value)} required />
           </div>
           <div>
-            <label className="label">Fin *</label>
+            <label className="label">Fin * <span className="text-cream-muted font-normal">(hora Colombia)</span></label>
             <input type="datetime-local" className="input"
-              value={f.ends_at} onChange={e => set('ends_at', e.target.value)} disabled={!productId} required />
+              value={f.ends_at} onChange={e => set('ends_at', e.target.value)} required />
           </div>
+        </div>
+        <p className="text-xs text-cream-muted -mt-2">Al poner el inicio, el fin se completa solo a +2 horas (puedes cambiarlo).</p>
+
+        <div>
+          <label className="label">Link de la reunión</label>
+          <select className="select mb-2" value={linkMode} onChange={e => changeLinkMode(e.target.value as LinkMode)}>
+            <option value="unico">Único — link solo para esta sesión</option>
+            <option value="recurrente">Recurrente — link fijo de este tipo</option>
+            <option value="pendiente">Se asigna después</option>
+          </select>
+          {linkMode !== 'pendiente' ? (
+            <>
+              <input type="url" className="input" placeholder="https://zoom.us/j/..."
+                value={f.zoom_url} onChange={e => set('zoom_url', e.target.value)} />
+              <p className="text-xs text-cream-muted mt-1.5">
+                {linkMode === 'recurrente'
+                  ? 'Se guarda como el link fijo de este tipo — la próxima sesión de este tipo lo tomará sola.'
+                  : 'Link solo para esta sesión.'}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-cream-muted">Se crea sin link; el cliente verá "Link próximamente" hasta que la edites y lo pegues.</p>
+          )}
         </div>
 
         <div>
-          <label className="label">Link de Zoom / Meet</label>
-          <input type="url" className="input" placeholder="https://zoom.us/j/..."
-            value={f.zoom_url} onChange={e => set('zoom_url', e.target.value)} disabled={!productId} />
+          <label className="label">Restringir a un producto (opcional)</label>
+          <select className="select" value={f.product_id} onChange={e => set('product_id', e.target.value)}>
+            <option value="">Todos los productos</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
           <p className="text-xs text-cream-muted mt-1.5">
-            <span className="text-cream-dim">Recurrente:</span> pega el link fijo.{' '}
-            <span className="text-cream-dim">Variable:</span> déjalo vacío ahora y edítalo cuando lo tengas — mientras, el cliente verá <span className="text-cream-dim">"Link próximamente"</span>.
+            Déjalo en "Todos" salvo que quieras la sesión solo para un producto (ej. "Finanzas solo Sabiduría").
           </p>
         </div>
 
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" className="w-4 h-4 accent-brand-600"
-            checked={f.is_published} onChange={e => set('is_published', e.target.checked)} disabled={!productId} />
+            checked={f.is_published} onChange={e => set('is_published', e.target.checked)} />
           <span className="text-sm text-cream-dim">Publicada (visible para el cliente)</span>
         </label>
 
@@ -203,7 +270,7 @@ export default function SessionForm({ products, sessionsByProduct }: Props) {
         )}
 
         <div className="flex gap-3">
-          <button type="submit" disabled={loading || !productId} className="btn-primary flex-1 justify-center py-3 disabled:opacity-40 disabled:cursor-not-allowed">
+          <button type="submit" disabled={loading} className="btn-primary flex-1 justify-center py-3 disabled:opacity-40 disabled:cursor-not-allowed">
             {loading ? 'Guardando…' : f.sessionId ? 'Guardar cambios' : 'Crear sesión'}
           </button>
           {f.sessionId && (

@@ -1,9 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
 import { ArrowRight, Video, Calendar, AlertTriangle, Target, History } from 'lucide-react'
-import { formatDateOnly, formatMonthLong, formatMonthShort } from '@/lib/format'
+import { formatDateOnly, formatMonthLong, formatMonthShort, formatCODateLong, formatCOTime } from '@/lib/format'
 
 // Metadatos de presentación por estado del hiperfoco (modelo de hiperfoco, B10).
 // Estados de user_hiperfoco_mes: no_elegido | en_curso | cerrado | pausa.
@@ -111,19 +109,34 @@ export default async function DashboardPage({
     }
   })
 
-  // Próxima sesión en vivo del producto activo (publicada y aún no terminada)
+  // Próxima sesión en vivo del producto activo (publicada y aún no terminada).
+  // #8: solo las GENERALES o las de un hiperfoco asignado al cliente.
   let nextSession: { id: string; title: string; starts_at: string } | null = null
   if (access?.product_id) {
-    const { data: session } = await supabase
+    const { data: candidates } = await supabase
       .from('live_sessions')
       .select('id, title, starts_at')
-      .eq('product_id', access.product_id)
+      .or(`product_id.is.null,product_id.eq.${access.product_id}`)
       .eq('is_published', true)
       .gte('ends_at', new Date().toISOString())
       .order('starts_at', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-    nextSession = session
+      .limit(8)
+    const list = (candidates ?? []) as { id: string; title: string; starts_at: string }[]
+    if (list.length) {
+      const hfNombreBySession: Record<string, string> = {}
+      const { data: hfRows } = await supabase.from('live_sessions').select('id, hiperfoco_nombre').in('id', list.map(s => s.id))
+      for (const r of (hfRows ?? []) as { id: string; hiperfoco_nombre?: string | null }[]) {
+        if (r.hiperfoco_nombre) hfNombreBySession[r.id] = r.hiperfoco_nombre
+      }
+      const { data: myHfRows } = await supabase
+        .from('user_hiperfoco_mes').select('hiperfocos(title)').eq('user_id', user.id).not('hiperfoco_id', 'is', null)
+      const myHfNames = new Set<string>(
+        ((myHfRows ?? []) as any[])
+          .map(r => (Array.isArray(r.hiperfocos) ? r.hiperfocos[0]?.title : r.hiperfocos?.title))
+          .filter(Boolean)
+      )
+      nextSession = list.find(s => { const hf = hfNombreBySession[s.id]; return !hf || myHfNames.has(hf) }) ?? null
+    }
   }
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Bienvenido'
@@ -135,7 +148,7 @@ export default async function DashboardPage({
   const tieneHiperfocoMes = Boolean(tituloMes) && (estadoMes === 'en_curso' || estadoMes === 'cerrado')
 
   return (
-    <div className="max-w-4xl">
+    <div>
       {/* Aviso de error (ej. sesión no encontrada al unirse al Zoom) */}
       {error === 'session_not_found' && (
         <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
@@ -271,7 +284,8 @@ export default async function DashboardPage({
               <p className="text-cream font-medium leading-snug">{nextSession.title}</p>
               <p className="text-sm text-cream-dim mt-1 inline-flex items-center gap-1.5 capitalize">
                 <Calendar size={12} className="text-sand" />
-                {format(new Date(nextSession.starts_at), "EEEE d 'de' MMMM · HH:mm", { locale: es })}
+                {formatCODateLong(nextSession.starts_at)} · {formatCOTime(nextSession.starts_at)}
+                <span className="text-cream-muted"> (hora Colombia)</span>
               </p>
             </div>
           </div>
