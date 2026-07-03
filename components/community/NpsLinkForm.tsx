@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Star } from 'lucide-react'
 import { clsx } from 'clsx'
@@ -27,7 +27,20 @@ export default function NpsLinkForm({ token, sessionId, sessionTitle, copy, logg
   const [already, setAlready] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Recordar el correo entre distintos links de NPS en el mismo navegador (pedido
+  // de Diana, 2026-07-03) — más confiable que depender del autocompletado nativo,
+  // que no siempre funciona en incógnito o en algunos celulares.
+  useEffect(() => {
+    if (loggedInName) return
+    try {
+      const saved = localStorage.getItem('nps-email')
+      if (saved) setEmail(saved)
+    } catch {}
+  }, [loggedInName])
+
   const titleText = copy.title.replace('{sesion}', sessionTitle)
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  const canSubmit = score !== null && (!!loggedInName || emailValid)
 
   function scoreClass(n: number, selected: boolean) {
     if (!selected) return 'bg-surface-800 text-cream-dim hover:bg-surface-700 hover:text-cream'
@@ -37,10 +50,13 @@ export default function NpsLinkForm({ token, sessionId, sessionTitle, copy, logg
   }
 
   async function submit() {
-    if (score === null || submitting) return
+    if (!canSubmit || submitting) return
     setSubmitting(true)
     setError(null)
     try {
+      if (!loggedInName) {
+        try { localStorage.setItem('nps-email', email.trim()) } catch {}
+      }
       // Cliente logueado → /api/nps (atribuye por sesión, deriva hiperfoco).
       // Anónimo → /api/nps/public con correo opcional.
       const res = loggedInName
@@ -129,11 +145,12 @@ export default function NpsLinkForm({ token, sessionId, sessionTitle, copy, logg
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Tu correo (opcional)"
+                  placeholder="Tu correo"
+                  autoComplete="email"
                   className="input mt-3"
                 />
                 <p className="text-[11px] text-cream-muted mt-1.5">
-                  Déjanos tu correo si quieres que asociemos tu respuesta a tu proceso.
+                  Necesitamos tu correo para asociar tu respuesta a tu proceso.
                 </p>
               </>
             )}
@@ -143,7 +160,7 @@ export default function NpsLinkForm({ token, sessionId, sessionTitle, copy, logg
             <button
               type="button"
               onClick={submit}
-              disabled={score === null || submitting}
+              disabled={!canSubmit || submitting}
               className="btn-primary w-full justify-center mt-5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {submitting ? 'Enviando…' : 'Enviar calificación'}

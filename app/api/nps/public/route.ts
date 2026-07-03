@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 // NPS público por LINK (Bloque 5b). No requiere sesión: se inserta con el
-// service role (sin RLS). El cliente es opcional — si deja su email y calza con
-// un usuario, se atribuye; si no, queda anónimo (igual promedia por sesión).
+// service role (sin RLS). El correo es obligatorio (decisión 2026-07-03, Diana)
+// — si calza con un usuario, se atribuye; si no, igual queda el correo guardado
+// para poder identificar quién calificó.
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function firstOfMonth(d: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`
@@ -19,6 +22,9 @@ export async function POST(req: NextRequest) {
   if (!token) return NextResponse.json({ error: 'Token requerido' }, { status: 400 })
   if (!Number.isInteger(score) || score < 1 || score > 10) {
     return NextResponse.json({ error: 'Calificación inválida (1-10)' }, { status: 400 })
+  }
+  if (!email || !EMAIL_RE.test(email)) {
+    return NextResponse.json({ error: 'Correo requerido' }, { status: 400 })
   }
 
   // Sesión por token (service role → sin RLS).
