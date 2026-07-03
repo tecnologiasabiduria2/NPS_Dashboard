@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     : null
 
   const expectedSecret = Deno.env.get('GHL_WEBHOOK_SECRET')
-  if (expectedSecret && secret !== expectedSecret) {
+  if (!expectedSecret || secret !== expectedSecret) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401, headers: { 'Content-Type': 'application/json' }
     })
