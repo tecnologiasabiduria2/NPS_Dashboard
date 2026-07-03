@@ -10,6 +10,22 @@ function timingSafeEqualStr(a: string, b: string): boolean {
   return result === 0
 }
 
+// Duración fija por producto (confirmado por Juan 2026-07-02): si GHL no manda
+// access_until, se calcula hoy + duración del producto. Si el día llega a mandarse
+// desde GHL, ese valor siempre tiene prioridad sobre este default.
+const DEFAULT_DURATION_MONTHS: Record<string, number> = {
+  desafio: 6,
+  sabiduria: 12,
+}
+
+function defaultAccessUntil(productSlug: string): string | null {
+  const months = DEFAULT_DURATION_MONTHS[productSlug]
+  if (!months) return null
+  const d = new Date()
+  d.setUTCMonth(d.getUTCMonth() + months)
+  return d.toISOString().split('T')[0]
+}
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
@@ -41,9 +57,9 @@ Deno.serve(async (req) => {
   }
 
   const { email, full_name, product_access, ghl_contact_id, secret } = body
-  const access_until = body.access_until && body.access_until !== 'null' && body.access_until !== ''
+  const access_until = (body.access_until && body.access_until !== 'null' && body.access_until !== ''
     ? body.access_until
-    : null
+    : null) ?? defaultAccessUntil(product_access)
 
   const expectedSecret = Deno.env.get('GHL_WEBHOOK_SECRET')
   if (!expectedSecret || !timingSafeEqualStr(String(secret ?? ''), expectedSecret)) {
