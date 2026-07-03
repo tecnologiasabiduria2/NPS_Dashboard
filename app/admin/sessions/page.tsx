@@ -8,9 +8,11 @@ import SendNpsEmailsButton from './SendNpsEmailsButton'
 import { Calendar, Video } from 'lucide-react'
 import { sessionTipoLabel } from '@/lib/sessionTypes'
 import { formatCODateTime } from '@/lib/format'
+import { countPendingNpsEmails } from '@/lib/npsEmail'
 
 export default async function AdminSessionsPage() {
   const supabase = await createClient()
+  const pendingNps = await countPendingNpsEmails()
 
   const [{ data: products }, { data: sessRows }] = await Promise.all([
     supabase.from('products').select('id, title, slug').order('order'),
@@ -107,7 +109,7 @@ export default async function AdminSessionsPage() {
           <Calendar size={22} className="text-brand-400" />
           <h1 className="text-2xl font-bold text-cream">Sesiones en vivo</h1>
         </div>
-        <SendNpsEmailsButton />
+        <SendNpsEmailsButton initialPending={pendingNps} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">

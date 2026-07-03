@@ -53,6 +53,48 @@ async function sendNpsEmail(opts: {
   })
 }
 
+export interface NpsEmailPending {
+  sessionsCount: number
+  recipientsCount: number
+}
+
+// Solo lectura: cuántas sesiones califican ahora mismo (terminaron hace 1-24h,
+// sin correo mandado) y a cuántos destinatarios reales les tocaría (asistentes
+// que aún no calificaron). Para mostrar debajo del botón, sin mandar nada.
+export async function countPendingNpsEmails(): Promise<NpsEmailPending> {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+  const { data: sessions } = await supabaseAdmin
+    .from('live_sessions')
+    .select('id')
+    .eq('is_published', true)
+    .is('nps_email_sent_at', null)
+    .lte('ends_at', oneHourAgo)
+    .gte('ends_at', oneDayAgo)
+
+  let recipientsCount = 0
+  for (const session of sessions ?? []) {
+    const { data: attendance } = await supabaseAdmin
+      .from('live_session_attendance')
+      .select('user_id')
+      .eq('session_id', session.id)
+    const attendeeIds = [...new Set((attendance ?? []).map((a: any) => a.user_id as string))]
+    if (attendeeIds.length === 0) continue
+
+    const { data: already } = await supabaseAdmin
+      .from('nps_responses')
+      .select('user_id')
+      .eq('live_session_id', session.id)
+      .eq('trigger', 'post_sesion')
+      .in('user_id', attendeeIds)
+    const answeredSet = new Set((already ?? []).map((r: any) => r.user_id as string))
+    recipientsCount += attendeeIds.filter(id => !answeredSet.has(id)).length
+  }
+
+  return { sessionsCount: sessions?.length ?? 0, recipientsCount }
+}
+
 export async function runNpsEmailBatch(): Promise<NpsEmailBatchResult> {
   const smtpHost = process.env.SMTP_HOST
   const smtpUser = process.env.SMTP_USER
