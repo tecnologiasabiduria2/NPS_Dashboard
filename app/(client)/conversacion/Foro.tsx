@@ -165,25 +165,32 @@ export default function Foro({ posts, community }: { posts: ForoPost[]; communit
           ))}
         </div>
 
-        {/* Composer */}
-        <div className="rounded-2xl border border-surface-700 bg-surface-850 overflow-hidden mb-6 focus-within:border-brand-600/40 transition-colors">
+        {/* Composer — fondo claro a propósito, para que se note que estás escribiendo (pedido de
+            Diana, 2026-07-03). brand-50 en vez de blanco puro (más tenue, ya es parte de la
+            paleta) + botón en accent (naranja sólido) en vez del terracota apagado de btn-primary,
+            que se veía muy opaco sobre fondo claro. */}
+        <div className="rounded-2xl border border-brand-200/60 bg-brand-50 overflow-hidden mb-6 focus-within:border-accent/60 transition-colors">
           <div className="flex items-start gap-3 p-4">
-            <span className="w-9 h-9 rounded-full bg-brand-700/40 border border-brand-600/30 flex items-center justify-center shrink-0 mt-0.5">
-              <PenLine size={15} className="text-brand-300" />
+            <span className="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center shrink-0 mt-0.5">
+              <PenLine size={15} className="text-white" />
             </span>
             <textarea
               value={body}
               onChange={e => setBody(e.target.value)}
               placeholder="¿En qué estás pensando?"
               rows={3}
-              className="flex-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-sm text-cream placeholder:text-cream-muted resize-none pt-1.5"
+              className="flex-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-sm text-brand-950 placeholder:text-brand-500/70 resize-none pt-1.5"
             />
           </div>
-          <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-surface-700 bg-surface-900/40">
-            <span className="text-xs text-cream-muted">
-              Publicando en <span className="text-cream-dim font-medium">{channelLabel(postTarget)}</span>
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-brand-200/60 bg-brand-100/60">
+            <span className="text-xs text-brand-700">
+              Publicando en <span className="text-brand-800 font-medium">{channelLabel(postTarget)}</span>
             </span>
-            <button onClick={publish} disabled={!body.trim() || posting} className="btn-primary disabled:opacity-40">
+            <button
+              onClick={publish}
+              disabled={!body.trim() || posting}
+              className="bg-accent hover:bg-accent-hover text-white font-medium px-5 py-2.5 rounded-xl transition-all duration-200 text-sm inline-flex items-center gap-2 disabled:opacity-40"
+            >
               {posting ? 'Publicando…' : 'Publicar'}
             </button>
           </div>

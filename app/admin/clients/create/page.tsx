@@ -111,8 +111,12 @@ export default function CreateClientPage() {
 
           <div>
             <label className="label">Teléfono</label>
-            <input type="tel" className="input" placeholder="+57 300 000 0000"
+            <input type="tel" className="input" placeholder="300 000 0000"
               value={form.phone} onChange={e => handle('phone', e.target.value)} />
+            <p className="text-xs text-cream-muted mt-1">
+              Si es de Colombia, va sin indicativo (se asume 57 automático). Si es de otro país,
+              escríbelo con "+" — ej. +1 305 000 0000 — para que el botón de WhatsApp le llegue bien.
+            </p>
           </div>
         </div>
 

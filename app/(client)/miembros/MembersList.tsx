@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, X, MessageCircle } from 'lucide-react'
 import { clsx } from 'clsx'
 
 export interface Member {
@@ -11,6 +11,7 @@ export interface Member {
   joined: string | null
   bio: string | null
   avatarUrl: string | null
+  phone: string | null
 }
 
 function initials(name: string) {
@@ -22,9 +23,21 @@ function joinedLabel(d: string | null) {
   return new Date(d).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// wa.me solo necesita los dígitos (sin '+'). La mayoría de los clientes son
+// colombianos y muchos no digitan el indicativo — por decisión de negocio
+// (2026-07-03), un número de 10 dígitos sin "+" se asume Colombia (57). Si se
+// digitó con "+" (cualquier país), eso se respeta tal cual sin tocarlo.
+function whatsappHref(phone: string): string {
+  const hasCountryCode = phone.trim().startsWith('+')
+  const digits = phone.replace(/\D/g, '')
+  const withCountry = !hasCountryCode && digits.length === 10 ? `57${digits}` : digits
+  return `https://wa.me/${withCountry}`
+}
+
 export default function MembersList({ members }: { members: Member[] }) {
   const [tab, setTab] = useState<'miembros' | 'equipo'>('miembros')
   const [q, setQ] = useState('')
+  const [selected, setSelected] = useState<Member | null>(null)
 
   const equipoRoles = ['admin', 'owner']
   const miembros = members.filter(m => !equipoRoles.includes(m.role))
@@ -76,7 +89,12 @@ export default function MembersList({ members }: { members: Member[] }) {
       ) : (
         <div className="space-y-2.5">
           {filtered.map(m => (
-            <div key={m.id} className="card flex items-start gap-3.5">
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setSelected(m)}
+              className="card flex items-start gap-3.5 w-full text-left hover:border-brand-600/40 transition-colors"
+            >
               <div className="w-11 h-11 rounded-full overflow-hidden bg-brand-700/50 border border-brand-600/30 flex items-center justify-center shrink-0">
                 {m.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -97,8 +115,59 @@ export default function MembersList({ members }: { members: Member[] }) {
                 )}
                 {m.bio && <p className="text-sm text-cream-dim mt-1.5 leading-relaxed">{m.bio}</p>}
               </div>
-            </div>
+            </button>
           ))}
+        </div>
+      )}
+
+      {/* Panel de info del miembro */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelected(null)} />
+          <div className="relative w-full max-w-sm card">
+            <button
+              onClick={() => setSelected(null)}
+              className="absolute top-4 right-4 text-cream-muted hover:text-cream"
+              aria-label="Cerrar"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-brand-700/50 border border-brand-600/30 flex items-center justify-center shrink-0 mb-3">
+                {selected.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={selected.avatarUrl} alt={selected.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-lg font-semibold text-brand-300">{initials(selected.name)}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-semibold text-cream">{selected.name}</p>
+                {equipoRoles.includes(selected.role) && (
+                  <span className="badge-brand">{selected.role === 'owner' ? 'Owner' : 'Admin'}</span>
+                )}
+              </div>
+              {joinedLabel(selected.joined) && (
+                <p className="text-xs text-cream-muted mt-1">Unido {joinedLabel(selected.joined)}</p>
+              )}
+              {selected.bio && (
+                <p className="text-sm text-cream-dim mt-3 leading-relaxed">{selected.bio}</p>
+              )}
+
+              {selected.phone && (
+                <a
+                  href={whatsappHref(selected.phone)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary flex items-center gap-2 mt-5 w-full justify-center"
+                >
+                  <MessageCircle size={15} />
+                  Escribir por WhatsApp
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -27,7 +27,7 @@ export default async function MiembrosPage() {
       const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
       if (!p) continue
       if (!byId.has(p.id)) {
-        byId.set(p.id, { id: p.id, name: p.full_name || 'Miembro', role: p.role || 'client', joined: r.access_started ?? null, bio: null, avatarUrl: null })
+        byId.set(p.id, { id: p.id, name: p.full_name || 'Miembro', role: p.role || 'client', joined: r.access_started ?? null, bio: null, avatarUrl: null, phone: null })
       }
     }
   }
@@ -37,17 +37,17 @@ export default async function MiembrosPage() {
     .from('profiles').select('id, full_name, role, created_at').in('role', ['admin', 'owner'])
   for (const p of (team ?? []) as any[]) {
     if (!byId.has(p.id)) {
-      byId.set(p.id, { id: p.id, name: p.full_name || 'Equipo', role: p.role, joined: p.created_at ?? null, bio: null, avatarUrl: null })
+      byId.set(p.id, { id: p.id, name: p.full_name || 'Equipo', role: p.role, joined: p.created_at ?? null, bio: null, avatarUrl: null, phone: null })
     }
   }
 
-  // bio + avatar (consulta aparte, resiliente si la migración de 5e no corrió).
+  // bio + avatar + telefono (consulta aparte, resiliente si la migración de 5e no corrió).
   const ids = [...byId.keys()]
   if (ids.length) {
-    const { data: extra } = await supabaseAdmin.from('profiles').select('id, bio, avatar_url').in('id', ids)
+    const { data: extra } = await supabaseAdmin.from('profiles').select('id, bio, avatar_url, phone').in('id', ids)
     for (const e of (extra ?? []) as any[]) {
       const m = byId.get(e.id)
-      if (m) { m.bio = e.bio ?? null; m.avatarUrl = e.avatar_url ?? null }
+      if (m) { m.bio = e.bio ?? null; m.avatarUrl = e.avatar_url ?? null; m.phone = e.phone ?? null }
     }
   }
 

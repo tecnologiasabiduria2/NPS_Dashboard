@@ -49,7 +49,6 @@ export default async function SessionsPage({
   const now = Date.now()
   const all = (sessions ?? []).filter(s => { const hf = hfNombreBySession[(s as any).id]; return !hf || myHfNames.has(hf) })
   const upcoming = all.filter(s => new Date(s.ends_at).getTime() >= now)
-  const past = all.filter(s => new Date(s.ends_at).getTime() < now).reverse()
 
   // Descripción en consulta aparte: si la migración aún no corrió, degrada (sin
   // descripción) sin romper la página.
@@ -135,27 +134,6 @@ export default async function SessionsPage({
             )}
           </div>
 
-          {past.length > 0 && (
-            <div>
-              <p className="section-label">Eventos pasados</p>
-              <div className="space-y-2">
-                {past.slice(0, 8).map(s => {
-                  return (
-                    <div key={s.id} className="card-sm flex items-center gap-3 opacity-60">
-                      <div className="text-center shrink-0 w-10">
-                        <p className="text-lg font-semibold text-cream-dim leading-none">{formatCODayNum(s.starts_at)}</p>
-                        <p className="text-[10px] text-cream-muted uppercase">{formatCOMonthShort(s.starts_at)}</p>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-cream-dim leading-snug truncate">{sessionTipoLabel(s.tipo)}</p>
-                        <p className="text-xs text-cream-muted">terminada</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
         </aside>
 
         {/* Calendario grande */}

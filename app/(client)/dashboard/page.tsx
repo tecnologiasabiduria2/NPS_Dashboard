@@ -142,6 +142,13 @@ export default async function DashboardPage({
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Bienvenido'
   const productTitle = (access as any)?.products?.title ?? ''
 
+  // NPS promedio del cliente (todas sus respuestas). El desglose 1 a 1 vive en
+  // /mi-ruta; acá solo el numero general, a pedido de Diana (reunion 2026-07-03).
+  const npsScores = [...npsPorMes.values()]
+  const npsPromedio = npsScores.length > 0
+    ? Math.round((npsScores.reduce((a, b) => a + b, 0) / npsScores.length) * 10) / 10
+    : null
+
   // Estado efectivo del mes: si no hay fila, se considera "no_elegido".
   const estadoMes = hiperfocoMes?.estado ?? 'no_elegido'
   const tituloMes = hiperfocoMes?.hiperfocos?.title ?? null
@@ -162,21 +169,60 @@ export default async function DashboardPage({
 
       {/* Hero */}
       <div className="mb-10">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-cream-muted text-sm mb-1">{productTitle}</p>
             <h1 className="text-3xl font-semibold text-cream">Hola, {firstName}</h1>
           </div>
-          {access?.access_until && (
-            <div className="text-right">
-              <p className="text-xs text-cream-muted">Acceso hasta</p>
-              <p className="text-sm text-cream font-medium">
-                {formatDateOnly(access.access_until, { day: 'numeric', month: 'long' })}
-              </p>
-            </div>
-          )}
+          <div className="flex items-start gap-6 shrink-0">
+            {npsPromedio !== null && (
+              <div className="text-right">
+                <p className="text-xs text-cream-muted">NPS promedio</p>
+                <p className={`text-sm font-medium ${npsColorClass(npsPromedio)}`}>{npsPromedio}</p>
+              </div>
+            )}
+            {access?.access_until && (
+              <div className="text-right">
+                <p className="text-xs text-cream-muted">Acceso hasta</p>
+                <p className="text-sm text-cream font-medium">
+                  {formatDateOnly(access.access_until, { day: 'numeric', month: 'long' })}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Próximo evento en vivo */}
+      {nextSession && (
+        <div
+          className="card mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          style={{ background: 'linear-gradient(135deg, #1A1215 0%, #2A0E07 100%)' }}
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+              <Video size={18} className="text-accent" />
+            </div>
+            <div>
+              <p className="section-label !mb-1">Próximo evento</p>
+              <p className="text-cream font-medium leading-snug">{nextSession.title}</p>
+              <p className="text-sm text-cream-dim mt-1 inline-flex items-center gap-1.5 capitalize">
+                <Calendar size={12} className="text-sand" />
+                {formatCODateLong(nextSession.starts_at)} · {formatCOTime(nextSession.starts_at)}
+                <span className="text-cream-muted"> (hora Colombia)</span>
+              </p>
+            </div>
+          </div>
+          <a
+            href={`/api/sessions/${nextSession.id}/join`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary shrink-0 self-start sm:self-auto"
+          >
+            Unirme al Zoom <ArrowRight size={14} />
+          </a>
+        </div>
+      )}
 
       {/* Hiperfoco del mes */}
       <div
@@ -268,37 +314,6 @@ export default async function DashboardPage({
           </div>
         )}
       </div>
-
-      {/* Próximo evento en vivo */}
-      {nextSession && (
-        <div
-          className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-          style={{ background: 'linear-gradient(135deg, #1A1215 0%, #2A0E07 100%)' }}
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-11 h-11 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
-              <Video size={18} className="text-accent" />
-            </div>
-            <div>
-              <p className="section-label !mb-1">Próximo evento</p>
-              <p className="text-cream font-medium leading-snug">{nextSession.title}</p>
-              <p className="text-sm text-cream-dim mt-1 inline-flex items-center gap-1.5 capitalize">
-                <Calendar size={12} className="text-sand" />
-                {formatCODateLong(nextSession.starts_at)} · {formatCOTime(nextSession.starts_at)}
-                <span className="text-cream-muted"> (hora Colombia)</span>
-              </p>
-            </div>
-          </div>
-          <a
-            href={`/api/sessions/${nextSession.id}/join`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary shrink-0 self-start sm:self-auto"
-          >
-            Unirme al Zoom <ArrowRight size={14} />
-          </a>
-        </div>
-      )}
     </div>
   )
 }
