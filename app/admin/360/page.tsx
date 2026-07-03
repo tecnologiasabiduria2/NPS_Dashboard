@@ -7,6 +7,7 @@ import { formatMonthLong } from '@/lib/format'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import ProductFilter from './ProductFilter'
 import CsTargetEditor from './CsTargetEditor'
+import MonthFilter from './MonthFilter'
 
 // ============================================================================
 // VISTA 360 EJECUTIVA — Diana (rol owner). Boceto: sabiduria_dashboard_360_diana.html
@@ -41,9 +42,9 @@ const EXPECTED_MONTHS = 6 // tiempo esperado por hiperfoco antes de cambiar de t
 export default async function Vista360Page({
   searchParams,
 }: {
-  searchParams: Promise<{ producto?: string }>
+  searchParams: Promise<{ producto?: string; cs_mes?: string }>
 }) {
-  const { producto: productoFilter = '' } = await searchParams
+  const { producto: productoFilter = '', cs_mes: csMesParam } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -65,6 +66,18 @@ export default async function Vista360Page({
 
   const periodoProximo = periodoKey(1)
 
+  // Filtro de mes para "Sesiones 1:1 por CS" (independiente del resto de la página,
+  // que sigue siempre en el mes actual). Últimos 6 meses + el actual, más reciente primero.
+  const csMesOptions = Array.from({ length: 6 }, (_, i) => {
+    const p = periodoKey(-i)
+    return { value: p.slice(0, 7), label: formatMonthLong(p) }
+  })
+  const csMesSel = csMesOptions.find(o => o.value === csMesParam)?.value ?? periodoActual.slice(0, 7)
+  const csMesPeriodo = `${csMesSel}-01`
+  const csMesPeriodoNextDate = new Date(`${csMesPeriodo}T00:00:00`)
+  csMesPeriodoNextDate.setMonth(csMesPeriodoNextDate.getMonth() + 1)
+  const csMesPeriodoNext = `${csMesPeriodoNextDate.getFullYear()}-${String(csMesPeriodoNextDate.getMonth() + 1).padStart(2, '0')}-01`
+
   const [
     { data: activos },
     { data: hiperfocos },
@@ -84,21 +97,21 @@ export default async function Vista360Page({
       .limit(2000),
     supabase.from('client_flags').select('user_id').eq('type', 'bandera').eq('status', 'abierta'),
     supabase.from('nps_responses').select('user_id, score, created_at').limit(2000),
-    // HTML4: clientes con CS asignado este mes
+    // HTML4: clientes con CS asignado en el mes seleccionado (filtro independiente, csMesPeriodo)
     supabase
       .from('user_hiperfoco_mes')
       .select('user_id, cs_id')
-      .eq('periodo', periodoActual)
+      .eq('periodo', csMesPeriodo)
       .not('cs_id', 'is', null),
-    // HTML4 + B15: sesiones 1:1 REALIZADAS este mes = coaching_notes (notas + grabación
-    // que el coach registra). Antes se contaba live_sessions individual (agendadas);
+    // HTML4 + B15: sesiones 1:1 REALIZADAS en el mes seleccionado = coaching_notes (notas +
+    // grabación que el coach registra). Antes se contaba live_sessions individual (agendadas);
     // la fuente de verdad del 1:1 realizado es coaching_notes. admin_id = el CS que la
     // registró; user_id = el cliente atendido.
     supabase
       .from('coaching_notes')
       .select('user_id, admin_id, session_date')
-      .gte('session_date', periodoActual)
-      .lt('session_date', periodoProximo),
+      .gte('session_date', csMesPeriodo)
+      .lt('session_date', csMesPeriodoNext),
   ])
 
   // HTML4: perfiles de CS y clientes sin 1:1 (query secuencial sobre IDs derivados)
@@ -129,11 +142,11 @@ export default async function Vista360Page({
   const clientsByCS = new Map<string, number>()
   for (const r of uhmCSRows) clientsByCS.set(r.cs_id, (clientsByCS.get(r.cs_id) ?? 0) + 1)
 
-  // HTML4: NPS promedio por CS (NPS de este mes cruzado con cs_id del cliente)
+  // HTML4: NPS promedio por CS (NPS del mes seleccionado cruzado con cs_id del cliente)
   const csOfClient = new Map<string, string>(uhmCSRows.map((r: any) => [r.user_id as string, r.cs_id as string]))
   const npsByCS = new Map<string, { sum: number; count: number }>()
   for (const r of (npsRows ?? []) as any[]) {
-    if ((r.created_at as string).slice(0, 7) !== periodoActual.slice(0, 7)) continue
+    if ((r.created_at as string).slice(0, 7) !== csMesSel) continue
     const csId = csOfClient.get(r.user_id as string)
     if (!csId) continue
     const d = npsByCS.get(csId) ?? { sum: 0, count: 0 }
@@ -521,9 +534,12 @@ export default async function Vista360Page({
 
       {/* Bloque 1: Sesiones 1:1 por CS */}
       <div className="card mb-4">
-        <div className="flex items-baseline justify-between mb-3">
-          <p className="text-sm font-medium text-cream">Sesiones 1:1 completadas · {formatMonthLong(periodoActual)}</p>
-          <CsTargetEditor value={csTarget} />
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <p className="text-sm font-medium text-cream">Sesiones 1:1 completadas · {formatMonthLong(csMesPeriodo)}</p>
+          <div className="flex items-center gap-2">
+            <MonthFilter value={csMesSel} options={csMesOptions} />
+            <CsTargetEditor value={csTarget} />
+          </div>
         </div>
         {csList.length === 0 ? (
           <p className="text-sm text-cream-muted">Sin CS asignados a clientes este mes.</p>
@@ -587,10 +603,10 @@ export default async function Vista360Page({
         <div className="card mb-4" style={{ borderColor: 'rgba(226,75,74,0.2)' }}>
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle size={15} className="text-red-400 shrink-0" />
-            <p className="text-sm font-medium text-red-400">Clientes sin 1:1 este mes</p>
+            <p className="text-sm font-medium text-red-400">Clientes sin 1:1 · {formatMonthLong(csMesPeriodo)}</p>
           </div>
           <p className="text-xs text-cream-muted mb-3">
-            {totalSin1x1} empresario{totalSin1x1 !== 1 ? 's' : ''} con CS asignado no ha{totalSin1x1 !== 1 ? 'n' : ''} tenido su sesión individual este mes
+            {totalSin1x1} empresario{totalSin1x1 !== 1 ? 's' : ''} con CS asignado no ha{totalSin1x1 !== 1 ? 'n' : ''} tenido su sesión individual ese mes
           </p>
           <div className="space-y-1.5">
             <div className="grid grid-cols-[1fr_130px] gap-3 text-xs text-cream-muted pb-2 border-b border-surface-700">

@@ -11,6 +11,8 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(true)
   const [bio, setBio] = useState('')
+  const [instagram, setInstagram] = useState('')
+  const [website, setWebsite] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -39,6 +41,8 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
     setSubmitting(true); setError(null)
     const fd = new FormData()
     fd.set('bio', bio)
+    fd.set('instagram', instagram)
+    fd.set('website', website)
     if (file) fd.set('avatar', file)
     const res = await fetch('/api/profile/onboarding', { method: 'POST', body: fd })
     setSubmitting(false)
@@ -102,6 +106,21 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
           rows={4}
           className="input resize-none"
         />
+
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <input
+            value={instagram}
+            onChange={e => setInstagram(e.target.value)}
+            placeholder="Instagram (opcional)"
+            className="input"
+          />
+          <input
+            value={website}
+            onChange={e => setWebsite(e.target.value)}
+            placeholder="Página web (opcional)"
+            className="input"
+          />
+        </div>
 
         {error && <p className="text-xs text-red-400 mt-3">{error}</p>}
 

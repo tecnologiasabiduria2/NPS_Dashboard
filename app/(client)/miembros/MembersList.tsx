@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Search, X, MessageCircle } from 'lucide-react'
+import { Search, X, MessageCircle, Instagram, Globe } from 'lucide-react'
 import { clsx } from 'clsx'
 
 export interface Member {
@@ -12,6 +12,22 @@ export interface Member {
   bio: string | null
   avatarUrl: string | null
   phone: string | null
+  instagram: string | null
+  website: string | null
+}
+
+// Acepta handle ("@negocio"), usuario suelto o URL completa; siempre devuelve
+// un link válido a instagram.com.
+function instagramHref(value: string): string {
+  const v = value.trim()
+  if (v.startsWith('http')) return v
+  return `https://instagram.com/${v.replace(/^@/, '')}`
+}
+
+// Acepta con o sin protocolo.
+function websiteHref(value: string): string {
+  const v = value.trim()
+  return v.startsWith('http') ? v : `https://${v}`
 }
 
 function initials(name: string) {
@@ -155,12 +171,37 @@ export default function MembersList({ members }: { members: Member[] }) {
                 <p className="text-sm text-cream-dim mt-3 leading-relaxed">{selected.bio}</p>
               )}
 
+              {(selected.instagram || selected.website) && (
+                <div className="flex flex-col items-center gap-1.5 mt-3">
+                  {selected.instagram && (
+                    <a
+                      href={instagramHref(selected.instagram)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-cream-dim hover:text-accent transition-colors"
+                    >
+                      <Instagram size={14} /> Instagram
+                    </a>
+                  )}
+                  {selected.website && (
+                    <a
+                      href={websiteHref(selected.website)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-cream-dim hover:text-accent transition-colors"
+                    >
+                      <Globe size={14} /> Página web
+                    </a>
+                  )}
+                </div>
+              )}
+
               {selected.phone && (
                 <a
                   href={whatsappHref(selected.phone)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn-primary flex items-center gap-2 mt-5 w-full justify-center"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-2.5 rounded-xl transition-all duration-200 text-sm flex items-center gap-2 mt-5 w-full justify-center"
                 >
                   <MessageCircle size={15} />
                   Escribir por WhatsApp

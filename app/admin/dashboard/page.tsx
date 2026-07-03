@@ -1,11 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { AlertTriangle, Users, TrendingDown, Clock, ArrowRight, UserPlus } from 'lucide-react'
+import { AlertTriangle, Users, TrendingDown, Clock, ArrowRight, UserPlus, Star } from 'lucide-react'
+import { formatMonthLong } from '@/lib/format'
+
+function npsColorClass(score: number) {
+  if (score >= 8) return 'text-emerald-400'
+  if (score >= 6) return 'text-amber-400'
+  return 'text-red-400'
+}
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
   const today = new Date().toISOString().split('T')[0]
   const soonDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const periodoActual = `${today.slice(0, 7)}-01`
 
   const [
     { count: activeCount },
@@ -13,6 +21,7 @@ export default async function AdminDashboardPage() {
     { count: noDateCount },
     { count: soonCount },
     { data: alerts },
+    { data: npsMesRaw },
   ] = await Promise.all([
     supabase.from('user_access').select('*', { count: 'exact', head: true }).eq('status', 'active'),
     supabase.from('user_access').select('*', { count: 'exact', head: true }).eq('status', 'inactive'),
@@ -24,7 +33,25 @@ export default async function AdminDashboardPage() {
       .or(`access_until.is.null,access_until.lt.${today}`)
       .order('access_until', { ascending: true })
       .limit(8),
+    // NPS del mes en curso, por hiperfoco — resumen simple (el detalle completo vive en /admin/360).
+    supabase
+      .from('nps_responses')
+      .select('score, hiperfocos(title)')
+      .gte('created_at', periodoActual)
+      .not('hiperfoco_id', 'is', null),
   ])
+
+  const npsByHf = new Map<string, { sum: number; count: number }>()
+  for (const r of (npsMesRaw ?? []) as any[]) {
+    const title = (Array.isArray(r.hiperfocos) ? r.hiperfocos[0]?.title : r.hiperfocos?.title) ?? 'Sin hiperfoco'
+    const d = npsByHf.get(title) ?? { sum: 0, count: 0 }
+    d.sum += r.score
+    d.count++
+    npsByHf.set(title, d)
+  }
+  const npsList = [...npsByHf.entries()]
+    .map(([title, d]) => ({ title, avg: Math.round((d.sum / d.count) * 10) / 10, count: d.count }))
+    .sort((a, b) => b.count - a.count)
 
   return (
     <div className="max-w-5xl">
@@ -54,6 +81,34 @@ export default async function AdminDashboardPage() {
             <p className="text-xs text-cream-muted mt-1">{label}</p>
           </div>
         ))}
+      </div>
+
+      {/* NPS por módulo (resumen simple; el detalle completo está en /admin/360) */}
+      <div className="card mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Star size={16} className="text-amber-400" />
+            <p className="text-sm font-medium text-cream">NPS por módulo · {formatMonthLong(periodoActual)}</p>
+          </div>
+          <Link href="/admin/360" className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
+            Ver detalle <ArrowRight size={12} />
+          </Link>
+        </div>
+        {npsList.length === 0 ? (
+          <p className="text-sm text-cream-muted text-center py-4">Sin respuestas de NPS este mes todavía.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {npsList.map(row => (
+              <div key={row.title} className="bg-surface-800 rounded-xl px-4 py-3">
+                <p className="text-xs text-cream-muted truncate">{row.title}</p>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <p className={`text-xl font-bold ${npsColorClass(row.avg)}`}>{row.avg}</p>
+                  <p className="text-xs text-cream-muted">({row.count})</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Alertas */}

@@ -62,7 +62,7 @@ export default async function MapPage() {
           <div key={label}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-cream-dim">{label}</h2>
-              <span className="text-xs text-cream-muted bg-surface-800 px-2 py-0.5 rounded-full">{items.length}</span>
+              <span className="text-base font-bold text-cream bg-brand-600/25 px-3 py-1 rounded-full min-w-[2rem] text-center">{items.length}</span>
             </div>
             <div className="space-y-2">
               {items.length === 0

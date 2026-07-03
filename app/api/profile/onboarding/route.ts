@@ -13,10 +13,14 @@ export async function POST(req: NextRequest) {
   if (!form) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
 
   const bio = String(form.get('bio') ?? '').trim()
+  const instagram = String(form.get('instagram') ?? '').trim()
+  const website = String(form.get('website') ?? '').trim()
   const file = form.get('avatar')
 
   const update: Record<string, string> = {}
   if (bio) update.bio = bio
+  if (instagram) update.instagram = instagram
+  if (website) update.website = website
 
   if (file && file instanceof File && file.size > 0) {
     if (!file.type.startsWith('image/')) {
