@@ -4,6 +4,7 @@ import SessionForm from './SessionForm'
 import DeleteSessionButton from './DeleteSessionButton'
 import CopyNpsLink from './CopyNpsLink'
 import CopyJoinLink from './CopyJoinLink'
+import SendNpsEmailsButton from './SendNpsEmailsButton'
 import { Calendar, Video } from 'lucide-react'
 import { sessionTipoLabel } from '@/lib/sessionTypes'
 import { formatCODateTime } from '@/lib/format'
@@ -101,9 +102,12 @@ export default async function AdminSessionsPage() {
 
   return (
     <div className="max-w-6xl">
-      <div className="flex items-center gap-2 mb-8">
-        <Calendar size={22} className="text-brand-400" />
-        <h1 className="text-2xl font-bold text-cream">Sesiones en vivo</h1>
+      <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Calendar size={22} className="text-brand-400" />
+          <h1 className="text-2xl font-bold text-cream">Sesiones en vivo</h1>
+        </div>
+        <SendNpsEmailsButton />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">

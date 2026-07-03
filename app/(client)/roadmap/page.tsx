@@ -53,7 +53,7 @@ export default async function MiContenidoPage() {
     accessibleIds.size > 0
       ? supabase
           .from('recordings')
-          .select('id, hiperfoco_id, tipo, title, type')
+          .select('id, hiperfoco_id, tipo, title, type, fathom_share_id, storage_path')
           .in('hiperfoco_id', [...accessibleIds])
           .in('tipo', ['inmersion', 'mentoria'])
           .eq('is_published', true)
@@ -62,7 +62,7 @@ export default async function MiContenidoPage() {
     allProdHfIds.length > 0
       ? supabase
           .from('recordings')
-          .select('id, hiperfoco_id, tipo, title, type')
+          .select('id, hiperfoco_id, tipo, title, type, fathom_share_id, storage_path')
           .in('hiperfoco_id', allProdHfIds)
           .in('tipo', [...TRANSVERSAL_TIPOS])
           .eq('is_published', true)
@@ -95,7 +95,14 @@ export default async function MiContenidoPage() {
     completedSet = new Set((progress ?? []).map((p: any) => p.recording_id))
   }
 
-  const toCardRecs = (recs: any[]) => recs.map(r => ({ id: r.id, title: r.title, type: r.type }))
+  const toCardRecs = (recs: any[]) => recs.map(r => ({
+    id: r.id,
+    title: r.title,
+    type: r.type,
+    fathom_share_id: r.fathom_share_id ?? null,
+    storage_path: r.storage_path ?? null,
+    completed: completedSet.has(r.id),
+  }))
   const countDone = (recs: any[]) => recs.filter(r => completedSet.has(r.id)).length
 
   // Armar cards: hiperfoco del mes (destacado) → anteriores (B12) → SG → EC
@@ -160,7 +167,7 @@ export default async function MiContenidoPage() {
         </div>
       )}
 
-      <ContentCards cards={cards} />
+      <ContentCards cards={cards} userId={user.id} />
     </div>
   )
 }

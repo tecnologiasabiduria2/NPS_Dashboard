@@ -72,22 +72,19 @@ export default async function RecordingPage({ params }: Props) {
   const prevRec = idx > 0 ? siblingList[idx - 1] : null
   const nextRec = idx >= 0 && idx < siblingList.length - 1 ? siblingList[idx + 1] : null
 
-  // Progreso (solo para videos)
-  let initialCompleted = false
-  if (rec.type === 'video') {
-    const { data: progress } = await supabase
-      .from('recording_progress')
-      .select('completed')
-      .eq('user_id', user.id)
-      .eq('recording_id', id)
-      .maybeSingle()
-    initialCompleted = progress?.completed ?? false
-  }
+  // Progreso (video y documento — cualquier contenido se puede marcar como visto)
+  const { data: progress } = await supabase
+    .from('recording_progress')
+    .select('completed')
+    .eq('user_id', user.id)
+    .eq('recording_id', id)
+    .maybeSingle()
+  const initialCompleted = progress?.completed ?? false
 
   const tipoLabel = contentTipoLabel(rec.tipo)
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-3xl mx-auto">
       <div className="mb-6">
         <p className="text-xs text-cream-muted uppercase tracking-wider mb-1">
           {hf.title} · {tipoLabel}
@@ -113,7 +110,14 @@ export default async function RecordingPage({ params }: Props) {
       {/* Documento */}
       {rec.type === 'document' && rec.storage_path && (
         <div className="card mb-6">
-          <p className="text-sm font-medium text-cream-dim mb-4">📎 Material</p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-cream-dim">📎 Material</p>
+            <VideoMark
+              recordingId={id}
+              userId={user.id}
+              initialCompleted={initialCompleted}
+            />
+          </div>
           <a
             href={`/api/download?path=${encodeURIComponent(rec.storage_path)}`}
             target="_blank"
