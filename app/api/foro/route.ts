@@ -35,6 +35,12 @@ export async function POST(req: NextRequest) {
     const text = String(body?.body ?? '').trim()
     const post_id = body?.post_id
     if (!text || !post_id) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+    const pid = await activeProductId(user.id)
+    if (!pid) return NextResponse.json({ error: 'Sin acceso activo' }, { status: 403 })
+    const { data: post } = await supabaseAdmin.from('foro_posts').select('product_id').eq('id', post_id).maybeSingle()
+    if (!post || (post as { product_id?: string }).product_id !== pid) {
+      return NextResponse.json({ error: 'Post no encontrado' }, { status: 404 })
+    }
     const { error } = await supabaseAdmin.from('foro_comments').insert({ post_id, user_id: user.id, body: text })
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     return NextResponse.json({ ok: true })
@@ -43,6 +49,12 @@ export async function POST(req: NextRequest) {
   if (action === 'like') {
     const post_id = body?.post_id
     if (!post_id) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+    const pid = await activeProductId(user.id)
+    if (!pid) return NextResponse.json({ error: 'Sin acceso activo' }, { status: 403 })
+    const { data: post } = await supabaseAdmin.from('foro_posts').select('product_id').eq('id', post_id).maybeSingle()
+    if (!post || (post as { product_id?: string }).product_id !== pid) {
+      return NextResponse.json({ error: 'Post no encontrado' }, { status: 404 })
+    }
     const { data: existing } = await supabaseAdmin
       .from('foro_likes').select('post_id').eq('post_id', post_id).eq('user_id', user.id).maybeSingle()
     if (existing) {

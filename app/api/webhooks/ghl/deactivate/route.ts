@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { timingSafeEqualStr } from '@/lib/timingSafeEqual'
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-ghl-secret')
-  if (secret !== process.env.GHL_WEBHOOK_SECRET) {
+  const expected = process.env.GHL_WEBHOOK_SECRET
+  const secret = req.headers.get('x-ghl-secret') ?? ''
+  if (!expected || !timingSafeEqualStr(secret, expected)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

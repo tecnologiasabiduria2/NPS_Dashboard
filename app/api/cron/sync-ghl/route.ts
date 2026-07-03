@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { updateContactFields } from '@/lib/ghl/api'
+import { timingSafeEqualStr } from '@/lib/timingSafeEqual'
 
 // ============================================================================
 // SYNC INVERSO progreso → GHL  (Fase 7 del plan original · Bloque 4)
@@ -62,8 +63,8 @@ async function run(req: NextRequest) {
       { status: 501 }
     )
   }
-  const provided = req.headers.get('x-cron-secret') ?? req.nextUrl.searchParams.get('secret')
-  if (provided !== secret) {
+  const provided = req.headers.get('x-cron-secret') ?? ''
+  if (!timingSafeEqualStr(provided, secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

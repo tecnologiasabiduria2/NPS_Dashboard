@@ -1,5 +1,15 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
+// Compara sin filtrar por timing cuanto coincide (evita side-channel en el secreto).
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let result = 0
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return result === 0
+}
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
@@ -36,7 +46,7 @@ Deno.serve(async (req) => {
     : null
 
   const expectedSecret = Deno.env.get('GHL_WEBHOOK_SECRET')
-  if (!expectedSecret || secret !== expectedSecret) {
+  if (!expectedSecret || !timingSafeEqualStr(String(secret ?? ''), expectedSecret)) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401, headers: { 'Content-Type': 'application/json' }
     })
