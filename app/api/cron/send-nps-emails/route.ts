@@ -16,6 +16,13 @@ import { runNpsEmailBatch } from '@/lib/npsEmail'
 //   crontab del VPS (ejemplo, cada 30 min):
 //     */30 * * * * curl -fsS -H "x-cron-secret: $CRON_SECRET" \
 //       https://vip.sabiduriaempresarial.com/api/cron/send-nps-emails > /dev/null
+//
+// 2026-07-03 (noche): con pocos clientes, mandar los correos y ESPERAR la
+// respuesta no se notaba. Con más volumen, nginx llegó a cortar la conexión
+// por tardanza (timeout) — el trabajo probablemente seguía corriendo igual,
+// pero es frágil. Ahora este endpoint responde de inmediato ("started") y el
+// envío real sigue en segundo plano; el resultado queda en los logs del
+// servicio (journalctl -u ventra-platform), no en la respuesta HTTP.
 // ============================================================================
 
 export async function POST(req: NextRequest) {
@@ -35,13 +42,16 @@ async function run(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const result = await runNpsEmailBatch()
-  if (!result.configured) {
-    return NextResponse.json(
-      { error: 'RESEND_API_KEY / RESEND_FROM_EMAIL no configuradas — no se puede mandar correo.' },
-      { status: 501 }
-    )
-  }
+  // Fire-and-forget: no se espera el resultado antes de responder.
+  runNpsEmailBatch()
+    .then(result => {
+      if (!result.configured) {
+        console.error('[cron/send-nps-emails] RESEND_API_KEY / RESEND_FROM_EMAIL no configuradas')
+      } else {
+        console.log('[cron/send-nps-emails]', JSON.stringify(result))
+      }
+    })
+    .catch(err => console.error('[cron/send-nps-emails] fallo:', err))
 
-  return NextResponse.json(result)
+  return NextResponse.json({ ok: true, started: true })
 }
