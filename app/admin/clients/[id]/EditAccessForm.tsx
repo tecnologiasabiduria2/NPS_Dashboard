@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from '@/lib/toast'
 
 interface Props {
   userId: string
@@ -30,9 +31,12 @@ export default function EditAccessForm({ userId, currentDate, ghlContactId, stat
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      setError(data?.error ?? 'Error al guardar. Intenta de nuevo.')
+      const msg = data?.error ?? 'Error al guardar. Intenta de nuevo.'
+      setError(msg)
+      toast.error(msg)
     } else {
       setSaved(true)
+      toast.success('Acceso actualizado y sincronizado con GHL.')
       router.refresh()
     }
     setLoading(false)

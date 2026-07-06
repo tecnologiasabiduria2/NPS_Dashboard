@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Flag, Star } from 'lucide-react'
 import { formatDateOnly } from '@/lib/format'
+import { toast } from '@/lib/toast'
 
 interface FlagRow {
   id: string
@@ -28,9 +29,12 @@ export default function FlagsList({ flags }: { flags: FlagRow[] }) {
     setBusyId(null)
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      setError(data.error ?? 'Error al resolver.')
+      const msg = data.error ?? 'Error al resolver.'
+      setError(msg)
+      toast.error(msg)
       return
     }
+    toast.success('Resuelto.')
     router.refresh()
   }
 

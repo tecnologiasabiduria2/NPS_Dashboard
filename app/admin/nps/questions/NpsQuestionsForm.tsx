@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { NpsCopy } from '@/lib/nps'
 import type { NpsTrigger } from '@/types'
+import { toast } from '@/lib/toast'
 
 interface Props {
   trigger: NpsTrigger
@@ -41,13 +42,16 @@ export default function NpsQuestionsForm({ trigger, label, initial }: Props) {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      setError(data.error ?? 'Error al guardar.')
+      const msg = data.error ?? 'Error al guardar.'
+      setError(msg)
+      toast.error(msg)
       setLoading(false)
       return
     }
 
     setLoading(false)
     setSaved(true)
+    toast.success('Preguntas guardadas.')
     router.refresh()
     setTimeout(() => setSaved(false), 2500)
   }

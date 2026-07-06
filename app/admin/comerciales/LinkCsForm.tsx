@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from '@/lib/toast'
 
 interface LocalProfile {
   id: string
@@ -37,9 +38,12 @@ export default function LinkCsForm({
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error ?? 'Error al vincular')
       }
+      toast.success(profile_id ? 'Business Coach vinculado.' : 'Vínculo eliminado.')
       router.refresh()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al vincular')
+      const msg = e instanceof Error ? e.message : 'Error al vincular'
+      setError(msg)
+      toast.error(msg)
     } finally {
       setSaving(false)
     }

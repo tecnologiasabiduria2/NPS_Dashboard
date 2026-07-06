@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarPlus, CheckCircle2, Trash2 } from 'lucide-react'
+import { CalendarPlus, Trash2 } from 'lucide-react'
 import { SESSION_TIPOS } from '@/lib/sessionTypes'
 import { coLocalToISO } from '@/lib/format'
+import { toast } from '@/lib/toast'
 
 // Suma horas a un valor de <input datetime-local> manteniendo la hora de pared.
 function addHoursLocal(localStr: string, hours: number): string {
@@ -56,17 +57,16 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
   const [linkMode, setLinkMode] = useState<LinkMode>('unico')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
   function set<K extends keyof typeof f>(key: K, value: (typeof f)[K]) {
     setF(prev => ({ ...prev, [key]: value }))
-    setSuccess(''); setError('')
+    setError('')
   }
 
   // Al cambiar el tipo, si el link es "recurrente" trae el link fijo de ese tipo.
   function setTipo(value: string) {
     setF(prev => ({ ...prev, tipo: value, zoom_url: linkMode === 'recurrente' ? (recurringLinks[value] ?? '') : prev.zoom_url }))
-    setSuccess(''); setError('')
+    setError('')
   }
 
   // Cambio de modo de link: recurrente → trae el link del tipo; pendiente → vacío.
@@ -76,7 +76,7 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
       ...prev,
       zoom_url: mode === 'recurrente' ? (recurringLinks[prev.tipo] ?? '') : mode === 'pendiente' ? '' : prev.zoom_url,
     }))
-    setSuccess(''); setError('')
+    setError('')
   }
 
   // Al fijar/cambiar el inicio, el fin se recalcula SIEMPRE a +2h (se puede
@@ -84,11 +84,11 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
   // cambio de inicio).
   function setStart(value: string) {
     setF(prev => ({ ...prev, starts_at: value, ends_at: value ? addHoursLocal(value, 2) : prev.ends_at }))
-    setSuccess(''); setError('')
+    setError('')
   }
 
   function pickSession(sessionId: string) {
-    if (!sessionId) { setF({ ...EMPTY }); setLinkMode('unico'); setSuccess(''); setError(''); return }
+    if (!sessionId) { setF({ ...EMPTY }); setLinkMode('unico'); setError(''); return }
     const s = sessions.find(x => x.id === sessionId)
     if (!s) return
     setF({
@@ -106,12 +106,12 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
     // Inferir el modo de link de la sesión existente.
     const rl = recurringLinks[s.tipo || 'inmersion_1']
     setLinkMode(!s.zoom_url ? 'pendiente' : (rl && s.zoom_url === rl ? 'recurrente' : 'unico'))
-    setSuccess(''); setError('')
+    setError('')
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true); setError(''); setSuccess('')
+    setLoading(true); setError('')
     const res = await fetch('/api/admin/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -132,20 +132,26 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
     })
     const data = await res.json().catch(() => ({}))
     setLoading(false)
-    if (!res.ok) { setError(data.error ?? 'No se pudo guardar la sesión'); return }
-    setSuccess(f.sessionId ? 'Sesión actualizada.' : 'Sesión creada.')
+    if (!res.ok) {
+      const msg = data.error ?? 'No se pudo guardar la sesión'
+      setError(msg); toast.error(msg); return
+    }
+    toast.success(f.sessionId ? 'Sesión actualizada.' : 'Sesión creada.')
     setF({ ...EMPTY }); setLinkMode('unico')
     router.refresh()
   }
 
   async function remove() {
     if (!f.sessionId || !confirm('¿Eliminar esta sesión?')) return
-    setLoading(true); setError(''); setSuccess('')
+    setLoading(true); setError('')
     const res = await fetch(`/api/admin/sessions?id=${f.sessionId}`, { method: 'DELETE' })
     const data = await res.json().catch(() => ({}))
     setLoading(false)
-    if (!res.ok) { setError(data.error ?? 'No se pudo eliminar'); return }
-    setSuccess('Sesión eliminada.')
+    if (!res.ok) {
+      const msg = data.error ?? 'No se pudo eliminar'
+      setError(msg); toast.error(msg); return
+    }
+    toast.success('Sesión eliminada.')
     setF({ ...EMPTY })
     router.refresh()
   }
@@ -260,12 +266,6 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
             <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
-        {success && (
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-emerald-400" />
-            <p className="text-emerald-300 text-sm">{success}</p>
           </div>
         )}
 

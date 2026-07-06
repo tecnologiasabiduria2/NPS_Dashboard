@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { CONTENT_TIPOS, contentTipoLabel } from '@/lib/sessionTypes'
+import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 import LessonForm, { type HiperfocoConTipos } from './LessonForm'
 
 export default async function ContentPage() {
@@ -47,10 +48,10 @@ export default async function ContentPage() {
 
       {/* Listado existente — Producto → Hiperfoco → Tipo → Grabaciones */}
       <div className="space-y-8">
-        {((products ?? []) as any[]).map(product => {
+        {((products ?? []) as any[]).map((product, i) => {
           const hfs = hiperfocosByProduct.get(product.id) ?? []
           return (
-            <div key={product.id} className="card">
+            <div key={product.id} className="card animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
               <h2 className="text-lg font-semibold text-cream mb-4">{product.title}</h2>
               {hfs.length === 0 ? (
                 <p className="text-sm text-cream-muted text-center py-4">Sin hiperfocos activos</p>
@@ -58,9 +59,19 @@ export default async function ContentPage() {
                 <div className="space-y-5">
                   {hfs.map(h => {
                     const tiposConContenido = h.tipos.filter(t => t.recordings.length > 0)
+                    const visual = getHiperfocoVisual(h.title)
+                    const HfIcon = visual.icon
                     return (
                       <div key={h.id}>
-                        <p className="text-sm font-medium text-cream-dim mb-2">{h.title}</p>
+                        <p className="text-sm font-medium text-cream-dim mb-2 inline-flex items-center gap-2">
+                          <span
+                            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${visual.from}, ${visual.to})` }}
+                          >
+                            <HfIcon size={11} className="text-white" />
+                          </span>
+                          {h.title}
+                        </p>
                         {tiposConContenido.length === 0 ? (
                           <p className="text-xs text-cream-muted pl-2">Sin grabaciones</p>
                         ) : (

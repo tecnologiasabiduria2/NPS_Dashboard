@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Pencil, Check, X } from 'lucide-react'
+import { toast } from '@/lib/toast'
 
 // B13 — edición inline del objetivo de sesiones 1:1 por CS/mes (solo owner).
 export default function CsTargetEditor({ value }: { value: number }) {
@@ -23,9 +24,12 @@ export default function CsTargetEditor({ value }: { value: number }) {
     setSaving(false)
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))
-      setErr(j.error ?? 'No se pudo guardar')
+      const msg = j.error ?? 'No se pudo guardar'
+      setErr(msg)
+      toast.error(msg)
       return
     }
+    toast.success('Objetivo actualizado.')
     setEditing(false)
     router.refresh()
   }

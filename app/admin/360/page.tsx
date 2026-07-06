@@ -10,6 +10,7 @@ import DonutChart from '@/components/DonutChart'
 import ProductFilter from './ProductFilter'
 import CsTargetEditor from './CsTargetEditor'
 import MonthFilter from './MonthFilter'
+import CsFilter from './CsFilter'
 
 // ============================================================================
 // VISTA 360 EJECUTIVA — Diana (rol owner). Boceto: sabiduria_dashboard_360_diana.html
@@ -34,9 +35,9 @@ const EXPECTED_MONTHS = 6 // tiempo esperado por hiperfoco antes de cambiar de t
 export default async function Vista360Page({
   searchParams,
 }: {
-  searchParams: Promise<{ producto?: string; cs_mes?: string }>
+  searchParams: Promise<{ producto?: string; cs_mes?: string; cs?: string }>
 }) {
-  const { producto: productoFilter = '', cs_mes: csMesParam } = await searchParams
+  const { producto: productoFilter = '', cs_mes: csMesParam, cs: csFilterParam = '' } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -78,6 +79,7 @@ export default async function Vista360Page({
     { data: npsRows },
     { data: uhmCS },
     { data: sessions1x1Raw },
+    { data: exitosRaw },
   ] = await Promise.all([
     supabase.from('user_access').select('user_id, access_until, access_started').eq('status', 'active'),
     supabase.from('hiperfocos').select('id, title, products(slug, title)'),
@@ -104,6 +106,9 @@ export default async function Vista360Page({
       .select('user_id, admin_id, session_date')
       .gte('session_date', csMesPeriodo)
       .lt('session_date', csMesPeriodoNext),
+    // Calibración TI 2026-07-06: casos de éxito atribuidos al CS que los marcó
+    // (created_by), para el filtro por CS de Operación CS.
+    supabase.from('client_flags').select('created_by').eq('type', 'caso_exito').eq('status', 'abierta'),
   ])
 
   // HTML4: perfiles de CS y clientes sin 1:1 (query secuencial sobre IDs derivados)
@@ -146,6 +151,12 @@ export default async function Vista360Page({
     npsByCS.set(csId, d)
   }
 
+  // Casos de éxito abiertos, atribuidos al CS que los marcó (created_by).
+  const exitosByCS = new Map<string, number>()
+  for (const f of (exitosRaw ?? []) as any[]) {
+    if (f.created_by) exitosByCS.set(f.created_by, (exitosByCS.get(f.created_by) ?? 0) + 1)
+  }
+
   // Lista de CS ordenada por sesiones completadas desc
   const csList = csIds.map(id => ({
     id,
@@ -153,7 +164,13 @@ export default async function Vista360Page({
     clientes: clientsByCS.get(id) ?? 0,
     sesiones: sessionsByCS.get(id) ?? 0,
     nps: npsByCS.has(id) ? npsByCS.get(id)!.sum / npsByCS.get(id)!.count : null,
+    exitos: exitosByCS.get(id) ?? 0,
   })).sort((a, b) => b.sesiones - a.sesiones)
+
+  // Filtro por CS (Operación CS): "" = todos. Si el filtro no coincide con
+  // ningún CS del alcance actual (ej. cambió de mes), cae a "todos" sin romper.
+  const csFilterSel = csList.some(cs => cs.id === csFilterParam) ? csFilterParam : ''
+  const csListFiltered = csFilterSel ? csList.filter(cs => cs.id === csFilterSel) : csList
 
   // Clientes sin 1:1 (máx 10 mostrados en la card)
   const totalSin1x1 = clientesSin1x1Rows.length
@@ -258,6 +275,31 @@ export default async function Vista360Page({
       pct: distribTotal ? (d.count / distribTotal) * 100 : 0,
     }))
     .sort((a, b) => b.count - a.count)
+
+  // --- NPS por módulo bajo el MISMO filtro de fecha que Operación CS --------
+  // Pedido de Diana (reunión previa, retomado en calibración TI 2026-07-06):
+  // el desglose de NPS por módulo debe moverse con la misma fecha que el
+  // desempeño de CS, no quedar fijo al mes actual como "Distribución por
+  // hiperfoco" de arriba (esa se deja igual — es una foto de "quién está
+  // en curso ahora", un concepto distinto).
+  const estadoCsMes = new Map<string, string | null>()
+  for (const row of (historia as any[]) ?? []) {
+    if (!activeIds.has(row.user_id) || row.periodo !== csMesPeriodo || row.estado !== 'en_curso') continue
+    estadoCsMes.set(row.user_id, row.hiperfoco_id)
+  }
+  const npsPorModuloCsMes = new Map<string, { sum: number; count: number }>()
+  for (const r of npsAll) {
+    if (r.created_at.slice(0, 7) !== csMesSel) continue
+    const hfId = estadoCsMes.get(r.user_id)
+    if (!hfId) continue
+    const title = hfTitle.get(hfId) ?? '—'
+    const d = npsPorModuloCsMes.get(title) ?? { sum: 0, count: 0 }
+    d.sum += r.score; d.count++
+    npsPorModuloCsMes.set(title, d)
+  }
+  const npsPorModuloCsMesList = [...npsPorModuloCsMes.entries()]
+    .map(([title, d]) => ({ title, avg: d.sum / d.count, count: d.count }))
+    .sort((a, b) => b.avg - a.avg)
 
   // --- Recorrido del historial por usuario: runs de hiperfoco consecutivo --
   // Para tiempo promedio (largo de cada run) y top repetidos (runs >= 2).
@@ -534,7 +576,8 @@ export default async function Vista360Page({
       <div className="card mb-4">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <p className="text-sm font-medium text-cream">Sesiones 1:1 completadas · {formatMonthLong(csMesPeriodo)}</p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CsFilter value={csFilterSel} options={csList.map(cs => ({ id: cs.id, name: cs.name }))} />
             <MonthFilter value={csMesSel} options={csMesOptions} />
             <CsTargetEditor value={csTarget} />
           </div>
@@ -544,7 +587,7 @@ export default async function Vista360Page({
         ) : (
           <>
             <div className="space-y-3">
-              {csList.map(cs => {
+              {csListFiltered.map(cs => {
                 const pct = Math.min(100, (cs.sesiones / csTarget) * 100)
                 const ok = cs.sesiones >= csTarget
                 const warn = cs.sesiones >= csTarget * 0.7
@@ -596,6 +639,30 @@ export default async function Vista360Page({
         )}
       </div>
 
+      {/* Bloque 1.5: NPS por módulo — misma fecha que Sesiones 1:1 por CS de arriba */}
+      <div className="card mb-4">
+        <p className="text-sm font-medium text-cream mb-0.5">NPS por módulo · {formatMonthLong(csMesPeriodo)}</p>
+        <p className="text-xs text-cream-muted mb-3">Se mueve con el mismo filtro de fecha que el desempeño de CS de arriba</p>
+        {npsPorModuloCsMesList.length === 0 ? (
+          <p className="text-sm text-cream-muted">Sin respuestas NPS atribuibles a un módulo ese mes.</p>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {npsPorModuloCsMesList.map(m => (
+              <div key={m.title} className="grid grid-cols-[1fr_1fr_52px] gap-3 items-center text-sm">
+                <span className="text-cream truncate">{m.title}</span>
+                <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${(m.avg / 10) * 100}%`, background: getHiperfocoVisual(m.title).solid }}
+                  />
+                </div>
+                <span className={`text-right font-medium ${npsColor(m.avg)}`}>{m.avg.toFixed(1)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Bloque 2: Clientes sin 1:1 este mes */}
       {totalSin1x1 > 0 && (
         <div className="card mb-4" style={{ borderColor: 'rgba(226,75,74,0.2)' }}>
@@ -629,20 +696,20 @@ export default async function Vista360Page({
         </div>
       )}
 
-      {/* Bloque 3: Salud por CS — NPS promedio */}
+      {/* Bloque 3: Salud por CS — NPS promedio + casos de éxito */}
       <div className="card mb-4">
-        <p className="text-sm font-medium text-cream mb-0.5">Salud por CS — NPS promedio de la cartera</p>
-        <p className="text-xs text-cream-muted mb-3">Promedio de respuestas NPS de este mes atribuidas a cada CS</p>
-        {csList.filter(cs => cs.nps !== null).length === 0 ? (
-          <p className="text-sm text-cream-muted">Sin respuestas NPS este mes todavía.</p>
+        <p className="text-sm font-medium text-cream mb-0.5">Salud por CS — NPS y casos de éxito</p>
+        <p className="text-xs text-cream-muted mb-3">NPS promedio de este mes + casos de éxito abiertos, atribuidos a cada CS</p>
+        {csListFiltered.filter(cs => cs.nps !== null).length === 0 ? (
+          <p className="text-sm text-cream-muted">Sin respuestas NPS este mes {csFilterSel ? 'para este CS' : 'todavía'}.</p>
         ) : (
           <>
             <div className="space-y-2.5">
-              {[...csList]
+              {[...csListFiltered]
                 .filter(cs => cs.nps !== null)
                 .sort((a, b) => (b.nps ?? 0) - (a.nps ?? 0))
                 .map(cs => (
-                  <div key={cs.id} className="grid grid-cols-[140px_1fr_52px] gap-3 items-center text-sm">
+                  <div key={cs.id} className="grid grid-cols-[140px_1fr_52px_74px] gap-3 items-center text-sm">
                     <span className="text-cream truncate">{cs.name}</span>
                     <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
                       <div
@@ -654,6 +721,9 @@ export default async function Vista360Page({
                       />
                     </div>
                     <span className={`text-right font-medium ${npsColor(cs.nps!)}`}>{cs.nps!.toFixed(1)}</span>
+                    <span className="text-right text-xs text-emerald-400 inline-flex items-center justify-end gap-1">
+                      <Star size={11} /> {cs.exitos}
+                    </span>
                   </div>
                 ))}
             </div>

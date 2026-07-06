@@ -7,6 +7,15 @@ const ghlHeaders = {
   Accept: 'application/json',
 }
 
+// Sin esto, un fetch a GHL colgado (rate limit, hiccup de red) dejaba la
+// petición esperando indefinidamente — encontrado 2026-07-06 al ver
+// /admin/comerciales tardar ~30s en un caso real. 10s es margen suficiente
+// para la API de GHL en uso normal (responde en <1s típicamente).
+const GHL_TIMEOUT_MS = 10_000
+function ghlFetch(url: string, init: RequestInit = {}) {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(GHL_TIMEOUT_MS) })
+}
+
 // ¿Hay credenciales mínimas de GHL? (key + locationId). Las funciones que listan
 // usuarios/contactos requieren locationId; las de un contacto puntual solo la key.
 export function ghlConfigured(): boolean {
@@ -33,7 +42,7 @@ export async function updateContactFields(
   contactId: string,
   fields: Record<string, string | number>
 ) {
-  const res = await fetch(`${GHL_BASE}/contacts/${contactId}`, {
+  const res = await ghlFetch(`${GHL_BASE}/contacts/${contactId}`, {
     method: 'PUT',
     headers: ghlHeaders,
     body: JSON.stringify({ customFields: toCustomFields(fields) }),
@@ -43,7 +52,7 @@ export async function updateContactFields(
 }
 
 export async function getContact(contactId: string) {
-  const res = await fetch(`${GHL_BASE}/contacts/${contactId}`, {
+  const res = await ghlFetch(`${GHL_BASE}/contacts/${contactId}`, {
     headers: ghlHeaders,
   })
   if (!res.ok) throw new Error(`GHL error: ${res.status}`)
@@ -73,7 +82,7 @@ export interface GhlContact {
 // GET /users/?locationId={id}
 export async function listUsers(): Promise<GhlUser[]> {
   const locationId = requireLocationId()
-  const res = await fetch(`${GHL_BASE}/users/?locationId=${encodeURIComponent(locationId)}`, {
+  const res = await ghlFetch(`${GHL_BASE}/users/?locationId=${encodeURIComponent(locationId)}`, {
     headers: ghlHeaders,
   })
   if (!res.ok) throw new Error(`GHL listUsers error: ${res.status} ${await res.text().catch(() => '')}`)
@@ -92,7 +101,7 @@ export async function listUsers(): Promise<GhlUser[]> {
 export async function listContacts(limit = 100): Promise<GhlContact[]> {
   const locationId = requireLocationId()
   const url = `${GHL_BASE}/contacts/?locationId=${encodeURIComponent(locationId)}&limit=${limit}`
-  const res = await fetch(url, { headers: ghlHeaders })
+  const res = await ghlFetch(url, { headers: ghlHeaders })
   if (!res.ok) throw new Error(`GHL listContacts error: ${res.status} ${await res.text().catch(() => '')}`)
   const data = await res.json()
   const arr = (data?.contacts ?? []) as any[]

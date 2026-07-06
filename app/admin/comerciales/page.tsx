@@ -77,7 +77,7 @@ export default async function ComercialesPage() {
       )}
 
       {/* Vínculos actuales (sirve aunque GHL no responda) */}
-      <div className="card mb-4">
+      <div className="card mb-4 animate-fade-up">
         <p className="text-sm font-medium text-cream mb-1">Vínculos actuales</p>
         <p className="text-xs text-cream-muted mb-3">Perfiles de la plataforma ya mapeados a un usuario de GHL</p>
         {localProfiles.filter(p => p.ghl_user_id).length === 0 ? (
@@ -96,7 +96,7 @@ export default async function ComercialesPage() {
 
       {/* Tabla de usuarios de GHL + mapeo */}
       {!ghlError && (
-        <div className="card">
+        <div className="card animate-fade-up" style={{ animationDelay: '80ms' }}>
           <div className="flex items-center gap-2 mb-3">
             <Users size={15} className="text-brand-400" />
             <p className="text-sm font-medium text-cream">Business Coach (usuarios de GHL)</p>

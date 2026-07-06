@@ -16,10 +16,12 @@ export default function MonthFilter({
 }) {
   const searchParams = useSearchParams()
   const producto = searchParams.get('producto') ?? ''
+  const cs = searchParams.get('cs') ?? ''
 
   return (
     <form method="get">
       {producto && <input type="hidden" name="producto" value={producto} />}
+      {cs && <input type="hidden" name="cs" value={cs} />}
       <select
         name="cs_mes"
         className="select w-auto"

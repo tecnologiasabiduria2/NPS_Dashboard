@@ -9,6 +9,7 @@ import { Calendar, Video } from 'lucide-react'
 import { sessionTipoLabel } from '@/lib/sessionTypes'
 import { formatCODateTime } from '@/lib/format'
 import { countPendingNpsEmails } from '@/lib/npsEmail'
+import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 
 export default async function AdminSessionsPage() {
   const supabase = await createClient()
@@ -76,9 +77,17 @@ export default async function AdminSessionsPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <p className="text-sm text-cream truncate">{sessionTipoLabel(s.tipo)}</p>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-600/15 text-brand-300">
-                {s.hiperfoco_nombre ?? 'General'}
-              </span>
+              {s.hiperfoco_nombre ? (
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
+                  style={{ background: `${getHiperfocoVisual(s.hiperfoco_nombre).solid}22`, color: getHiperfocoVisual(s.hiperfoco_nombre).solid }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getHiperfocoVisual(s.hiperfoco_nombre).solid }} />
+                  {s.hiperfoco_nombre}
+                </span>
+              ) : (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-600/15 text-brand-300">General</span>
+              )}
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-700 text-cream-dim">
                 {s.product_id ? (prodTitle.get(s.product_id) ?? 'Producto') : 'Todos'}
               </span>
@@ -118,7 +127,7 @@ export default async function AdminSessionsPage() {
 
         {/* Listado separado: próximas / pasadas (hora Colombia) */}
         <div className="space-y-4">
-          <div className="card">
+          <div className="card animate-fade-up">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-semibold text-cream">Próximas</h2>
               <span className="text-xs text-cream-muted">{upcoming.length} · hora Colombia</span>
@@ -131,7 +140,7 @@ export default async function AdminSessionsPage() {
           </div>
 
           {past.length > 0 && (
-            <div className="card">
+            <div className="card animate-fade-up" style={{ animationDelay: '80ms' }}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base font-semibold text-cream-dim">Pasadas</h2>
                 <span className="text-xs text-cream-muted">{past.length}</span>

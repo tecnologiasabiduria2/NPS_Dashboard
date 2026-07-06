@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FilePlus2, CheckCircle2, Video, FileText, Trash2 } from 'lucide-react'
+import { FilePlus2, Video, FileText, Trash2 } from 'lucide-react'
 import { CONTENT_TIPOS } from '@/lib/sessionTypes'
+import { toast } from '@/lib/toast'
 
 type LessonType = 'video' | 'document'
 
@@ -57,7 +58,6 @@ export default function LessonForm({ products, hiperfocos }: Props) {
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
   const filteredHiperfocos = useMemo(
     () => hiperfocos.filter(h => h.product_id === productId),
@@ -69,11 +69,11 @@ export default function LessonForm({ products, hiperfocos }: Props) {
     return h?.tipos.find(t => t.tipo === tipo) ?? null
   }, [hiperfocoId, tipo, hiperfocos])
 
-  function reset() { setF({ ...EMPTY }); setFile(null); setSuccess(''); setError(''); setConfirmDelete(false) }
+  function reset() { setF({ ...EMPTY }); setFile(null); setError(''); setConfirmDelete(false) }
 
   function set<K extends keyof typeof f>(key: K, value: (typeof f)[K]) {
     setF(prev => ({ ...prev, [key]: value }))
-    setSuccess(''); setError('')
+    setError('')
   }
 
   function pickRecording(recordingId: string) {
@@ -90,7 +90,7 @@ export default function LessonForm({ products, hiperfocos }: Props) {
       order: `${r.order}`,
       is_published: r.is_published,
     })
-    setSuccess(''); setError('')
+    setError('')
   }
 
   function changeProduct(id: string) { setProductId(id); setHiperfocoId(''); setTipo(''); reset() }
@@ -102,7 +102,7 @@ export default function LessonForm({ products, hiperfocos }: Props) {
     if (f.type === 'document' && !file && !f.storage_path) {
       setError('Sube un archivo para el documento'); return
     }
-    setLoading(true); setError(''); setSuccess('')
+    setLoading(true); setError('')
 
     const body = new FormData()
     if (f.recordingId) body.set('id', f.recordingId)
@@ -120,8 +120,8 @@ export default function LessonForm({ products, hiperfocos }: Props) {
     const data = await res.json().catch(() => ({}))
     setLoading(false)
 
-    if (!res.ok) { setError(data.error ?? 'No se pudo guardar'); return }
-    setSuccess(f.recordingId ? 'Grabación actualizada.' : 'Grabación guardada.')
+    if (!res.ok) { setError(data.error ?? 'No se pudo guardar'); toast.error(data.error ?? 'No se pudo guardar la grabación'); return }
+    toast.success(f.recordingId ? 'Grabación actualizada.' : 'Grabación guardada.')
     reset()
     router.refresh()
   }
@@ -132,7 +132,8 @@ export default function LessonForm({ products, hiperfocos }: Props) {
     const res = await fetch(`/api/admin/lessons?id=${f.recordingId}`, { method: 'DELETE' })
     const data = await res.json().catch(() => ({}))
     setDeleting(false)
-    if (!res.ok) { setError(data.error ?? 'No se pudo eliminar'); setConfirmDelete(false); return }
+    if (!res.ok) { setError(data.error ?? 'No se pudo eliminar'); setConfirmDelete(false); toast.error(data.error ?? 'No se pudo eliminar la grabación'); return }
+    toast.success('Grabación eliminada.')
     reset()
     router.refresh()
   }
@@ -273,12 +274,6 @@ export default function LessonForm({ products, hiperfocos }: Props) {
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
             <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
-        {success && (
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-emerald-400" />
-            <p className="text-emerald-300 text-sm">{success}</p>
           </div>
         )}
 

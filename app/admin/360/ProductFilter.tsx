@@ -15,10 +15,12 @@ export default function ProductFilter({
 }) {
   const searchParams = useSearchParams()
   const csMes = searchParams.get('cs_mes') ?? ''
+  const cs = searchParams.get('cs') ?? ''
 
   return (
     <form method="get">
       {csMes && <input type="hidden" name="cs_mes" value={csMes} />}
+      {cs && <input type="hidden" name="cs" value={cs} />}
       <select
         name="producto"
         className="select w-auto"

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Pause, Flag, Star } from 'lucide-react'
+import { toast } from '@/lib/toast'
 
 interface Props {
   userId: string
@@ -27,7 +28,7 @@ export default function HiperfocoActions({ userId, productId, hiperfocos }: Prop
     setError('')
   }
 
-  async function post(url: string, payload: any) {
+  async function post(url: string, payload: any, successMsg: string) {
     setLoading(true)
     setError('')
     const res = await fetch(url, {
@@ -38,21 +39,24 @@ export default function HiperfocoActions({ userId, productId, hiperfocos }: Prop
     setLoading(false)
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
-      setError(data.error ?? 'Error al guardar.')
+      const msg = data.error ?? 'Error al guardar.'
+      setError(msg)
+      toast.error(msg)
       return
     }
+    toast.success(successMsg)
     reset()
     router.refresh()
   }
 
   const setHiperfoco = () =>
-    post('/api/admin/hiperfoco', { user_id: userId, product_id: productId, action: 'set', hiperfoco_id: hiperfocoId })
+    post('/api/admin/hiperfoco', { user_id: userId, product_id: productId, action: 'set', hiperfoco_id: hiperfocoId }, 'Hiperfoco asignado.')
   const marcarPausa = () =>
-    post('/api/admin/hiperfoco', { user_id: userId, product_id: productId, action: 'pausa' })
+    post('/api/admin/hiperfoco', { user_id: userId, product_id: productId, action: 'pausa' }, 'Mes marcado en pausa.')
   const levantarBandera = () =>
-    post('/api/admin/flags', { action: 'raise', user_id: userId, product_id: productId, type: 'bandera', reason })
+    post('/api/admin/flags', { action: 'raise', user_id: userId, product_id: productId, type: 'bandera', reason }, 'Bandera levantada.')
   const marcarExito = () =>
-    post('/api/admin/flags', { action: 'raise', user_id: userId, product_id: productId, type: 'caso_exito', reason })
+    post('/api/admin/flags', { action: 'raise', user_id: userId, product_id: productId, type: 'caso_exito', reason }, 'Caso de éxito registrado.')
 
   return (
     <div>

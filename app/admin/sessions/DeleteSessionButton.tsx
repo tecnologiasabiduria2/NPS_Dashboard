@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
+import { toast } from '@/lib/toast'
 
 export default function DeleteSessionButton({ sessionId }: { sessionId: string }) {
   const router = useRouter()
@@ -13,10 +14,11 @@ export default function DeleteSessionButton({ sessionId }: { sessionId: string }
     setLoading(true)
     const res = await fetch(`/api/admin/sessions?id=${sessionId}`, { method: 'DELETE' })
     if (res.ok) {
+      toast.success('Sesión eliminada.')
       router.refresh()
     } else {
       const data = await res.json().catch(() => ({}))
-      alert(data?.error ?? 'Error al eliminar. Intenta de nuevo.')
+      toast.error(data?.error ?? 'Error al eliminar. Intenta de nuevo.')
       setLoading(false)
       setConfirming(false)
     }
