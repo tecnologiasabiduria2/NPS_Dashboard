@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { ArrowRight, Video, Calendar, AlertTriangle, Target, History } from 'lucide-react'
+import { ArrowRight, Video, Calendar, AlertTriangle, Target, History, Award } from 'lucide-react'
 import { formatDateOnly, formatMonthLong, formatMonthShort, formatCODateLong, formatCOTime } from '@/lib/format'
 import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 
@@ -312,7 +312,8 @@ export default async function DashboardPage({
                       NPS {row.nps}
                     </span>
                   ) : (
-                    <span className={`text-xs px-2.5 py-1 rounded-full ${meta.chip}`}>
+                    <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full ${meta.chip}`}>
+                      {row.estado === 'cerrado' && <Award size={11} />}
                       {meta.label}
                     </span>
                   )}

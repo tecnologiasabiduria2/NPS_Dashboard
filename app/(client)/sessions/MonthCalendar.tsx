@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, X, Clock, ArrowRight, AlignLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Clock, ArrowRight, AlignLeft, CheckCircle2 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { formatCOTime, formatCODateLong } from '@/lib/format'
 
@@ -15,6 +15,7 @@ export interface CalendarEvent {
   descripcion?: string | null
   joinHref: string
   pending?: boolean // link aún no asignado (sesión variable)
+  attended?: boolean // #6: el cliente ya registró asistencia (live_session_attendance)
 }
 
 const DOW = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
@@ -96,10 +97,11 @@ export default function MonthCalendar({ events }: { events: CalendarEvent[] }) {
                   key={e.id}
                   type="button"
                   onClick={() => setSelected(e)}
-                  className={clsx('text-[10px] leading-tight rounded px-1 py-0.5 truncate text-left w-full hover:brightness-110 transition', chipClass(e.tipo))}
-                  title={e.label}
+                  className={clsx('relative flex items-center gap-1 text-[10px] leading-tight rounded px-1 py-0.5 truncate text-left w-full hover:brightness-110 transition', chipClass(e.tipo))}
+                  title={e.attended ? `${e.label} · asististe` : e.label}
                 >
-                  {timeFmt(e.date)} {e.label}
+                  {e.attended && <CheckCircle2 size={10} className="shrink-0" />}
+                  <span className="truncate">{timeFmt(e.date)} {e.label}</span>
                 </button>
               ))}
               {dayEvents.length > 3 && (
@@ -121,6 +123,11 @@ export default function MonthCalendar({ events }: { events: CalendarEvent[] }) {
 
             <div className="flex items-center gap-2 mb-1">
               <span className={clsx('text-[10px] px-2 py-0.5 rounded-full font-medium', chipClass(selected.tipo))}>{selected.label}</span>
+              {selected.attended && (
+                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium bg-emerald-500/15 text-emerald-300">
+                  <CheckCircle2 size={11} /> Asististe
+                </span>
+              )}
             </div>
             {selected.subtitle && <h3 className="text-lg font-semibold text-cream leading-snug mb-3">{selected.subtitle}</h3>}
 

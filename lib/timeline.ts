@@ -37,6 +37,7 @@ export function buildTimeline(input: TimelineInputs): TimelineEvent[] {
       kind: 'hiperfoco',
       title: `Hiperfoco: ${h.title}`,
       detail: h.estado === 'cerrado' ? 'cerrado' : h.estado === 'en_curso' ? 'en curso' : undefined,
+      tone: h.estado === 'cerrado' ? 'good' : undefined,
     })
   }
 

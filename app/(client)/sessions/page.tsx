@@ -58,6 +58,13 @@ export default async function SessionsPage({
     if (r.descripcion) descById[r.id] = r.descripcion
   }
 
+  // Asistencia (#6): para marcar en el calendario a qué sesiones ya asistió el cliente.
+  const { data: attendanceRows } = await supabase
+    .from('live_session_attendance')
+    .select('session_id')
+    .eq('user_id', user.id)
+  const attendedIds = new Set((attendanceRows ?? []).map(a => (a as any).session_id))
+
   const events: CalendarEvent[] = all.map(s => ({
     id: s.id,
     date: s.starts_at,
@@ -68,6 +75,7 @@ export default async function SessionsPage({
     descripcion: descById[s.id] ?? null,
     joinHref: `/api/sessions/${s.id}/join`,
     pending: !(s as any).zoom_url,
+    attended: attendedIds.has(s.id),
   }))
 
   const productTitle = (access as any)?.products?.title ?? ''

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Heart, MessageCircle, Send, PenLine, Home, Hash, Megaphone, Smile, Users, LifeBuoy, Lock, type LucideIcon } from 'lucide-react'
 import { clsx } from 'clsx'
+import { productFullName, isSabiduria } from '@/lib/productIdentity'
 
 export interface ForoComment {
   id: string
@@ -274,8 +275,14 @@ export default function Foro({ posts, community }: { posts: ForoPost[]; communit
       {/* Comunidad (derecha) */}
       <aside className="hidden xl:block w-72 shrink-0 sticky top-24">
         <div className="rounded-2xl border border-surface-700 bg-surface-850 overflow-hidden">
-          <div className="h-24 bg-gradient-to-br from-sand via-accent to-brand-600 flex items-center justify-center">
-            <Image src="/logo-horizontal.png" alt={community.name} width={150} height={40} className="object-contain" />
+          <div className="h-24 bg-gradient-to-br from-sand via-accent to-brand-600 flex items-center justify-center px-4">
+            {isSabiduria(community.name) ? (
+              <Image src="/logo-horizontal.png" alt={community.name} width={150} height={40} className="object-contain" />
+            ) : (
+              <p className="text-center text-lg font-semibold text-white leading-tight drop-shadow">
+                {productFullName(community.name)}
+              </p>
+            )}
           </div>
           <div className="p-4">
             <p className="text-sm font-semibold text-cream">{community.name}</p>

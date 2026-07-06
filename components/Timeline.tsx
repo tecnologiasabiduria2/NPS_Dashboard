@@ -1,4 +1,4 @@
-import { Flag, Star, CalendarCheck, Target, MessageSquare, Gauge, Play } from 'lucide-react'
+import { Flag, Star, CalendarCheck, Target, MessageSquare, Gauge, Play, Award } from 'lucide-react'
 import { formatDateOnly } from '@/lib/format'
 import type { TimelineEvent, TimelineKind, TimelineTone } from '@/lib/timeline'
 
@@ -26,7 +26,11 @@ export default function Timeline({ events }: { events: TimelineEvent[] }) {
   return (
     <ol className="relative border-l border-surface-700 ml-2">
       {events.map((e, i) => {
-        const Icon = e.kind === 'flag' && e.tone === 'good' ? Star : ICON[e.kind]
+        const Icon = e.kind === 'flag' && e.tone === 'good'
+          ? Star
+          : e.kind === 'hiperfoco' && e.tone === 'good'
+          ? Award
+          : ICON[e.kind]
         const tone = TONE_DOT[e.tone ?? 'default']
         return (
           <li key={i} className="ml-5 pb-5 last:pb-0">

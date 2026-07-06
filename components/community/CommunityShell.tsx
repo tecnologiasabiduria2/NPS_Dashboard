@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Home, Bell, Menu, X, User, LogOut, ChevronDown } from 'lucide-react'
 import { clsx } from 'clsx'
+import { productFullName, productInitial, isSabiduria } from '@/lib/productIdentity'
 
 export interface ShellProduct {
   id: string
@@ -94,7 +95,9 @@ export default function CommunityShell({ userName, avatarUrl, products, children
             title={p.title}
             className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-850 border border-brand-600/30 ring-2 ring-brand-600/20 hover:ring-brand-600/40 transition-all"
           >
-            <Image src="/logo-icon.png" alt={p.title} width={22} height={22} className="object-contain" />
+            {isSabiduria(p.title)
+              ? <Image src="/logo-icon.png" alt={p.title} width={22} height={22} className="object-contain" />
+              : <span className="text-sm font-semibold text-brand-300">{productInitial(p.title)}</span>}
           </Link>
         ))}
       </aside>
@@ -201,8 +204,14 @@ export default function CommunityShell({ userName, avatarUrl, products, children
           {showRightRail && (
             <aside className="hidden xl:block w-80 shrink-0 p-6 border-l border-surface-700">
               <div className="card overflow-hidden p-0">
-                <div className="h-24 bg-gradient-to-br from-sand via-accent to-brand-600 flex items-center justify-center">
-                  <Image src="/logo-horizontal.png" alt={primaryProduct!.title} width={150} height={40} className="object-contain" />
+                <div className="h-24 bg-gradient-to-br from-sand via-accent to-brand-600 flex items-center justify-center px-4">
+                  {isSabiduria(primaryProduct!.title) ? (
+                    <Image src="/logo-horizontal.png" alt={primaryProduct!.title} width={150} height={40} className="object-contain" />
+                  ) : (
+                    <p className="text-center text-lg font-semibold text-white leading-tight drop-shadow">
+                      {productFullName(primaryProduct!.title)}
+                    </p>
+                  )}
                 </div>
                 <div className="p-5">
                   <p className="text-sm font-semibold text-cream">{primaryProduct!.title}</p>
@@ -244,7 +253,11 @@ export default function CommunityShell({ userName, avatarUrl, products, children
           <div className="px-4 pt-4">
             <p className="section-label mb-2">Comunidad</p>
             <div className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-surface-850 border border-surface-700">
-              <Image src="/logo-icon.png" alt={primaryProduct!.title} width={20} height={20} className="object-contain" />
+              <span className="w-6 h-6 rounded-lg bg-brand-700/40 border border-brand-600/30 flex items-center justify-center shrink-0 overflow-hidden">
+                {isSabiduria(primaryProduct!.title)
+                  ? <Image src="/logo-icon.png" alt={primaryProduct!.title} width={16} height={16} className="object-contain" />
+                  : <span className="text-xs font-semibold text-brand-300">{productInitial(primaryProduct!.title)}</span>}
+              </span>
               <span className="text-sm text-cream truncate">{primaryProduct!.title}</span>
             </div>
           </div>

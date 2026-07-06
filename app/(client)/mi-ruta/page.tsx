@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { formatDateOnly } from '@/lib/format'
-import { Play } from 'lucide-react'
+import { Play, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import Timeline from '@/components/Timeline'
+import Sparkline from '@/components/Sparkline'
 import { buildTimeline } from '@/lib/timeline'
 
 const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL ?? ''
@@ -61,6 +62,18 @@ export default async function MiRutaPage() {
 
   const unoAuno = (notes as any[]) ?? []
 
+  // Tendencia de NPS — mismos datos que ya alimentan el timeline, solo en
+  // orden cronológico ascendente (más viejo primero) para leer la línea
+  // de izquierda a derecha en el tiempo.
+  const npsSorted = ((nps as any[]) ?? [])
+    .slice()
+    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+  const npsScores = npsSorted.map(n => Number(n.score))
+  const npsLatest = npsScores[npsScores.length - 1] ?? null
+  const npsPrev = npsScores.length > 1 ? npsScores[npsScores.length - 2] : null
+  const npsTrend = npsPrev === null ? null : npsLatest! > npsPrev ? 'up' : npsLatest! < npsPrev ? 'down' : 'same'
+  const npsTrendColor = npsTrend === 'up' ? 'text-emerald-400' : npsTrend === 'down' ? 'text-red-400' : 'text-cream-muted'
+
   return (
     <div className="max-w-3xl">
       <div className="mb-8">
@@ -69,6 +82,26 @@ export default async function MiRutaPage() {
           {(access as any)?.products?.title ?? 'Tu proceso'} · tu historial en la plataforma
         </p>
       </div>
+
+      {/* Tendencia de NPS */}
+      {npsScores.length > 0 && (
+        <div className="card mb-6 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <p className="section-label !mb-1">Tu NPS a través del tiempo</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-2xl font-semibold text-cream">{npsLatest}</p>
+              <span className="text-xs text-cream-muted">último voto · {npsScores.length} en total</span>
+              {npsTrend && npsTrend !== 'same' && (
+                <span className={`inline-flex items-center gap-1 text-xs ${npsTrendColor}`}>
+                  {npsTrend === 'up' ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                </span>
+              )}
+              {npsTrend === 'same' && <Minus size={13} className="text-cream-muted" />}
+            </div>
+          </div>
+          <Sparkline points={npsScores} color="#DA7D41" />
+        </div>
+      )}
 
       {/* Hoja de vida */}
       <div className="card mb-6">
