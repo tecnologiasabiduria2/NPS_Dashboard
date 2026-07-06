@@ -153,8 +153,8 @@ export default async function ClientDetailPage({ params }: Props) {
       {/* Header + capa CS */}
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-cream">{profile.full_name}</h1>
-          <p className="text-zinc-500 text-sm mt-1">
+          <h1 className="page-title">{profile.full_name}</h1>
+          <p className="text-cream-muted text-sm mt-1">
             {(access as any)?.products?.title ?? '—'}
             {meses !== null && <> · {meses} {meses === 1 ? 'mes' : 'meses'} contigo</>}
           </p>
@@ -178,7 +178,7 @@ export default async function ClientDetailPage({ params }: Props) {
 
       {/* Control de acceso */}
       <div className="card mb-6">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Control de acceso</p>
+        <p className="text-xs text-cream-muted uppercase tracking-wider mb-4">Control de acceso</p>
         <EditAccessForm
           userId={id}
           currentDate={access?.access_until ?? ''}
@@ -189,15 +189,15 @@ export default async function ClientDetailPage({ params }: Props) {
 
       {/* Hoja de vida (timeline) */}
       <div className="card mb-6">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-5">Hoja de vida</p>
+        <p className="text-xs text-cream-muted uppercase tracking-wider mb-5">Hoja de vida</p>
         <Timeline events={timeline} />
       </div>
 
       {/* Hiperfocos */}
       <div className="card mb-6">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Hiperfocos</p>
+        <p className="text-xs text-cream-muted uppercase tracking-wider mb-4">Hiperfocos</p>
         {historial.length === 0 ? (
-          <p className="text-sm text-zinc-600">Sin hiperfocos registrados todavía.</p>
+          <p className="text-sm text-cream-muted">Sin hiperfocos registrados todavía.</p>
         ) : (
           <div className="flex flex-col">
             {historial.map((h, i) => (
@@ -207,13 +207,13 @@ export default async function ClientDetailPage({ params }: Props) {
                   i < historial.length - 1 ? 'border-b border-surface-800' : ''
                 }`}
               >
-                <span className="text-xs text-zinc-500 capitalize">{formatMonthShort(h.periodo)}</span>
-                <span className={h.title ? 'text-cream' : 'text-zinc-500'}>
+                <span className="text-xs text-cream-muted capitalize">{formatMonthShort(h.periodo)}</span>
+                <span className={h.title ? 'text-cream' : 'text-cream-muted'}>
                   {h.title ?? (h.estado === 'pausa' ? 'Pausa' : 'Sin asignar')}
                   {h.repitio && <span className="text-xs text-amber-400 ml-2">repitió</span>}
                 </span>
                 <span className="text-xs text-right">
-                  {h.asistio ? <span className="text-emerald-400">asistió</span> : <span className="text-zinc-600">—</span>}
+                  {h.asistio ? <span className="text-emerald-400">asistió</span> : <span className="text-cream-muted">—</span>}
                 </span>
                 <span className="text-xs text-right w-14">
                   {h.nps !== null ? <span className={`font-medium ${npsColor(h.nps)}`}>NPS {h.nps}</span> : ''}
@@ -226,7 +226,7 @@ export default async function ClientDetailPage({ params }: Props) {
 
       {/* Seguimiento CS: banderas abiertas + acciones */}
       <div className="card mb-6">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4 inline-flex items-center gap-1.5">
+        <p className="text-xs text-cream-muted uppercase tracking-wider mb-4 inline-flex items-center gap-1.5">
           <Flag size={12} /> Seguimiento CS
         </p>
         <div className="mb-5">
@@ -237,36 +237,36 @@ export default async function ClientDetailPage({ params }: Props) {
 
       {/* Notas internas (CS) — no visibles para el cliente */}
       <div className="card mb-6">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Notas internas (CS)</p>
+        <p className="text-xs text-cream-muted uppercase tracking-wider mb-4">Notas internas (CS)</p>
         <AddCsNoteForm userId={id} />
         {csNotes && csNotes.length > 0 ? (
           <div className="space-y-3">
             {(csNotes as any[]).map((note: any) => (
               <div key={note.id} className="bg-surface-800 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-zinc-500">{formatDateOnly(note.note_date)}</span>
-                  <span className="text-xs text-zinc-600">{note.profiles?.full_name}</span>
+                  <span className="text-xs text-cream-muted">{formatDateOnly(note.note_date)}</span>
+                  <span className="text-xs text-cream-muted">{note.profiles?.full_name}</span>
                 </div>
                 <p className="text-sm text-cream-dim">{note.content}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-zinc-600">Sin notas internas aún.</p>
+          <p className="text-sm text-cream-muted">Sin notas internas aún.</p>
         )}
       </div>
 
       {/* Sesiones 1:1 (notas de coaching — visibles para el cliente según RLS) */}
       <div className="card">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Sesiones 1:1</p>
+        <p className="text-xs text-cream-muted uppercase tracking-wider mb-4">Sesiones 1:1</p>
         <AddNoteForm userId={id} />
         {notes && notes.length > 0 ? (
           <div className="space-y-3">
             {notes.map((note: any) => (
               <div key={note.id} className="bg-surface-800 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-zinc-500">{formatDateOnly(note.session_date)}</span>
-                  <span className="text-xs text-zinc-600">{note.profiles?.full_name}</span>
+                  <span className="text-xs text-cream-muted">{formatDateOnly(note.session_date)}</span>
+                  <span className="text-xs text-cream-muted">{note.profiles?.full_name}</span>
                 </div>
                 <p className="text-sm text-cream-dim whitespace-pre-wrap">{note.content}</p>
                 {note.somai && (
@@ -289,7 +289,7 @@ export default async function ClientDetailPage({ params }: Props) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-zinc-600">Sin sesiones 1:1 registradas aún.</p>
+          <p className="text-sm text-cream-muted">Sin sesiones 1:1 registradas aún.</p>
         )}
       </div>
     </div>

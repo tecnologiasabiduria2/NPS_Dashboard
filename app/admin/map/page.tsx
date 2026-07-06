@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 
 function periodoActual() {
   const now = new Date()
@@ -40,7 +41,10 @@ export default async function MapPage() {
       <Link href={`/admin/clients/${client.user_id}`}>
         <div className="bg-surface-800 hover:bg-surface-700 border border-surface-700 rounded-lg p-3 transition-colors">
           <p className="text-sm font-medium text-cream truncate">{client.profiles?.full_name ?? '—'}</p>
-          <p className="text-xs text-cream-muted mt-0.5 truncate">
+          <p className="text-xs text-cream-muted mt-0.5 truncate inline-flex items-center gap-1.5">
+            {hiperfoco && (
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getHiperfocoVisual(hiperfoco).solid }} />
+            )}
             {hiperfoco || 'Sin hiperfoco'}
           </p>
           <div className="mt-2">
@@ -56,7 +60,7 @@ export default async function MapPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-cream mb-8">Mapa de clientes</h1>
+      <h1 className="page-title mb-8">Mapa de clientes</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {([['Workshop', byProduct.workshop], ['Desafío', byProduct.desafio], ['Sabiduría', byProduct.sabiduria]] as const).map(([label, items]) => (
           <div key={label}>

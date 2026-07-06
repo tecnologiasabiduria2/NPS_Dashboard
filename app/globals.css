@@ -25,6 +25,30 @@ body {
 ::-webkit-scrollbar-track { background: #1e1e28; }
 ::-webkit-scrollbar-thumb { background: #302e42; border-radius: 3px; }
 
+/* ---- Motion (pase de animaciones, 2026-07-05) ----
+   Micro-interacciones deliberadas, no decoración suelta: feedback al presionar
+   botones, entrada en cascada de tarjetas/listas, relleno animado de barras de
+   progreso. Todo en CSS puro (sin librería nueva) y respetando accesibilidad:
+   si el sistema pide "reducir movimiento", .animate-fade-up no define ninguna
+   regla y el elemento se ve tal cual, sin animación. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-up {
+    animation: fade-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes panel-in {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-panel-in {
+    animation: panel-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
 @layer components {
 
   /* ---- Cards ---- */
@@ -37,16 +61,16 @@ body {
 
   /* ---- Buttons ---- */
   .btn-primary {
-    @apply bg-brand-600 hover:bg-brand-500 text-cream font-medium px-5 py-2.5 rounded-xl transition-all duration-200 text-sm inline-flex items-center gap-2;
+    @apply bg-brand-600 hover:bg-brand-500 active:scale-[0.97] text-cream font-medium px-5 py-2.5 rounded-xl transition-all duration-200 text-sm inline-flex items-center gap-2;
   }
   .btn-secondary {
-    @apply bg-surface-800 hover:bg-surface-700 text-cream-dim hover:text-cream font-medium px-5 py-2.5 rounded-xl transition-all duration-200 border border-surface-600 text-sm inline-flex items-center gap-2;
+    @apply bg-surface-800 hover:bg-surface-700 active:scale-[0.97] text-cream-dim hover:text-cream font-medium px-5 py-2.5 rounded-xl transition-all duration-200 border border-surface-600 text-sm inline-flex items-center gap-2;
   }
   .btn-ghost {
-    @apply text-cream-dim hover:text-cream hover:bg-surface-800 font-medium px-4 py-2 rounded-xl transition-all duration-200 text-sm inline-flex items-center gap-2;
+    @apply text-cream-dim hover:text-cream hover:bg-surface-800 active:scale-[0.97] font-medium px-4 py-2 rounded-xl transition-all duration-200 text-sm inline-flex items-center gap-2;
   }
   .btn-danger {
-    @apply bg-red-900/30 hover:bg-red-800/50 text-red-400 border border-red-800/40 font-medium px-5 py-2.5 rounded-xl transition-all duration-200 text-sm;
+    @apply bg-red-900/30 hover:bg-red-800/50 active:scale-[0.97] text-red-400 border border-red-800/40 font-medium px-5 py-2.5 rounded-xl transition-all duration-200 text-sm;
   }
 
   /* ---- Inputs ---- */

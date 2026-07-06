@@ -205,10 +205,14 @@ export default function Foro({ posts, community }: { posts: ForoPost[]; communit
           </div>
         ) : (
           <div className="space-y-3">
-            {visible.map(p => {
+            {visible.map((p, i) => {
               const isOpen = openComments.has(p.id)
               return (
-                <div key={p.id} className="rounded-2xl border border-surface-700 bg-surface-850 p-4 hover:border-surface-600 transition-colors">
+                <div
+                  key={p.id}
+                  className="rounded-2xl border border-surface-700 bg-surface-850 p-4 hover:border-surface-600 transition-colors animate-fade-up"
+                  style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}
+                >
                   <div className="flex items-start gap-3">
                     <Avatar name={p.author} url={p.authorAvatar} />
                     <div className="min-w-0 flex-1">

@@ -138,7 +138,7 @@ export default async function RecordingPage({ params }: Props) {
               href={`/recording/${prevRec.id}`}
               className="flex items-center gap-2 px-4 py-2.5 bg-surface-800 hover:bg-surface-700 rounded-lg text-sm text-cream-dim hover:text-cream transition-colors group min-w-0 flex-1"
             >
-              <ChevronLeft size={16} className="shrink-0 text-zinc-500 group-hover:text-cream-dim" />
+              <ChevronLeft size={16} className="shrink-0 text-cream-muted group-hover:text-cream-dim" />
               <span className="truncate">{prevRec.title}</span>
             </Link>
           ) : (
@@ -150,7 +150,7 @@ export default async function RecordingPage({ params }: Props) {
               className="flex items-center gap-2 px-4 py-2.5 bg-surface-800 hover:bg-surface-700 rounded-lg text-sm text-cream-dim hover:text-cream transition-colors group min-w-0 flex-1 justify-end"
             >
               <span className="truncate">{nextRec.title}</span>
-              <ChevronRight size={16} className="shrink-0 text-zinc-500 group-hover:text-cream-dim" />
+              <ChevronRight size={16} className="shrink-0 text-cream-muted group-hover:text-cream-dim" />
             </Link>
           )}
         </div>

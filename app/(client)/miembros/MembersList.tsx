@@ -104,12 +104,13 @@ export default function MembersList({ members }: { members: Member[] }) {
         </div>
       ) : (
         <div className="space-y-2.5">
-          {filtered.map(m => (
+          {filtered.map((m, i) => (
             <button
               key={m.id}
               type="button"
               onClick={() => setSelected(m)}
-              className="card flex items-start gap-3.5 w-full text-left hover:border-brand-600/40 transition-colors"
+              className="card flex items-start gap-3.5 w-full text-left hover:border-brand-600/40 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 transition-all animate-fade-up"
+              style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}
             >
               <div className="w-11 h-11 rounded-full overflow-hidden bg-brand-700/50 border border-brand-600/30 flex items-center justify-center shrink-0">
                 {m.avatarUrl ? (

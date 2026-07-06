@@ -25,8 +25,8 @@ export default async function ClientsPage() {
   return (
     <div className="max-w-6xl">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-cream">Clientes</h1>
-        <span className="text-sm text-zinc-500">{clients?.length ?? 0} registros</span>
+        <h1 className="page-title">Clientes</h1>
+        <span className="text-sm text-cream-muted">{clients?.length ?? 0} registros</span>
       </div>
       <ClientsTable clients={clients ?? []} today={today} soonDate={soonDate} hiperfocoByUser={hiperfocoByUser} />
     </div>

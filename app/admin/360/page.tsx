@@ -2,9 +2,11 @@ import type { ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Lightbulb, AlertTriangle } from 'lucide-react'
+import { Lightbulb, AlertTriangle, Users, Target, Star, RefreshCw } from 'lucide-react'
 import { formatMonthLong } from '@/lib/format'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
+import DonutChart from '@/components/DonutChart'
 import ProductFilter from './ProductFilter'
 import CsTargetEditor from './CsTargetEditor'
 import MonthFilter from './MonthFilter'
@@ -18,16 +20,6 @@ import MonthFilter from './MonthFilter'
 // Para el beta actual (pocos clientes) es exacto; si el historial supera ~1–2k
 // filas conviene mover esas dos agregaciones a una vista/RPC en Postgres.
 // ============================================================================
-
-// Color por hiperfoco (hex del boceto), por palabra clave del título.
-function hiperfocoColor(title: string): string {
-  const t = title.toLowerCase()
-  if (t.includes('venta')) return '#1D9E75'
-  if (t.includes('marketing')) return '#534AB7'
-  if (t.includes('finanz')) return '#378ADD'
-  if (t.includes('equipo') || t.includes('proceso')) return '#BA7517'
-  return '#7A8A85'
-}
 
 // Clave 'YYYY-MM-01' del primer día de un mes (local), desplazando `offset` meses.
 function periodoKey(offset = 0): string {
@@ -385,24 +377,36 @@ export default async function Vista360Page({
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <div className="card">
+        <div className="card animate-fade-up">
+          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-2">
+            <Users size={16} className="text-emerald-400" />
+          </div>
           <p className="text-xs text-cream-muted">Empresarios activos</p>
           <p className="text-2xl font-semibold text-cream mt-0.5">{totalActivos}</p>
           <p className="text-xs text-emerald-400 mt-0.5">{nuevosEsteMes > 0 ? `+${nuevosEsteMes} este mes` : 'sin altas este mes'}</p>
         </div>
-        <div className="card">
+        <div className="card animate-fade-up" style={{ animationDelay: '60ms' }}>
+          <div className="w-9 h-9 rounded-lg bg-brand-600/15 flex items-center justify-center mb-2">
+            <Target size={16} className="text-brand-400" />
+          </div>
           <p className="text-xs text-cream-muted">Eligieron hiperfoco</p>
           <p className="text-2xl font-semibold text-cream mt-0.5">
             {eligieron} <span className="text-xs text-cream-dim font-normal">/ {totalActivos}</span>
           </p>
           <p className="text-xs text-amber-400 mt-0.5">{sinElegir} sin elegir</p>
         </div>
-        <div className="card">
+        <div className="card animate-fade-up" style={{ animationDelay: '120ms' }}>
+          <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center mb-2">
+            <Star size={16} className="text-amber-400" />
+          </div>
           <p className="text-xs text-cream-muted">NPS general</p>
           <p className="text-2xl font-semibold text-cream mt-0.5">{npsGeneral !== null ? npsGeneral.toFixed(1) : '—'}</p>
           <p className="text-xs text-cream-dim mt-0.5">{npsAll.length} respuestas</p>
         </div>
-        <div className="card">
+        <div className="card animate-fade-up" style={{ animationDelay: '180ms' }}>
+          <div className="w-9 h-9 rounded-lg bg-sky-500/10 flex items-center justify-center mb-2">
+            <RefreshCw size={16} className="text-sky-400" />
+          </div>
           <p className="text-xs text-cream-muted">Renovación 15d</p>
           <p className="text-2xl font-semibold text-cream mt-0.5">
             {renovacion90d} <span className="text-xs text-cream-dim font-normal">clientes</span>
@@ -430,7 +434,7 @@ export default async function Vista360Page({
                   </span>
                 </div>
                 <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${d.pct.toFixed(1)}%`, background: hiperfocoColor(d.title) }} />
+                  <div className="h-full rounded-full" style={{ width: `${d.pct.toFixed(1)}%`, background: getHiperfocoVisual(d.title).solid }} />
                 </div>
               </div>
             ))}
@@ -452,7 +456,7 @@ export default async function Vista360Page({
                 <div key={t.title} className="grid grid-cols-[130px_1fr_72px] gap-3 items-center text-sm">
                   <span className="text-cream">{t.title}</span>
                   <div className="relative h-1.5 rounded-full bg-surface-800">
-                    <div className="absolute h-full rounded-full" style={{ width: `${Math.min(100, (t.avg / 10) * 100)}%`, background: hiperfocoColor(t.title) }} />
+                    <div className="absolute h-full rounded-full" style={{ width: `${Math.min(100, (t.avg / 10) * 100)}%`, background: getHiperfocoVisual(t.title).solid }} />
                     {/* marca del esperado (6 meses = 60% de una escala de 10) */}
                     <div className="absolute -top-1 h-3.5 w-px bg-cream-dim" style={{ left: `${(EXPECTED_MONTHS / 10) * 100}%` }} />
                   </div>
@@ -490,22 +494,16 @@ export default async function Vista360Page({
         <div className="card">
           <p className="text-sm font-medium text-cream">Estado de la cartera</p>
           <p className="text-xs text-cream-muted mb-3">Salud general de los {totalActivos}</p>
-          <div className="flex flex-col gap-2 text-sm">
-            {[
-              { label: 'Activos saludables', value: saludables, dot: '#1D9E75' },
-              { label: 'Banderas amarillas', value: banderasAmarillas, dot: '#BA7517' },
-              { label: 'En riesgo', value: enRiesgo, dot: '#E24B4A' },
-              { label: 'En pausa', value: enPausa, dot: '#888780' },
-            ].map(s => (
-              <div key={s.label} className="flex justify-between">
-                <span className="text-cream inline-flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full" style={{ background: s.dot }} />
-                  {s.label}
-                </span>
-                <span className="font-medium text-cream">{s.value}</span>
-              </div>
-            ))}
-          </div>
+          <DonutChart
+            centerValue={totalActivos}
+            centerLabel="activos"
+            segments={[
+              { label: 'Activos saludables', value: saludables, color: '#1D9E75' },
+              { label: 'Banderas amarillas', value: banderasAmarillas, color: '#BA7517' },
+              { label: 'En riesgo', value: enRiesgo, color: '#E24B4A' },
+              { label: 'En pausa', value: enPausa, color: '#888780' },
+            ]}
+          />
         </div>
       </div>
 

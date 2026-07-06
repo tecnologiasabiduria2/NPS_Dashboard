@@ -105,8 +105,10 @@ export default async function MiContenidoPage() {
   }))
   const countDone = (recs: any[]) => recs.filter(r => completedSet.has(r.id)).length
 
-  // Armar cards: hiperfoco del mes (destacado) → anteriores (B12) → SG → EC
-  const cards: ContentCard[] = []
+  // Separar en 3 grupos: hiperfoco del mes (hero) → historial (B12, incluye
+  // bloqueados) → transversales (SG/EC, contenido de comunidad, no personal).
+  let currentCard: ContentCard | null = null
+  const historyCards: ContentCard[] = []
 
   const mesActual = historial.find((h: any) => h.periodo === periodo)
   const currentId: string | null = mesActual?.hiperfoco_id ?? null
@@ -114,21 +116,21 @@ export default async function MiContenidoPage() {
   if (currentId) {
     seen.add(currentId)
     const recs = mainByHf.get(currentId) ?? []
-    cards.push({
+    currentCard = {
       key: currentId,
       title: (mesActual?.hiperfocos as any)?.title ?? '',
-      badge: `Este mes · ${formatMonthLong(periodo)}`,
+      badge: formatMonthLong(periodo),
       recordings: toCardRecs(recs),
       completed: countDone(recs),
       total: recs.length,
       highlighted: true,
-    })
+    }
   }
   for (const h of historial) {
     if (seen.has(h.hiperfoco_id)) continue
     seen.add(h.hiperfoco_id)
     const recs = mainByHf.get(h.hiperfoco_id) ?? []
-    cards.push({
+    historyCards.push({
       key: h.hiperfoco_id,
       title: (h.hiperfocos as any)?.title ?? '',
       recordings: toCardRecs(recs),
@@ -143,12 +145,15 @@ export default async function MiContenidoPage() {
   for (const h of allProdHfList) {
     if (seen.has(h.id)) continue
     seen.add(h.id)
-    cards.push({ key: h.id, title: h.title ?? '', recordings: [], completed: 0, total: 0, locked: true })
+    historyCards.push({ key: h.id, title: h.title ?? '', recordings: [], completed: 0, total: 0, locked: true })
   }
 
-  // Transversales (siempre visibles, aunque estén vacías)
-  cards.push({ key: 'sg', title: 'Sala de Gerencia', recordings: toCardRecs(sgRecs), completed: countDone(sgRecs), total: sgRecs.length })
-  cards.push({ key: 'ec', title: 'Entrenamiento Comercial', recordings: toCardRecs(ecRecs), completed: countDone(ecRecs), total: ecRecs.length })
+  // Transversales (siempre visibles, aunque estén vacías) — contenido compartido
+  // de toda la comunidad, no del hiperfoco personal del cliente.
+  const transversalCards: ContentCard[] = [
+    { key: 'sg', title: 'Sala de Gerencia', recordings: toCardRecs(sgRecs), completed: countDone(sgRecs), total: sgRecs.length },
+    { key: 'ec', title: 'Entrenamiento Comercial', recordings: toCardRecs(ecRecs), completed: countDone(ecRecs), total: ecRecs.length },
+  ]
 
   const productTitle = (access as any)?.products?.title ?? ''
 
@@ -167,7 +172,7 @@ export default async function MiContenidoPage() {
         </div>
       )}
 
-      <ContentCards cards={cards} userId={user.id} />
+      <ContentCards current={currentCard} historial={historyCards} transversal={transversalCards} userId={user.id} />
     </div>
   )
 }

@@ -51,7 +51,7 @@ export default function ContentPanel({ card, userId, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-surface-950 flex flex-col">
+    <div className="fixed inset-0 z-40 bg-surface-950 flex flex-col animate-panel-in">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 px-4 sm:px-8 py-4 border-b border-surface-800 shrink-0">
         <div className="min-w-0">

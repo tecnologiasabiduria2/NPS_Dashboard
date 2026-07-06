@@ -57,22 +57,22 @@ export default function NpsQuestionsForm({ trigger, label, initial }: Props) {
       <h2 className="text-sm font-semibold text-cream">{label}</h2>
 
       <div>
-        <label className="block text-xs text-zinc-500 mb-1">Línea superior (eyebrow)</label>
+        <label className="block text-xs text-cream-muted mb-1">Línea superior (eyebrow)</label>
         <input className="input" value={eyebrow} onChange={e => setEyebrow(e.target.value)} />
       </div>
 
       <div>
-        <label className="block text-xs text-zinc-500 mb-1">Título</label>
+        <label className="block text-xs text-cream-muted mb-1">Título</label>
         <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
         {trigger === 'post_sesion' && (
-          <p className="text-[11px] text-zinc-600 mt-1">
+          <p className="text-[11px] text-cream-muted mt-1">
             Usa <code className="text-accent">{'{sesion}'}</code> donde quieras el nombre de la sesión.
           </p>
         )}
       </div>
 
       <div>
-        <label className="block text-xs text-zinc-500 mb-1">Pregunta</label>
+        <label className="block text-xs text-cream-muted mb-1">Pregunta</label>
         <textarea
           className="input min-h-20 resize-y"
           value={question}

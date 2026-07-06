@@ -64,29 +64,29 @@ export default async function MiRutaPage() {
   return (
     <div className="max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-cream">Mi ruta</h1>
-        <p className="text-zinc-500 text-sm mt-1">
+        <h1 className="page-title">Mi ruta</h1>
+        <p className="page-subtitle">
           {(access as any)?.products?.title ?? 'Tu proceso'} · tu historial en la plataforma
         </p>
       </div>
 
       {/* Hoja de vida */}
       <div className="card mb-6">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-5">Mi historial</p>
+        <p className="section-label">Mi historial</p>
         <Timeline events={timeline} />
       </div>
 
       {/* Mis sesiones 1:1 */}
       <div className="card">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Mis sesiones 1:1</p>
+        <p className="section-label">Mis sesiones 1:1</p>
         {unoAuno.length > 0 ? (
           <div className="space-y-3">
             {unoAuno.map((note: any) => (
               <div key={note.id} className="bg-surface-800 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-zinc-500">{formatDateOnly(note.session_date)}</span>
+                  <span className="text-xs text-cream-muted">{formatDateOnly(note.session_date)}</span>
                   {note.profiles?.full_name && (
-                    <span className="text-xs text-zinc-600">con {note.profiles.full_name}</span>
+                    <span className="text-xs text-cream-muted">con {note.profiles.full_name}</span>
                   )}
                 </div>
                 <p className="text-sm text-cream-dim whitespace-pre-wrap">{note.content}</p>
@@ -110,7 +110,7 @@ export default async function MiRutaPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-zinc-600">Aún no tienes sesiones 1:1 registradas.</p>
+          <p className="text-sm text-cream-muted">Aún no tienes sesiones 1:1 registradas.</p>
         )}
       </div>
     </div>

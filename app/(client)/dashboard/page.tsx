@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ArrowRight, Video, Calendar, AlertTriangle, Target, History } from 'lucide-react'
 import { formatDateOnly, formatMonthLong, formatMonthShort, formatCODateLong, formatCOTime } from '@/lib/format'
+import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 
 // Metadatos de presentación por estado del hiperfoco (modelo de hiperfoco, B10).
 // Estados de user_hiperfoco_mes: no_elegido | en_curso | cerrado | pausa.
@@ -193,82 +194,88 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Próximo evento en vivo */}
+      {/* Próximo evento en vivo — hero de Inicio: es el llamado a la acción con más
+          urgencia de la página (a diferencia de Aprendizaje, cuya tesis es el
+          hiperfoco del mes). Mismo lenguaje visual que el hero de Aprendizaje
+          (color pleno + ícono como marca de agua), en tono de marca porque un
+          evento no pertenece a un solo hiperfoco. */}
       {nextSession && (
-        <div
-          className="card mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-          style={{ background: 'linear-gradient(135deg, #1A1215 0%, #2A0E07 100%)' }}
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-11 h-11 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
-              <Video size={18} className="text-accent" />
-            </div>
+        <section className="relative rounded-3xl overflow-hidden mb-6 animate-fade-up">
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-600 to-[#2A0E07]" />
+          <Video size={180} strokeWidth={1} className="absolute -right-6 -bottom-8 text-white/10 pointer-events-none" />
+          <div className="relative p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
             <div>
-              <p className="section-label !mb-1">Próximo evento</p>
-              <p className="text-cream font-medium leading-snug">{nextSession.title}</p>
-              <p className="text-sm text-cream-dim mt-1 inline-flex items-center gap-1.5 capitalize">
-                <Calendar size={12} className="text-sand" />
+              <p className="text-xs uppercase tracking-widest font-semibold mb-2 text-white/70">Próximo evento</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-2">{nextSession.title}</p>
+              <p className="text-sm text-white/80 inline-flex items-center gap-1.5 capitalize">
+                <Calendar size={13} />
                 {formatCODateLong(nextSession.starts_at)} · {formatCOTime(nextSession.starts_at)}
-                <span className="text-cream-muted"> (hora Colombia)</span>
+                <span className="text-white/60"> (hora Colombia)</span>
               </p>
             </div>
+            <a
+              href={`/api/sessions/${nextSession.id}/join`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white hover:bg-cream text-brand-700 font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 text-sm inline-flex items-center gap-2 shrink-0 self-start sm:self-auto"
+            >
+              Unirme al Zoom <ArrowRight size={14} />
+            </a>
           </div>
-          <a
-            href={`/api/sessions/${nextSession.id}/join`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary shrink-0 self-start sm:self-auto"
-          >
-            Unirme al Zoom <ArrowRight size={14} />
-          </a>
-        </div>
+        </section>
       )}
 
-      {/* Hiperfoco del mes */}
-      <div
-        className="card mb-6"
-        style={{ background: 'linear-gradient(135deg, #11201B 0%, #0E2A22 100%)', borderColor: 'rgba(29,158,117,0.35)' }}
-      >
-        <p className="section-label !text-emerald-300/80">
-          Este mes · {formatMonthLong(periodoActual).toUpperCase()}
-        </p>
-        {tieneHiperfocoMes ? (
-          <div className="flex items-center gap-4 mt-2">
-            <div className="w-11 h-11 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-              <Target size={18} className="text-emerald-300" />
+      {/* Hiperfoco del mes — mismo dato que la tesis de Aprendizaje, pero acá es
+          secundario (Inicio prioriza el próximo evento primero, pedido de Diana
+          2026-07-03). Color/ícono propios del hiperfoco (lib/hiperfocoVisual),
+          sin banda de color completa para no competir con el hero de arriba. */}
+      {(() => {
+        const visual = tieneHiperfocoMes ? getHiperfocoVisual(tituloMes) : null
+        const Icon = visual?.icon ?? Target
+        return (
+          <div className="card mb-6 animate-fade-up" style={{ animationDelay: nextSession ? '80ms' : '0ms' }}>
+            <p className="section-label">
+              Este mes · {formatMonthLong(periodoActual).toUpperCase()}
+            </p>
+            <div className="flex items-center gap-4 mt-2">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                style={visual ? { background: `linear-gradient(135deg, ${visual.from}, ${visual.to})` } : undefined}
+              >
+                <Icon size={18} className={visual ? 'text-white' : 'text-cream-muted'} />
+              </div>
+              {tieneHiperfocoMes ? (
+                <>
+                  <div className="flex-1">
+                    <p className="text-xl font-semibold text-cream leading-snug">
+                      Tu hiperfoco: {tituloMes}
+                    </p>
+                  </div>
+                  <span className={`text-xs px-2.5 py-1 rounded-full shrink-0 ${ESTADO_META[estadoMes]?.chip ?? ESTADO_META.no_elegido.chip}`}>
+                    {ESTADO_META[estadoMes]?.label ?? estadoMes}
+                  </span>
+                </>
+              ) : (
+                <div className="flex-1">
+                  <p className="text-base font-medium text-cream leading-snug">
+                    {estadoMes === 'pausa'
+                      ? 'Mes en pausa'
+                      : 'Aún no tienes un hiperfoco asignado este mes'}
+                  </p>
+                  <p className="text-sm text-cream-muted mt-0.5">
+                    {estadoMes === 'pausa'
+                      ? 'Este mes es de descanso. Retomamos el próximo.'
+                      : 'Tu Customer Success definirá tu enfoque junto contigo.'}
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="flex-1">
-              <p className="text-xl font-semibold text-cream leading-snug">
-                Tu hiperfoco: {tituloMes}
-              </p>
-            </div>
-            <span className={`text-xs px-2.5 py-1 rounded-full shrink-0 ${ESTADO_META[estadoMes]?.chip ?? ESTADO_META.no_elegido.chip}`}>
-              {ESTADO_META[estadoMes]?.label ?? estadoMes}
-            </span>
           </div>
-        ) : (
-          <div className="flex items-center gap-4 mt-2">
-            <div className="w-11 h-11 rounded-xl bg-surface-700 flex items-center justify-center shrink-0">
-              <Target size={18} className="text-cream-muted" />
-            </div>
-            <div className="flex-1">
-              <p className="text-base font-medium text-cream leading-snug">
-                {estadoMes === 'pausa'
-                  ? 'Mes en pausa'
-                  : 'Aún no tienes un hiperfoco asignado este mes'}
-              </p>
-              <p className="text-sm text-cream-muted mt-0.5">
-                {estadoMes === 'pausa'
-                  ? 'Este mes es de descanso. Retomamos el próximo.'
-                  : 'Tu Customer Success definirá tu enfoque junto contigo.'}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+        )
+      })()}
 
       {/* Historial de hiperfocos */}
-      <div className="card mb-6">
+      <div className="card mb-6 animate-fade-up" style={{ animationDelay: nextSession ? '140ms' : '60ms' }}>
         <div className="flex items-center gap-2 mb-4">
           <History size={15} className="text-brand-400" />
           <p className="text-sm font-medium text-cream">Mi historial de hiperfocos</p>
@@ -286,9 +293,10 @@ export default async function DashboardPage({
               return (
                 <div
                   key={row.periodo}
-                  className={`grid grid-cols-[88px_1fr_auto] gap-3 items-center py-2.5 ${
+                  className={`grid grid-cols-[88px_1fr_auto] gap-3 items-center py-2.5 animate-fade-up ${
                     i < historialView.length - 1 ? 'border-b border-surface-700/60' : ''
                   }`}
+                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 >
                   <span className="text-xs text-cream-muted capitalize">
                     {formatMonthShort(row.periodo)}

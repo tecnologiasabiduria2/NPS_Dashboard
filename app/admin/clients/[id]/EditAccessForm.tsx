@@ -42,14 +42,14 @@ export default function EditAccessForm({ userId, currentDate, ghlContactId, stat
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <p className="text-xs text-zinc-500 mb-1">Estado actual</p>
+          <p className="text-xs text-cream-muted mb-1">Estado actual</p>
           <span className={status === 'active' ? 'badge-active' : status === 'inactive' ? 'badge-inactive' : 'badge-pending'}>
             {status === 'active' ? 'Activo' : status === 'inactive' ? 'Inactivo' : 'Pendiente'}
           </span>
         </div>
         <div>
-          <p className="text-xs text-zinc-500 mb-1">ID en GHL</p>
-          <p className="text-xs text-zinc-400 font-mono">{ghlContactId || '—'}</p>
+          <p className="text-xs text-cream-muted mb-1">ID en GHL</p>
+          <p className="text-xs text-cream-dim font-mono">{ghlContactId || '—'}</p>
         </div>
       </div>
       <div>

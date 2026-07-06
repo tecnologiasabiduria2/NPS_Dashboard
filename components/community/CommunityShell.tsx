@@ -60,7 +60,23 @@ export default function CommunityShell({ userName, avatarUrl, products, children
   }
 
   return (
-    <div className="flex min-h-screen bg-surface-950">
+    <div className="relative flex min-h-screen bg-surface-950 overflow-hidden">
+      {/* Atmósfera de fondo — mismo recurso que admin y el login (degradado + glows
+          borrosos en la paleta de marca), a pedido de Juan (2026-07-05) de que el
+          área cliente tenga la misma textura de fondo que ya tiene admin. */}
+      <div
+        className="pointer-events-none fixed inset-0 opacity-60"
+        style={{ background: 'radial-gradient(1400px 900px at 85% -10%, #2A0E07 0%, transparent 55%)' }}
+      />
+      <div
+        className="pointer-events-none fixed -top-40 -right-32 w-[560px] h-[560px] rounded-full opacity-[0.14] blur-3xl"
+        style={{ background: 'radial-gradient(circle, #7E301F 0%, transparent 70%)' }}
+      />
+      <div
+        className="pointer-events-none fixed bottom-0 left-64 w-[420px] h-[420px] rounded-full opacity-[0.08] blur-3xl"
+        style={{ background: 'radial-gradient(circle, #DA7D41 0%, transparent 70%)' }}
+      />
+
       {/* ---------- Riel de producto (desktop) ---------- */}
       <aside className="hidden lg:flex flex-col items-center gap-3 w-16 shrink-0 bg-surface-950 border-r border-surface-700 py-4 sticky top-0 h-screen">
         <Link

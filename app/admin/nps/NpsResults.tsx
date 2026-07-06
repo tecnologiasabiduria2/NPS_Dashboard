@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 
 interface Resp {
   id: string
@@ -82,7 +83,7 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
   }, [filtered])
 
   if (responses.length === 0) {
-    return <div className="card text-center text-zinc-500">Sin respuestas NPS aún</div>
+    return <div className="card text-center text-cream-muted">Sin respuestas NPS aún</div>
   }
 
   return (
@@ -94,7 +95,7 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
           {globalAvg !== null && (
             <div className="text-right">
               <span className="text-2xl font-bold text-brand-400">{globalAvg}</span>
-              <span className="text-xs text-zinc-500 ml-2">global · {responses.length} resp.</span>
+              <span className="text-xs text-cream-muted ml-2">global · {responses.length} resp.</span>
             </div>
           )}
         </div>
@@ -102,8 +103,13 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
           {byHiperfoco.map(h => (
             <div key={h.key}>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className={h.key === SIN ? 'text-zinc-500 italic' : 'text-cream-dim'}>{h.label}</span>
-                <span className="text-zinc-500">
+                <span className={`inline-flex items-center gap-1.5 ${h.key === SIN ? 'text-cream-muted italic' : 'text-cream-dim'}`}>
+                  {h.key !== SIN && (
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getHiperfocoVisual(h.label).solid }} />
+                  )}
+                  {h.label}
+                </span>
+                <span className="text-cream-muted">
                   <span className={`font-bold ${scoreColor(h.avg)}`}>{Math.round(h.avg * 10) / 10}</span>
                   {' · '}{h.count} resp.
                 </span>
@@ -126,7 +132,7 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
           ))}
         </select>
         {hiperfocoFilter && filteredAvg !== null && (
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-cream-muted">
             Promedio filtrado: <span className={`font-bold ${scoreColor(filteredAvg)}`}>{filteredAvg}</span>
             {' · '}{filtered.length} resp.
           </span>
@@ -140,7 +146,7 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-cream">{r.profiles?.full_name ?? '—'}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">
+                <p className="text-xs text-cream-muted mt-0.5">
                   {labelOf(r) ?? <span className="italic">Sin hiperfoco</span>}
                   {' · '}
                   {new Date(r.created_at).toLocaleDateString('es-CO')}
@@ -149,12 +155,12 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
               <div className={`text-lg font-bold ${scoreColor(r.score)}`}>{r.score}/10</div>
             </div>
             {r.feedback && (
-              <p className="text-sm text-zinc-400 mt-3 bg-surface-800 rounded-lg px-3 py-2">"{r.feedback}"</p>
+              <p className="text-sm text-cream-dim mt-3 bg-surface-800 rounded-lg px-3 py-2">"{r.feedback}"</p>
             )}
           </div>
         ))}
         {filtered.length === 0 && (
-          <div className="card text-center text-sm text-zinc-600">No hay respuestas que coincidan.</div>
+          <div className="card text-center text-sm text-cream-muted">No hay respuestas que coincidan.</div>
         )}
       </div>
     </div>

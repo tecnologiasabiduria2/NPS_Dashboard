@@ -20,7 +20,7 @@ const TONE_DOT: Record<TimelineTone, string> = {
 
 export default function Timeline({ events }: { events: TimelineEvent[] }) {
   if (events.length === 0) {
-    return <p className="text-sm text-zinc-600">Sin actividad registrada todavía.</p>
+    return <p className="text-sm text-cream-muted">Sin actividad registrada todavía.</p>
   }
 
   return (
@@ -35,10 +35,10 @@ export default function Timeline({ events }: { events: TimelineEvent[] }) {
             </span>
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-sm text-cream">{e.title}</p>
-              <span className="text-xs text-zinc-500 shrink-0">{formatDateOnly(e.date)}</span>
+              <span className="text-xs text-cream-muted shrink-0">{formatDateOnly(e.date)}</span>
             </div>
             {e.detail && (
-              <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{e.detail}</p>
+              <p className="text-xs text-cream-muted mt-0.5 line-clamp-2">{e.detail}</p>
             )}
           </li>
         )

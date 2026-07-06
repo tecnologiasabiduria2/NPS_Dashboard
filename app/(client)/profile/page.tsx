@@ -23,40 +23,40 @@ export default async function ProfilePage() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-bold text-cream mb-8">Mi perfil</h1>
+      <h1 className="page-title mb-8">Mi perfil</h1>
 
       <div className="card mb-4">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Información personal</p>
+        <p className="section-label">Información personal</p>
         <div className="space-y-3">
           <div>
-            <p className="text-xs text-zinc-500">Nombre</p>
+            <p className="text-xs text-cream-muted">Nombre</p>
             <p className="text-cream">{profile?.full_name ?? '—'}</p>
           </div>
           <div>
-            <p className="text-xs text-zinc-500">Email</p>
+            <p className="text-xs text-cream-muted">Email</p>
             <p className="text-cream">{user.email}</p>
           </div>
           <div>
-            <p className="text-xs text-zinc-500">Teléfono</p>
+            <p className="text-xs text-cream-muted">Teléfono</p>
             <p className="text-cream">{profile?.phone ?? '—'}</p>
           </div>
         </div>
       </div>
 
       <div className="card">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-4">Mi suscripción</p>
+        <p className="section-label">Mi suscripción</p>
         <div className="space-y-3">
           <div>
-            <p className="text-xs text-zinc-500">Programa</p>
+            <p className="text-xs text-cream-muted">Programa</p>
             <p className="text-cream">{(access as any)?.products?.title ?? '—'}</p>
           </div>
           <div>
-            <p className="text-xs text-zinc-500">Estado</p>
+            <p className="text-xs text-cream-muted">Estado</p>
             <span className="badge-active">Activo</span>
           </div>
           {access?.access_until && (
             <div>
-              <p className="text-xs text-zinc-500">Acceso hasta</p>
+              <p className="text-xs text-cream-muted">Acceso hasta</p>
               <p className="text-cream">
                 {formatDateOnly(access.access_until, { year: 'numeric', month: 'long', day: 'numeric' })}
               </p>

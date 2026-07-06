@@ -35,7 +35,7 @@ export default function DeleteSessionButton({ sessionId }: { sessionId: string }
         <button
           onClick={() => setConfirming(false)}
           disabled={loading}
-          className="text-xs px-2.5 py-1 rounded-md text-zinc-500 hover:text-cream-dim transition-colors"
+          className="text-xs px-2.5 py-1 rounded-md text-cream-muted hover:text-cream-dim transition-colors"
         >
           Cancelar
         </button>
@@ -46,7 +46,7 @@ export default function DeleteSessionButton({ sessionId }: { sessionId: string }
   return (
     <button
       onClick={() => setConfirming(true)}
-      className="shrink-0 p-1.5 rounded-md text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+      className="shrink-0 p-1.5 rounded-md text-cream-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
       title="Eliminar sesión"
     >
       <Trash2 size={14} />

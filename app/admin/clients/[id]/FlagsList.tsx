@@ -35,7 +35,7 @@ export default function FlagsList({ flags }: { flags: FlagRow[] }) {
   }
 
   if (flags.length === 0) {
-    return <p className="text-sm text-zinc-600">Sin banderas ni casos de éxito abiertos.</p>
+    return <p className="text-sm text-cream-muted">Sin banderas ni casos de éxito abiertos.</p>
   }
 
   return (
@@ -51,9 +51,9 @@ export default function FlagsList({ flags }: { flags: FlagRow[] }) {
               <div>
                 <p className="text-sm text-cream">
                   {esExito ? 'Caso de éxito' : 'Bandera'}
-                  <span className="text-xs text-zinc-500 ml-2">{formatDateOnly(f.created_at?.slice(0, 10))}</span>
+                  <span className="text-xs text-cream-muted ml-2">{formatDateOnly(f.created_at?.slice(0, 10))}</span>
                 </p>
-                {f.reason && <p className="text-xs text-zinc-400 mt-0.5">{f.reason}</p>}
+                {f.reason && <p className="text-xs text-cream-dim mt-0.5">{f.reason}</p>}
               </div>
             </div>
             <button

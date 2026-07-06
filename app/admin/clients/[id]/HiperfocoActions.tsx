@@ -82,7 +82,7 @@ export default function HiperfocoActions({ userId, productId, hiperfocos }: Prop
                   <option key={h.id} value={h.id}>{h.title}</option>
                 ))}
               </select>
-              <p className="text-xs text-zinc-500">Se asigna al mes en curso. El cliente solo lo visualiza.</p>
+              <p className="text-xs text-cream-muted">Se asigna al mes en curso. El cliente solo lo visualiza.</p>
               <div className="flex justify-end gap-2">
                 <button onClick={reset} className="btn-secondary text-sm">Cancelar</button>
                 <button onClick={setHiperfoco} disabled={loading || !hiperfocoId} className="btn-primary text-sm">

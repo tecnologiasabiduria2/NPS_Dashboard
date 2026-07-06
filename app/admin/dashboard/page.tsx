@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { AlertTriangle, Users, TrendingDown, Clock, ArrowRight, UserPlus, Star } from 'lucide-react'
 import { formatMonthLong } from '@/lib/format'
+import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
+import DonutChart from '@/components/DonutChart'
 
 function npsColorClass(score: number) {
   if (score >= 8) return 'text-emerald-400'
@@ -66,14 +68,18 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Activos', value: activeCount ?? 0, icon: Users, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
           { label: 'Inactivos', value: expiredCount ?? 0, icon: TrendingDown, color: 'text-cream-muted', bg: 'bg-surface-700' },
           { label: 'Sin fecha', value: noDateCount ?? 0, icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/10', urgent: true },
           { label: 'Vencen en 7d', value: soonCount ?? 0, icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-        ].map(({ label, value, icon: Icon, color, bg, urgent }) => (
-          <div key={label} className={`card ${urgent && Number(value) > 0 ? 'border-red-500/30' : ''}`}>
+        ].map(({ label, value, icon: Icon, color, bg, urgent }, i) => (
+          <div
+            key={label}
+            className={`card animate-fade-up ${urgent && Number(value) > 0 ? 'border-red-500/30' : ''}`}
+            style={{ animationDelay: `${i * 60}ms` }}
+          >
             <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center mb-3`}>
               <Icon size={18} className={color} />
             </div>
@@ -83,32 +89,59 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
-      {/* NPS por módulo (resumen simple; el detalle completo está en /admin/360) */}
-      <div className="card mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Star size={16} className="text-amber-400" />
-            <p className="text-sm font-medium text-cream">NPS por módulo · {formatMonthLong(periodoActual)}</p>
-          </div>
-          <Link href="/admin/360" className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
-            Ver detalle <ArrowRight size={12} />
-          </Link>
+      <div className="grid lg:grid-cols-2 gap-4 mb-8">
+        {/* Salud de cartera — resumen visual (el desglose fino vive en /admin/360) */}
+        <div className="card animate-fade-up" style={{ animationDelay: '240ms' }}>
+          <p className="text-sm font-medium text-cream mb-4">Salud de cartera</p>
+          <DonutChart
+            centerValue={(activeCount ?? 0) + (expiredCount ?? 0)}
+            centerLabel="clientes totales"
+            segments={[
+              { label: 'Activos', value: activeCount ?? 0, color: '#34d399' },
+              { label: 'Inactivos', value: expiredCount ?? 0, color: '#4e4a64' },
+            ]}
+          />
         </div>
-        {npsList.length === 0 ? (
-          <p className="text-sm text-cream-muted text-center py-4">Sin respuestas de NPS este mes todavía.</p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {npsList.map(row => (
-              <div key={row.title} className="bg-surface-800 rounded-xl px-4 py-3">
-                <p className="text-xs text-cream-muted truncate">{row.title}</p>
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <p className={`text-xl font-bold ${npsColorClass(row.avg)}`}>{row.avg}</p>
-                  <p className="text-xs text-cream-muted">({row.count})</p>
-                </div>
-              </div>
-            ))}
+
+        {/* NPS por módulo (resumen simple; el detalle completo está en /admin/360) */}
+        <div className="card animate-fade-up" style={{ animationDelay: '300ms' }}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Star size={16} className="text-amber-400" />
+              <p className="text-sm font-medium text-cream">NPS por módulo · {formatMonthLong(periodoActual)}</p>
+            </div>
+            <Link href="/admin/360" className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
+              Ver detalle <ArrowRight size={12} />
+            </Link>
           </div>
-        )}
+          {npsList.length === 0 ? (
+            <p className="text-sm text-cream-muted text-center py-4">Sin respuestas de NPS este mes todavía.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {npsList.map(row => {
+                const visual = getHiperfocoVisual(row.title)
+                const HfIcon = visual.icon
+                return (
+                  <div key={row.title} className="bg-surface-800 rounded-xl px-3 py-3 flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: `linear-gradient(135deg, ${visual.from}, ${visual.to})` }}
+                    >
+                      <HfIcon size={14} className="text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-cream-muted truncate">{row.title}</p>
+                      <div className="flex items-baseline gap-1.5">
+                        <p className={`text-lg font-bold ${npsColorClass(row.avg)}`}>{row.avg}</p>
+                        <p className="text-xs text-cream-muted">({row.count})</p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Alertas */}

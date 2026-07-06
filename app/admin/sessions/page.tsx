@@ -107,7 +107,7 @@ export default async function AdminSessionsPage() {
       <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
         <div className="flex items-center gap-2">
           <Calendar size={22} className="text-brand-400" />
-          <h1 className="text-2xl font-bold text-cream">Sesiones en vivo</h1>
+          <h1 className="page-title">Sesiones en vivo</h1>
         </div>
         <SendNpsEmailsButton initialPending={pendingNps} />
       </div>

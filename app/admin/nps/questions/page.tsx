@@ -20,8 +20,8 @@ export default async function NpsQuestionsPage() {
   return (
     <div className="max-w-2xl">
       <BackLink href="/admin/nps" label="Volver a NPS" />
-      <h1 className="text-2xl font-bold text-cream mt-2 mb-2">Preguntas del NPS</h1>
-      <p className="text-sm text-zinc-500 mb-8">
+      <h1 className="page-title mt-2 mb-2">Preguntas del NPS</h1>
+      <p className="text-sm text-cream-muted mb-8">
         Estos son los textos que ve el cliente en la encuesta. En el título de post-sesión,
         el token <code className="text-accent">{'{sesion}'}</code> se reemplaza por el nombre de la sesión.
       </p>

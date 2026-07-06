@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { formatDateOnly } from '@/lib/format'
+import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 
 type SortMode = 'default' | 'vence_pronto' | 'vence_tarde'
 
@@ -83,7 +84,7 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
     <>
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="relative flex-1 min-w-48">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cream-muted" />
           <input
             type="text"
             className="input pl-9"
@@ -129,11 +130,11 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
         <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-surface-700">
-              <th className="text-left text-xs text-zinc-500 uppercase tracking-wider px-6 py-4">Cliente</th>
-              <th className="text-left text-xs text-zinc-500 uppercase tracking-wider px-6 py-4">Programa</th>
-              <th className="text-left text-xs text-zinc-500 uppercase tracking-wider px-4 py-4">Hiperfoco (mes)</th>
-              <th className="text-left text-xs text-zinc-500 uppercase tracking-wider px-6 py-4">Vence</th>
-              <th className="text-left text-xs text-zinc-500 uppercase tracking-wider px-6 py-4">Estado</th>
+              <th className="text-left text-xs text-cream-muted uppercase tracking-wider px-6 py-4">Cliente</th>
+              <th className="text-left text-xs text-cream-muted uppercase tracking-wider px-6 py-4">Programa</th>
+              <th className="text-left text-xs text-cream-muted uppercase tracking-wider px-4 py-4">Hiperfoco (mes)</th>
+              <th className="text-left text-xs text-cream-muted uppercase tracking-wider px-6 py-4">Vence</th>
+              <th className="text-left text-xs text-cream-muted uppercase tracking-wider px-6 py-4">Estado</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-800">
@@ -144,18 +145,29 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
                   <td className="px-6 py-4">
                     <Link href={`/admin/clients/${client.user_id}`} className="hover:text-brand-400 transition-colors">
                       <p className="text-sm text-cream font-medium">{client.profiles?.full_name ?? '—'}</p>
-                      <p className="text-xs text-zinc-500">{client.profiles?.phone ?? ''}</p>
+                      <p className="text-xs text-cream-muted">{client.profiles?.phone ?? ''}</p>
                     </Link>
                   </td>
                   <td className="px-6 py-4"><p className="text-sm text-cream-dim">{client.products?.title ?? '—'}</p></td>
                   <td className="px-4 py-4">
                     {hiperfoco
-                      ? <span className="text-xs px-2 py-0.5 bg-brand-600/20 text-brand-400 rounded-full">{hiperfoco}</span>
-                      : <span className="text-xs text-zinc-600">—</span>
+                      ? (() => {
+                          const visual = getHiperfocoVisual(hiperfoco)
+                          return (
+                            <span
+                              className="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full"
+                              style={{ background: `${visual.solid}22`, color: visual.solid }}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: visual.solid }} />
+                              {hiperfoco}
+                            </span>
+                          )
+                        })()
+                      : <span className="text-xs text-cream-muted">—</span>
                     }
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-cream-dim">
                       {client.access_until ? formatDateOnly(client.access_until) : <span className="text-amber-400">—</span>}
                     </p>
                   </td>
@@ -165,7 +177,7 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-600">
+                <td colSpan={5} className="px-6 py-8 text-center text-sm text-cream-muted">
                   No hay clientes que coincidan.
                 </td>
               </tr>
