@@ -61,10 +61,15 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 async function sendProductAddedEmail(to: string, name: string, productTitle: string): Promise<void> {
   const apiKey = Deno.env.get('SMTP_PASS')
   const from = Deno.env.get('SMTP_FROM')
-  if (!apiKey || !from) return
+  if (!apiKey || !from) {
+    console.error('sendProductAddedEmail: faltan los secrets SMTP_PASS/SMTP_FROM en esta función', {
+      hasApiKey: !!apiKey, hasFrom: !!from,
+    })
+    return
+  }
 
   try {
-    await fetch('https://api.resend.com/emails', {
+    const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -87,8 +92,13 @@ async function sendProductAddedEmail(to: string, name: string, productTitle: str
         `,
       }),
     })
-  } catch {
-    // No bloquea el alta si el correo falla — el acceso ya quedó dado.
+    if (!res.ok) {
+      console.error('sendProductAddedEmail: Resend respondió con error', res.status, await res.text())
+    } else {
+      console.log('sendProductAddedEmail: correo enviado OK a', to)
+    }
+  } catch (e) {
+    console.error('sendProductAddedEmail: excepción al llamar a Resend', e instanceof Error ? e.message : String(e))
   }
 }
 
