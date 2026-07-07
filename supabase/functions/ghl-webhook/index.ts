@@ -10,15 +10,28 @@ function timingSafeEqualStr(a: string, b: string): boolean {
   return result === 0
 }
 
+// Alias de product_access -> slug real en la BD. "Impulso Empresarial" reutiliza
+// el producto `Workshop` (solo se le cambió el título, no el slug, para no romper
+// filtros existentes por slug — ver B20 en PENDIENTES.md). El workflow de GHL
+// manda "impulso", que no coincide con ningún slug real — se traduce aquí.
+const PRODUCT_SLUG_ALIASES: Record<string, string> = {
+  impulso: 'workshop',
+}
+
+function resolveProductSlug(raw: string): string {
+  return PRODUCT_SLUG_ALIASES[raw] ?? raw
+}
+
 // Duración fija por producto (confirmado por Juan 2026-07-02): si GHL no manda
 // access_until, se calcula hoy + duración del producto. Si el día llega a mandarse
 // desde GHL, ese valor siempre tiene prioridad sobre este default.
-// 'impulso' (2026-07-07): 6 meses puesto como default PROVISIONAL, sin confirmar
-// todavía con Diana — ver PENDIENTES.md, revisar/ajustar cuando se defina el plan real.
+// 'workshop' (2026-07-07, Impulso Empresarial): 6 meses puesto como default
+// PROVISIONAL, sin confirmar todavía con Diana — ver PENDIENTES.md, revisar/
+// ajustar cuando se defina el plan real.
 const DEFAULT_DURATION_MONTHS: Record<string, number> = {
   desafio: 6,
   sabiduria: 12,
-  impulso: 6,
+  workshop: 6,
 }
 
 function defaultAccessUntil(productSlug: string): string | null {
@@ -60,9 +73,10 @@ Deno.serve(async (req) => {
   }
 
   const { email, full_name, product_access, ghl_contact_id, secret } = body
+  const productSlug = resolveProductSlug(product_access)
   const access_until = (body.access_until && body.access_until !== 'null' && body.access_until !== ''
     ? body.access_until
-    : null) ?? defaultAccessUntil(product_access)
+    : null) ?? defaultAccessUntil(productSlug)
 
   const expectedSecret = Deno.env.get('GHL_WEBHOOK_SECRET')
   if (!expectedSecret || !timingSafeEqualStr(String(secret ?? ''), expectedSecret)) {
@@ -79,7 +93,7 @@ Deno.serve(async (req) => {
 
   // Buscar producto
   const { data: product, error: productError } = await supabase
-    .from('products').select('id').eq('slug', product_access).single()
+    .from('products').select('id').eq('slug', productSlug).single()
 
   if (productError || !product) {
     return new Response(JSON.stringify({ error: `Product '${product_access}' not found` }), {
