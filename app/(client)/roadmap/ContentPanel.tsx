@@ -25,7 +25,11 @@ export default function ContentPanel({ card, userId, onClose }: Props) {
   const [selectedVideoId, setSelectedVideoId] = useState<string | undefined>(firstPendingVideo?.id)
   const selectedVideo: CardRecording | undefined = videos.find(r => r.id === selectedVideoId)
 
-  const documentPaths = documents.map(r => r.storage_path as string).filter(Boolean)
+  // Documentos nuevos son links de Drive (storage_path = URL completa); solo
+  // los legados (subidos al bucket antes del cambio, calibración 2026-07-06)
+  // pasan por /api/download y entran al zip.
+  const isDriveLink = (path: string) => /^https?:\/\//.test(path)
+  const documentPaths = documents.map(r => r.storage_path as string).filter(p => p && !isDriveLink(p))
   const [zipping, setZipping] = useState(false)
 
   async function downloadAll() {
@@ -117,7 +121,11 @@ export default function ContentPanel({ card, userId, onClose }: Props) {
                 {documents.map(doc => (
                   <div key={doc.id} className="flex items-center gap-2">
                     <a
-                      href={`/api/download?path=${encodeURIComponent(doc.storage_path ?? '')}`}
+                      href={
+                        doc.storage_path && isDriveLink(doc.storage_path)
+                          ? doc.storage_path
+                          : `/api/download?path=${encodeURIComponent(doc.storage_path ?? '')}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 bg-surface-800 hover:bg-surface-700 rounded-lg transition-colors group"

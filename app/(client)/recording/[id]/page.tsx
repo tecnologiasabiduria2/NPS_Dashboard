@@ -119,7 +119,11 @@ export default async function RecordingPage({ params }: Props) {
             />
           </div>
           <a
-            href={`/api/download?path=${encodeURIComponent(rec.storage_path)}`}
+            href={
+              /^https?:\/\//.test(rec.storage_path)
+                ? rec.storage_path
+                : `/api/download?path=${encodeURIComponent(rec.storage_path)}`
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 px-4 py-3 bg-surface-800 hover:bg-surface-700 rounded-lg transition-colors group"

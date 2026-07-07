@@ -4,49 +4,23 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { CONTENT_TIPO_VALUES } from '@/lib/sessionTypes'
 
 const VALID_FILE_TYPES = ['video', 'document'] as const
-const MAX_DOC_BYTES = 50 * 1024 * 1024 // 50MB
-
-// Whitelist server-side (no confiar solo en el `accept` del <input>, que el
-// navegador ignora si alguien manda la petición directo). Extensión y
-// content-type real que se guarda en Storage van de la mano con esta lista,
-// para que nunca se sirva un archivo con un tipo que pueda ejecutarse en el
-// navegador (html/svg/js) haciéndose pasar por un documento del curso.
-const ALLOWED_DOC_TYPES: Record<string, string> = {
-  pdf: 'application/pdf',
-  doc: 'application/msword',
-  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  ppt: 'application/vnd.ms-powerpoint',
-  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  xls: 'application/vnd.ms-excel',
-  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-}
-
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 60) || 'documento'
-}
 
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
   if ('error' in auth) return auth.error
 
-  const form = await req.formData().catch(() => null)
-  if (!form) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
 
-  const id = String(form.get('id') ?? '').trim() || undefined
-  const tipo = String(form.get('tipo') ?? '')
-  const hiperfoco_id = String(form.get('hiperfoco_id') ?? '')
-  const title = String(form.get('title') ?? '').trim()
-  const type = String(form.get('type') ?? '')
-  const fathom_share_id: string | null = String(form.get('fathom_share_id') ?? '').trim() || null
-  const existingStoragePath: string | null = String(form.get('existing_storage_path') ?? '').trim() || null
-  const is_published = form.get('is_published') === 'true'
-  const orderRaw = form.get('order')
-  const file = form.get('file')
+  const id = String(body.id ?? '').trim() || undefined
+  const tipo = String(body.tipo ?? '')
+  const hiperfoco_id = String(body.hiperfoco_id ?? '')
+  const title = String(body.title ?? '').trim()
+  const type = String(body.type ?? '')
+  const fathom_share_id: string | null = String(body.fathom_share_id ?? '').trim() || null
+  const driveUrl: string | null = String(body.drive_url ?? '').trim() || null
+  const is_published = Boolean(body.is_published)
+  const orderRaw = body.order
 
   if (!hiperfoco_id || !tipo || !title || !type) {
     return NextResponse.json({ error: 'Hiperfoco, tipo, título y tipo de archivo son obligatorios' }, { status: 400 })
@@ -87,35 +61,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Documento: sube el archivo real al bucket privado `content` (mismo patrón que
-  // el avatar de onboarding). Si no llega un archivo nuevo, conserva la ruta
-  // existente (edición sin reemplazar el PDF).
-  let storage_path: string | null = existingStoragePath
+  // Documento: link de Google Drive (pedido de Diana, calibración 2026-07-06 —
+  // todos sus archivos viven en Drive con prompts/hipervínculos conectados, ya
+  // no se sube el archivo directo a un bucket).
+  let storage_path: string | null = null
   if (type === 'document') {
-    if (file instanceof File && file.size > 0) {
-      if (file.size > MAX_DOC_BYTES) {
-        return NextResponse.json({ error: 'El archivo supera el máximo de 50MB' }, { status: 400 })
-      }
-      const ext = (file.name.split('.').pop() || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-      const safeContentType = ALLOWED_DOC_TYPES[ext]
-      if (!safeContentType) {
-        return NextResponse.json({ error: 'Tipo de archivo no permitido. Usa PDF, Word, PowerPoint o Excel.' }, { status: 400 })
-      }
-      const path = `${hiperfoco_id}/${tipo}/${Date.now()}-${slugify(title)}.${ext}`
-      const buf = Buffer.from(await file.arrayBuffer())
-      const { error: upErr } = await supabaseAdmin.storage
-        .from('content')
-        .upload(path, buf, { contentType: safeContentType, upsert: true })
-      if (upErr) {
-        return NextResponse.json({ error: 'No se pudo subir el archivo: ' + upErr.message }, { status: 400 })
-      }
-      storage_path = path
+    if (!driveUrl || !/^https:\/\//.test(driveUrl)) {
+      return NextResponse.json({ error: 'Pega un link de Drive válido (debe empezar con https://)' }, { status: 400 })
     }
-    if (!storage_path) {
-      return NextResponse.json({ error: 'Sube un archivo para el documento' }, { status: 400 })
-    }
-  } else {
-    storage_path = null
+    storage_path = driveUrl
   }
 
   const payload: Record<string, any> = {

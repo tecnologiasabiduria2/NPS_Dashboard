@@ -65,7 +65,10 @@ export default async function SessionsPage({
     .eq('user_id', user.id)
   const attendedIds = new Set((attendanceRows ?? []).map(a => (a as any).session_id))
 
-  const events: CalendarEvent[] = all.map(s => ({
+  // Calendario del cliente: solo sesiones futuras (pedido de Diana, calibración
+  // 2026-07-06 — "hacia el cliente las futuras"). El histórico completo (`all`,
+  // sin filtrar) se conserva para todo lo demás: NPS por link, asistencia, etc.
+  const events: CalendarEvent[] = upcoming.map(s => ({
     id: s.id,
     date: s.starts_at,
     endsAt: s.ends_at,

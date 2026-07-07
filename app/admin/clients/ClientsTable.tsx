@@ -13,9 +13,10 @@ interface Props {
   today: string
   soonDate: string
   hiperfocoByUser: Map<string, string>
+  multiProductoIds: Set<string>
 }
 
-export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser }: Props) {
+export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser, multiProductoIds }: Props) {
   const [q, setQ] = useState('')
   const [sort, setSort] = useState<SortMode>('default')
   const [hiperfocoFilter, setHiperfocoFilter] = useState('')
@@ -141,10 +142,20 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
             {filtered.map((client: any) => {
               const hiperfoco = hiperfocoByUser.get(client.user_id)
               return (
-                <tr key={client.user_id} className="hover:bg-surface-800/50 transition-colors">
+                <tr key={client.id ?? client.user_id} className="hover:bg-surface-800/50 transition-colors">
                   <td className="px-6 py-4">
                     <Link href={`/admin/clients/${client.user_id}`} className="hover:text-brand-400 transition-colors">
-                      <p className="text-sm text-cream font-medium">{client.profiles?.full_name ?? '—'}</p>
+                      <p className="text-sm text-cream font-medium inline-flex items-center gap-1.5">
+                        {client.profiles?.full_name ?? '—'}
+                        {multiProductoIds.has(client.user_id) && (
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-600/20 text-brand-300 font-normal"
+                            title="Cliente con acceso a 2+ productos"
+                          >
+                            ↗ 2+ productos
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-cream-muted">{client.profiles?.phone ?? ''}</p>
                     </Link>
                   </td>

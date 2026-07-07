@@ -2,10 +2,10 @@
 
 import { useSearchParams } from 'next/navigation'
 
-// Desplegable de producto de la Vista 360. Filtra (vía ?producto=slug) las
-// secciones por hiperfoco. "" = todos los productos. Form GET nativo (más
-// confiable que router.push con searchParams, ver nota en MonthFilter.tsx).
-// Preserva ?cs_mes= si estaba puesto.
+// Desplegable de producto de la sección de Operación/Negocio (owner). Filtra
+// (vía ?producto=slug) las secciones por hiperfoco. "" = todos los productos.
+// Form GET nativo (más confiable que router.push con searchParams, ver nota
+// en MonthFilter.tsx). Preserva ?cs_mes= si estaba puesto.
 export default function ProductFilter({
   options,
   value,

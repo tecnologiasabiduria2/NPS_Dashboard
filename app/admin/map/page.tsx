@@ -12,7 +12,8 @@ export default async function MapPage() {
   const today = new Date().toISOString().split('T')[0]
   const periodo = periodoActual()
 
-  const [{ data: clients }, { data: hiperfocosMes }] = await Promise.all([
+  const [{ data: products }, { data: clients }, { data: hiperfocosMes }] = await Promise.all([
+    supabase.from('products').select('title').order('title'),
     supabase
       .from('user_access')
       .select('user_id, status, access_until, products(title, slug), profiles(full_name)')
@@ -27,10 +28,16 @@ export default async function MapPage() {
     ((hiperfocosMes ?? []) as any[]).map(h => [h.user_id, (h.hiperfocos as any)?.title ?? ''])
   )
 
-  const byProduct = {
-    workshop:  (clients ?? []).filter((c: any) => c.products?.slug === 'workshop'),
-    desafio:   (clients ?? []).filter((c: any) => c.products?.slug === 'desafio'),
-    sabiduria: (clients ?? []).filter((c: any) => c.products?.slug === 'sabiduria'),
+  // Agrupado dinámico por producto (título real de la BD) — evita hardcodear
+  // los slugs/labels cada vez que se agrega un producto nuevo. Se inicializa
+  // con TODOS los productos (aunque tengan 0 clientes) para que la columna
+  // siempre aparezca.
+  const byProduct = new Map<string, any[]>()
+  for (const p of (products ?? []) as any[]) byProduct.set(p.title, [])
+  for (const c of (clients ?? []) as any[]) {
+    const title = c.products?.title ?? 'Sin producto'
+    if (!byProduct.has(title)) byProduct.set(title, [])
+    byProduct.get(title)!.push(c)
   }
 
   function ClientCard({ client }: { client: any }) {
@@ -62,7 +69,7 @@ export default async function MapPage() {
     <div>
       <h1 className="page-title mb-8">Mapa de clientes</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {([['Workshop', byProduct.workshop], ['Desafío', byProduct.desafio], ['Sabiduría', byProduct.sabiduria]] as const).map(([label, items]) => (
+        {[...byProduct.entries()].map(([label, items]) => (
           <div key={label}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-cream-dim">{label}</h2>

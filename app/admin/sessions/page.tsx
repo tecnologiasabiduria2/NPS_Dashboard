@@ -1,15 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import SessionForm from './SessionForm'
-import DeleteSessionButton from './DeleteSessionButton'
-import CopyNpsLink from './CopyNpsLink'
-import CopyJoinLink from './CopyJoinLink'
+import SessionsList from './SessionsList'
 import SendNpsEmailsButton from './SendNpsEmailsButton'
-import { Calendar, Video } from 'lucide-react'
-import { sessionTipoLabel } from '@/lib/sessionTypes'
-import { formatCODateTime } from '@/lib/format'
+import { Calendar } from 'lucide-react'
 import { countPendingNpsEmails } from '@/lib/npsEmail'
-import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 
 export default async function AdminSessionsPage() {
   const supabase = await createClient()
@@ -64,52 +59,6 @@ export default async function AdminSessionsPage() {
   }))
 
   const productOptions = ((products ?? []) as any[]).map(p => ({ id: p.id, label: p.title }))
-  const now = Date.now()
-  const upcoming = sessions.filter(s => new Date(s.ends_at).getTime() >= now)
-  const past = sessions.filter(s => new Date(s.ends_at).getTime() < now).reverse()
-
-  const renderRow = (s: (typeof sessions)[number]) => {
-    const ended = new Date(s.ends_at).getTime() < now
-    return (
-      <div key={s.id} className="flex items-center justify-between bg-surface-800 rounded-lg px-3 py-2.5 gap-2">
-        <div className="flex items-start gap-2 min-w-0">
-          <Video size={13} className={`${ended ? 'text-cream-muted' : 'text-accent'} mt-0.5 shrink-0`} />
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="text-sm text-cream truncate">{sessionTipoLabel(s.tipo)}</p>
-              {s.hiperfoco_nombre ? (
-                <span
-                  className="text-[10px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
-                  style={{ background: `${getHiperfocoVisual(s.hiperfoco_nombre).solid}22`, color: getHiperfocoVisual(s.hiperfoco_nombre).solid }}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: getHiperfocoVisual(s.hiperfoco_nombre).solid }} />
-                  {s.hiperfoco_nombre}
-                </span>
-              ) : (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-600/15 text-brand-300">General</span>
-              )}
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-700 text-cream-dim">
-                {s.product_id ? (prodTitle.get(s.product_id) ?? 'Producto') : 'Todos'}
-              </span>
-            </div>
-            <p className="text-xs text-cream-muted mt-0.5 truncate">
-              {formatCODateTime(s.starts_at)}
-              {s.title ? ` · ${s.title}` : ''}
-              {!s.zoom_url ? ' · sin link' : ''}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className={s.is_published ? 'badge-active' : 'badge-pending'}>
-            {s.is_published ? 'Pub.' : 'Borrador'}
-          </span>
-          <CopyJoinLink sessionId={s.id} />
-          {npsTokenById[s.id] && <CopyNpsLink token={npsTokenById[s.id]} />}
-          <DeleteSessionButton sessionId={s.id} />
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="max-w-6xl">
@@ -125,31 +74,12 @@ export default async function AdminSessionsPage() {
         {/* Formulario */}
         <SessionForm products={productOptions} hiperfocoNames={hiperfocoNames} sessions={sessions} recurringLinks={recurringLinks} />
 
-        {/* Listado separado: próximas / pasadas (hora Colombia) */}
-        <div className="space-y-4">
-          <div className="card animate-fade-up">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-semibold text-cream">Próximas</h2>
-              <span className="text-xs text-cream-muted">{upcoming.length} · hora Colombia</span>
-            </div>
-            {upcoming.length === 0 ? (
-              <p className="text-sm text-cream-muted text-center py-3">Sin sesiones próximas</p>
-            ) : (
-              <div className="space-y-2">{upcoming.map(renderRow)}</div>
-            )}
-          </div>
-
-          {past.length > 0 && (
-            <div className="card animate-fade-up" style={{ animationDelay: '80ms' }}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-cream-dim">Pasadas</h2>
-                <span className="text-xs text-cream-muted">{past.length}</span>
-              </div>
-              <div className="space-y-2 opacity-70">{past.slice(0, 15).map(renderRow)}</div>
-              {past.length > 15 && <p className="text-xs text-cream-muted mt-2 text-center">y {past.length - 15} más…</p>}
-            </div>
-          )}
-        </div>
+        {/* Listado separado: próximas / pasadas (hora Colombia), con buscador */}
+        <SessionsList
+          sessions={sessions}
+          prodTitle={Object.fromEntries(prodTitle)}
+          npsTokenById={npsTokenById}
+        />
       </div>
     </div>
   )
