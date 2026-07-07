@@ -13,9 +13,12 @@ function timingSafeEqualStr(a: string, b: string): boolean {
 // Duración fija por producto (confirmado por Juan 2026-07-02): si GHL no manda
 // access_until, se calcula hoy + duración del producto. Si el día llega a mandarse
 // desde GHL, ese valor siempre tiene prioridad sobre este default.
+// 'impulso' (2026-07-07): 6 meses puesto como default PROVISIONAL, sin confirmar
+// todavía con Diana — ver PENDIENTES.md, revisar/ajustar cuando se defina el plan real.
 const DEFAULT_DURATION_MONTHS: Record<string, number> = {
   desafio: 6,
   sabiduria: 12,
+  impulso: 6,
 }
 
 function defaultAccessUntil(productSlug: string): string | null {
