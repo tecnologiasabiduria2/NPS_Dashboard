@@ -91,7 +91,7 @@ export default async function AdminDashboardPage({
   })
 
   return (
-    <div className="max-w-5xl">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="page-title">Dashboard</h1>
@@ -102,25 +102,28 @@ export default async function AdminDashboardPage({
         </Link>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs — tarjetas "instrumento": badge de ícono + resplandor ambiental
+          detrás, como luces de panel de control (identidad de marca:
+          Sabiduría Empresarial = "cabina de control"). */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         {[
-          { label: 'Activos', value: activeCount ?? 0, icon: Users, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-          { label: 'Inactivos', value: expiredCount ?? 0, icon: TrendingDown, color: 'text-cream-muted', bg: 'bg-surface-700' },
-          { label: 'Sin fecha', value: noDateCount ?? 0, icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/10', urgent: true },
-          { label: 'Vencen en 7d', value: soonCount ?? 0, icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-          { label: 'Vencen próx. mes', value: soonMonthCount ?? 0, icon: CalendarClock, color: 'text-sky-400', bg: 'bg-sky-500/10' },
-        ].map(({ label, value, icon: Icon, color, bg, urgent }, i) => (
+          { label: 'Activos', value: activeCount ?? 0, icon: Users, color: 'text-emerald-400', bg: 'bg-emerald-500/10', glow: '#34d399' },
+          { label: 'Inactivos', value: expiredCount ?? 0, icon: TrendingDown, color: 'text-cream-muted', bg: 'bg-surface-700', glow: undefined },
+          { label: 'Sin fecha', value: noDateCount ?? 0, icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/10', urgent: true, glow: '#f87171' },
+          { label: 'Vencen en 7d', value: soonCount ?? 0, icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10', glow: '#fbbf24' },
+          { label: 'Vencen próx. mes', value: soonMonthCount ?? 0, icon: CalendarClock, color: 'text-sky-400', bg: 'bg-sky-500/10', glow: '#38bdf8' },
+        ].map(({ label, value, icon: Icon, color, bg, urgent, glow }, i) => (
           <div
             key={label}
-            className={`card animate-fade-up ${urgent && Number(value) > 0 ? 'border-red-500/30' : ''}`}
+            className={`card card-glow animate-fade-up ${urgent && Number(value) > 0 ? 'border-red-500/30' : ''}`}
             style={{ animationDelay: `${i * 60}ms` }}
           >
-            <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center mb-3`}>
-              <Icon size={18} className={color} />
+            {glow && <div className="card-glow-orb" style={{ background: glow }} />}
+            <div className={`relative w-11 h-11 rounded-xl ${bg} flex items-center justify-center mb-3`}>
+              <Icon size={19} className={color} />
             </div>
-            <p className={`text-3xl font-bold ${urgent && Number(value) > 0 ? 'text-red-400' : 'text-cream'}`}>{value}</p>
-            <p className="text-xs text-cream-muted mt-1">{label}</p>
+            <p className={`relative text-3xl font-bold tabular-nums ${urgent && Number(value) > 0 ? 'text-red-400' : 'text-cream'}`}>{value}</p>
+            <p className="relative text-xs text-cream-muted mt-1">{label}</p>
           </div>
         ))}
       </div>
@@ -134,17 +137,19 @@ export default async function AdminDashboardPage({
           <DonutChart
             centerValue={(activeCount ?? 0) + (expiredCount ?? 0)}
             centerLabel="clientes totales"
+            size={188}
             segments={[
               { label: 'Activos', value: activeCount ?? 0, color: '#34d399' },
-              { label: 'Inactivos', value: expiredCount ?? 0, color: '#4e4a64' },
+              { label: 'Inactivos', value: expiredCount ?? 0, color: '#5b4b3f' },
             ]}
           />
         </div>
 
         {/* NPS Global — vistazo visual; el desglose por módulo/hiperfoco y el
             filtro de meses viven en /admin/nps (calibración 2026-07-06). */}
-        <div className="card animate-fade-up" style={{ animationDelay: '300ms' }}>
-          <div className="flex items-center justify-between mb-2">
+        <div className="card card-glow animate-fade-up" style={{ animationDelay: '300ms' }}>
+          <div className="card-glow-orb opacity-20" style={{ background: '#DA7D41' }} />
+          <div className="relative flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Star size={16} className="text-amber-400" />
               <p className="text-sm font-medium text-cream">NPS Global · últimos {TREND_MESES} meses</p>
@@ -153,7 +158,9 @@ export default async function AdminDashboardPage({
               Ver desglose por módulo <ArrowRight size={12} />
             </Link>
           </div>
-          <NpsTrendChart data={npsTrendGlobal} height={170} />
+          <div className="relative">
+            <NpsTrendChart data={npsTrendGlobal} height={170} />
+          </div>
         </div>
       </div>
 

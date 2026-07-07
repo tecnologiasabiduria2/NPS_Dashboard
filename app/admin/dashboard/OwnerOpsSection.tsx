@@ -356,26 +356,28 @@ export default async function OwnerOpsSection({
 
       {/* Eligieron hiperfoco + Upsell/multi-producto */}
       <div className="grid sm:grid-cols-2 gap-4 mb-4">
-        <div className="card flex items-center gap-4">
-          <div className="w-9 h-9 rounded-lg bg-brand-600/15 flex items-center justify-center shrink-0">
-            <Target size={16} className="text-brand-400" />
+        <div className="card card-glow flex items-center gap-4">
+          <div className="card-glow-orb opacity-20" style={{ background: '#DA7D41' }} />
+          <div className="relative w-10 h-10 rounded-lg bg-brand-600/15 flex items-center justify-center shrink-0">
+            <Target size={17} className="text-brand-400" />
           </div>
-          <div>
+          <div className="relative">
             <p className="text-xs text-cream-muted">Eligieron hiperfoco este mes</p>
-            <p className="text-lg font-semibold text-cream">
+            <p className="text-lg font-semibold text-cream tabular-nums">
               {eligieron} <span className="text-xs text-cream-dim font-normal">/ {totalActivos}</span>
               <span className="text-xs text-amber-400 font-normal ml-2">{sinElegir} sin elegir</span>
             </p>
           </div>
         </div>
 
-        <div className="card flex items-center gap-4">
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
-            <TrendingUp size={16} className="text-emerald-400" />
+        <div className="card card-glow flex items-center gap-4">
+          <div className="card-glow-orb opacity-20" style={{ background: '#34d399' }} />
+          <div className="relative w-10 h-10 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
+            <TrendingUp size={17} className="text-emerald-400" />
           </div>
-          <div>
+          <div className="relative">
             <p className="text-xs text-cream-muted">Clientes con 2+ productos</p>
-            <p className="text-lg font-semibold text-cream">
+            <p className="text-lg font-semibold text-cream tabular-nums">
               {multiProducto.length}
               {multiProducto.length > 0 && (
                 <span className="text-xs text-cream-dim font-normal ml-2">
@@ -398,19 +400,23 @@ export default async function OwnerOpsSection({
           <p className="text-sm text-cream-muted">Nadie tiene un hiperfoco en curso este mes todavía.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {distribList.map(d => (
-              <div key={d.title} className="bg-surface-800 rounded-xl px-4 py-3.5">
-                <p className="text-sm text-cream font-medium truncate">{d.title}</p>
-                <p className="text-xs text-cream-muted mb-3">
-                  {d.count} empresario{d.count !== 1 ? 's' : ''}
-                  {d.nps !== null && <> · <span className={npsColor(d.nps)}>NPS {d.nps.toFixed(1)}</span></>}
-                </p>
-                <div className="h-2 rounded-full bg-surface-900 overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${d.pct.toFixed(1)}%`, background: getHiperfocoVisual(d.title).solid }} />
+            {distribList.map(d => {
+              const hue = getHiperfocoVisual(d.title).solid
+              return (
+                <div key={d.title} className="card-glow bg-surface-800 rounded-xl px-4 py-3.5">
+                  <div className="card-glow-orb opacity-20" style={{ background: hue }} />
+                  <p className="relative text-sm text-cream font-medium truncate">{d.title}</p>
+                  <p className="relative text-xs text-cream-muted mb-3">
+                    {d.count} empresario{d.count !== 1 ? 's' : ''}
+                    {d.nps !== null && <> · <span className={npsColor(d.nps)}>NPS {d.nps.toFixed(1)}</span></>}
+                  </p>
+                  <div className="relative h-2 rounded-full bg-surface-900 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${d.pct.toFixed(1)}%`, background: hue }} />
+                  </div>
+                  <p className="relative text-xs text-cream-dim mt-1.5">{d.pct.toFixed(0)}% de la cartera en alcance</p>
                 </div>
-                <p className="text-xs text-cream-dim mt-1.5">{d.pct.toFixed(0)}% de la cartera en alcance</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
@@ -480,26 +486,27 @@ export default async function OwnerOpsSection({
               {[...csListFiltered]
                 .filter(cs => cs.nps !== null)
                 .sort((a, b) => (b.nps ?? 0) - (a.nps ?? 0))
-                .map(cs => (
-                  <div key={cs.id} className="bg-surface-800 rounded-xl px-4 py-3.5">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm text-cream font-medium truncate">{cs.name}</p>
-                      <span className="text-xs text-emerald-400 inline-flex items-center gap-1 shrink-0">
-                        <Star size={11} /> {cs.exitos}
-                      </span>
+                .map(cs => {
+                  const npsHue = cs.nps! >= 8 ? '#1D9E75' : cs.nps! >= 6 ? '#BA7517' : '#E24B4A'
+                  return (
+                    <div key={cs.id} className="card-glow bg-surface-800 rounded-xl px-4 py-3.5">
+                      <div className="card-glow-orb opacity-20" style={{ background: npsHue }} />
+                      <div className="relative flex items-center justify-between mb-2">
+                        <p className="text-sm text-cream font-medium truncate">{cs.name}</p>
+                        <span className="text-xs text-emerald-400 inline-flex items-center gap-1 shrink-0">
+                          <Star size={11} /> {cs.exitos}
+                        </span>
+                      </div>
+                      <div className="relative h-2 rounded-full bg-surface-900 overflow-hidden mb-1.5">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${(cs.nps! / 10) * 100}%`, background: npsHue }}
+                        />
+                      </div>
+                      <span className={`relative text-lg font-bold leading-none tabular-nums ${npsColor(cs.nps!)}`}>{cs.nps!.toFixed(1)}</span>
                     </div>
-                    <div className="h-2 rounded-full bg-surface-900 overflow-hidden mb-1.5">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${(cs.nps! / 10) * 100}%`,
-                          background: cs.nps! >= 8 ? '#1D9E75' : cs.nps! >= 6 ? '#BA7517' : '#E24B4A',
-                        }}
-                      />
-                    </div>
-                    <span className={`text-lg font-bold leading-none ${npsColor(cs.nps!)}`}>{cs.nps!.toFixed(1)}</span>
-                  </div>
-                ))}
+                  )
+                })}
             </div>
             {(() => {
               const withNps = csList.filter(cs => cs.nps !== null)

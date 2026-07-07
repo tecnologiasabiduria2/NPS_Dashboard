@@ -199,15 +199,16 @@ export default async function CsOpsSection({
                 const barColor = ok ? '#1D9E75' : warn ? '#BA7517' : '#E24B4A'
                 const textColor = ok ? 'text-emerald-400' : warn ? 'text-amber-400' : 'text-red-400'
                 return (
-                  <div key={cs.id} className="bg-surface-800 rounded-xl px-4 py-3.5">
-                    <p className="text-sm text-cream font-medium truncate">{cs.name}</p>
-                    <p className="text-xs text-cream-muted mb-3">{cs.clientes} cliente{cs.clientes !== 1 ? 's' : ''}</p>
-                    <div className="h-2 rounded-full bg-surface-900 overflow-hidden mb-1.5">
+                  <div key={cs.id} className="card-glow bg-surface-800 rounded-xl px-4 py-3.5">
+                    <div className="card-glow-orb opacity-20" style={{ background: barColor }} />
+                    <p className="relative text-sm text-cream font-medium truncate">{cs.name}</p>
+                    <p className="relative text-xs text-cream-muted mb-3">{cs.clientes} cliente{cs.clientes !== 1 ? 's' : ''}</p>
+                    <div className="relative h-2 rounded-full bg-surface-900 overflow-hidden mb-1.5">
                       <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
                     </div>
-                    <div className="flex items-baseline justify-between">
-                      <span className={`text-lg font-bold leading-none ${textColor}`}>{cs.sesiones}/{csTarget}</span>
-                      <span className={`text-xs font-medium ${textColor}`}>{Math.round(pct)}%</span>
+                    <div className="relative flex items-baseline justify-between">
+                      <span className={`text-lg font-bold leading-none tabular-nums ${textColor}`}>{cs.sesiones}/{csTarget}</span>
+                      <span className={`text-xs font-medium tabular-nums ${textColor}`}>{Math.round(pct)}%</span>
                     </div>
                   </div>
                 )

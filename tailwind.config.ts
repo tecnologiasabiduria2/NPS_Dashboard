@@ -37,18 +37,22 @@ const config: Config = {
           dim:     '#C0AA90',
           muted:   '#7A6A60',
         },
+        // Base oscura recalibrada al Charcoal Brown del brandbook (2026-07-07) —
+        // antes era un morado-azulado genérico de dashboard SaaS, sin respaldo
+        // en el brandbook. surface-850 = #261C21 exacto (Charcoal Brown); el
+        // resto de la escala interpola en la misma familia cálida.
         surface: {
-          950: '#0f0e18',
-          900: '#161520',
-          850: '#1e1e28',
-          800: '#252335',
-          700: '#302e42',
-          600: '#3e3b52',
-          500: '#4e4a64',
+          950: '#14100f',
+          900: '#1c1613',
+          850: '#261c21',
+          800: '#2f2621',
+          700: '#3a2f28',
+          600: '#493c32',
+          500: '#5b4b3f',
         },
       },
       fontFamily: {
-        sans: ['var(--font-outfit)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-dm-sans)', 'system-ui', 'sans-serif'],
       },
     },
   },
