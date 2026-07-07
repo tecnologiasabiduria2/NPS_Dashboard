@@ -47,6 +47,51 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 
+// Aviso por correo cuando un cliente YA REGISTRADO recibe un producto nuevo
+// (no aplica a altas nuevas, que ya reciben su propia invitación, ni a
+// renovaciones del mismo producto). Decisión de Juan (2026-07-08): un cliente
+// existente sigue con la MISMA cuenta/contraseña (no se le pide re-registrarse
+// — rompería el detector de "supercliente" y el historial unificado), pero
+// merece un aviso de que ya puede entrar a lo nuevo. Se manda vía la API HTTP
+// de Resend (mismo relay que usa Supabase Auth para invitación/reset, A1) en
+// vez de SMTP+nodemailer, más simple en Deno. Reusa los mismos secretos
+// SMTP_PASS (= API key de Resend) y SMTP_FROM que ya existen en el .env de la
+// app — Juan solo copia esos 2 valores a los Secrets de esta Edge Function.
+// Si no están configurados, no rompe el alta: solo se salta el correo.
+async function sendProductAddedEmail(to: string, name: string, productTitle: string): Promise<void> {
+  const apiKey = Deno.env.get('SMTP_PASS')
+  const from = Deno.env.get('SMTP_FROM')
+  if (!apiKey || !from) return
+
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to,
+        subject: `Ya tienes acceso a ${productTitle}`,
+        html: `
+          <div style="font-family: -apple-system, Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
+            <p>Hola ${name || ''},</p>
+            <p>Ya tienes acceso a <strong>${productTitle}</strong> con tu cuenta de siempre en Sabiduría Empresarial — no necesitas registrarte de nuevo.</p>
+            <p style="margin: 24px 0;">
+              <a href="https://vip.sabiduriaempresarial.com/login" style="background:#7E301F;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">
+                Entrar a la plataforma
+              </a>
+            </p>
+          </div>
+        `,
+      }),
+    })
+  } catch {
+    // No bloquea el alta si el correo falla — el acceso ya quedó dado.
+  }
+}
+
 async function findUserByEmail(email: string): Promise<string | null> {
   const res = await fetch(
     `${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`,
@@ -97,7 +142,7 @@ Deno.serve(async (req) => {
 
   // Buscar producto
   const { data: product, error: productError } = await supabase
-    .from('products').select('id').eq('slug', productSlug).single()
+    .from('products').select('id, title').eq('slug', productSlug).single()
 
   if (productError || !product) {
     return new Response(JSON.stringify({ error: `Product '${product_access}' not found` }), {
@@ -174,6 +219,8 @@ Deno.serve(async (req) => {
       .update({ status: 'active', access_until: access_until ?? null, updated_at: new Date().toISOString() })
       .eq('user_id', existingId).eq('product_id', product.id)
   } else {
+    // Producto nuevo para un usuario que YA tenía cuenta (ej. upsell) — aquí sí
+    // avisamos por correo, a diferencia de la renovación de arriba.
     const access_until = explicitAccessUntil ?? defaultAccessUntil(productSlug, new Date())
 
     await supabase.from('user_access').insert({
@@ -185,6 +232,8 @@ Deno.serve(async (req) => {
       platform_invite_sent: true,
       access_started: new Date().toISOString().split('T')[0],
     })
+
+    await sendProductAddedEmail(email, full_name ?? '', product.title)
   }
 
   return new Response(JSON.stringify({ ok: true, action: 'updated', user_id: existingId }), {
