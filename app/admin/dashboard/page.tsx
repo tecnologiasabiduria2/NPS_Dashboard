@@ -5,6 +5,7 @@ import { formatDateOnly } from '@/lib/format'
 import DonutChart from '@/components/DonutChart'
 import NpsTrendChart from '@/components/admin/NpsTrendChart'
 import OwnerOpsSection from './OwnerOpsSection'
+import CsOpsSection from './CsOpsSection'
 
 const TREND_MESES = 6 // "ver la tendencia del último semestre o trimestre" (Diana, 2026-07-06)
 const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
@@ -28,6 +29,7 @@ export default async function AdminDashboardPage({
     ? await supabase.from('profiles').select('role').eq('id', user.id).single()
     : { data: null }
   const isOwner = profile?.role === 'owner'
+  const isAdmin = profile?.role === 'admin'
   const today = new Date().toISOString().split('T')[0]
   const soonDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   const soonMonthDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -239,9 +241,11 @@ export default async function AdminDashboardPage({
         </div>
       )}
 
-      {/* Fusión de la antigua /admin/360 (calibración 2026-07-06) — solo
-          owner (Diana) ve gestión operativa/CS; un admin normal ve el
-          dashboard tal como está arriba. */}
+      {/* Operación CS (Sesiones 1:1, Mentor por hiperfoco, Clientes sin 1:1):
+          visible para cualquier admin, no solo owner (Lorena agenda las 1:1).
+          Operación y salud del negocio (KPIs, insights, upsell, Salud por CS):
+          solo owner (Diana) — calibración 2026-07-07. */}
+      {(isOwner || isAdmin) && <CsOpsSection searchParams={searchParams} />}
       {isOwner && <OwnerOpsSection searchParams={searchParams} />}
     </div>
   )

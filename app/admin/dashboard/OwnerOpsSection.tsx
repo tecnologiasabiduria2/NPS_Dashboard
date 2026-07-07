@@ -1,22 +1,21 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { Lightbulb, AlertTriangle, Target, Star, TrendingUp } from 'lucide-react'
+import { Lightbulb, Target, Star, TrendingUp } from 'lucide-react'
 import { formatMonthLong } from '@/lib/format'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 import DonutChart from '@/components/DonutChart'
 import ProductFilter from './ProductFilter'
-import CsTargetEditor from './CsTargetEditor'
-import MonthFilter from './MonthFilter'
-import CsFilter from './CsFilter'
-import HiperfocoMentorSelect from './HiperfocoMentorSelect'
 
 // ============================================================================
 // OPERACIÓN Y SALUD DEL NEGOCIO — solo owner (Diana). Antes era /admin/360
 // completa; se fusionó al Dashboard (calibración 2026-07-06) porque varios
 // KPIs quedaban duplicados con el dashboard (activos, NPS general, ventana de
-// renovación). Lo que sigue es lo que NO existe en ningún otro lado.
+// renovación). Lo operativo de CS (Sesiones 1:1, Mentor por hiperfoco,
+// Clientes sin 1:1) se separó a CsOpsSection.tsx (calibración 2026-07-07) para
+// que también lo vea un admin normal (Lorena) — aquí queda lo de negocio:
+// KPIs, distribución, insights, upsell y Salud por CS (desempeño de cada CS).
 //
 // ⚠️ Escala: "Top hiperfocos repetidos" recorre TODO el historial de
 // user_hiperfoco_mes en JS. Para el beta actual (pocos clientes) es exacto;
@@ -42,8 +41,7 @@ export default async function OwnerOpsSection({
   const { producto: productoFilter = '', cs_mes: csMesParam, cs: csFilterParam = '' } = await searchParams
   const supabase = await createClient()
 
-  // B13: objetivo de sesiones 1:1 por CS/mes, configurable por el owner (Diana).
-  // Resiliente: si la migración platform_settings aún no corrió, usa 20.
+  // Objetivo de sesiones 1:1 (B13) — solo para el texto del insight "Patrón detectado".
   const { data: csTargetRow } = await supabaseAdmin
     .from('platform_settings').select('value').eq('key', 'cs_session_target_monthly').maybeSingle()
   const csTarget = Number(csTargetRow?.value) || 20
@@ -51,8 +49,8 @@ export default async function OwnerOpsSection({
   const periodoActual = periodoKey(0)
   const periodoPrev = periodoKey(-1)
 
-  // Filtro de mes para "Sesiones 1:1 por CS" (independiente del resto de la sección,
-  // que sigue siempre en el mes actual). Últimos 6 meses + el actual, más reciente primero.
+  // Mismo filtro de mes que "Salud por CS" (independiente del resto de KPIs,
+  // que siempre van sobre el mes actual).
   const csMesOptions = Array.from({ length: 6 }, (_, i) => {
     const p = periodoKey(-i)
     return { value: p.slice(0, 7), label: formatMonthLong(p) }
@@ -72,8 +70,8 @@ export default async function OwnerOpsSection({
     { data: uhmCS },
     { data: sessions1x1Raw },
     { data: exitosRaw },
-    { data: mentoresMes },
     { data: accesoTodos },
+    { data: rosterRaw },
   ] = await Promise.all([
     supabase.from('user_access').select('user_id, access_until, access_started').eq('status', 'active'),
     supabase.from('hiperfocos').select('id, title, is_active, products(slug, title)'),
@@ -85,50 +83,33 @@ export default async function OwnerOpsSection({
       .limit(2000),
     supabase.from('client_flags').select('user_id').eq('type', 'bandera').eq('status', 'abierta'),
     supabase.from('nps_responses').select('user_id, score, created_at, hiperfoco_id').limit(2000),
-    // clientes con CS asignado en el mes seleccionado (filtro independiente, csMesPeriodo)
+    // clientes con CS asignado en el mes seleccionado (para Salud por CS).
     supabase
       .from('user_hiperfoco_mes')
       .select('user_id, cs_id')
       .eq('periodo', csMesPeriodo)
       .not('cs_id', 'is', null),
-    // sesiones 1:1 REALIZADAS en el mes seleccionado = coaching_notes (notas +
-    // grabación que el coach registra). admin_id = el CS que la registró;
-    // user_id = el cliente atendido.
+    // sesiones 1:1 REALIZADAS ese mes (coaching_notes) — solo para el texto
+    // del insight "Patrón detectado" (cruza NPS con cumplimiento de sesiones).
     supabase
       .from('coaching_notes')
       .select('user_id, admin_id, session_date')
       .gte('session_date', csMesPeriodo)
       .lt('session_date', csMesPeriodoNext),
-    // casos de éxito atribuidos al CS que los marcó (created_by), para el filtro por CS.
     supabase.from('client_flags').select('created_by').eq('type', 'caso_exito').eq('status', 'abierta'),
-    // mentor asignado por hiperfoco en el mes seleccionado (RLS sin policies → supabaseAdmin).
-    supabaseAdmin.from('hiperfoco_mentor_mes').select('hiperfoco_id, mentor_id').eq('periodo', csMesPeriodo),
     // upsell/multi-producto (calibración 2026-07-06): TODAS las filas de
     // user_access sin filtrar por status, para contar productos distintos
     // por cliente (activos o no).
     supabase.from('user_access').select('user_id, product_id, products(title), profiles(full_name)'),
+    supabase.from('profiles').select('id, full_name').in('role', ['admin', 'owner']).order('full_name'),
   ])
 
-  // perfiles de CS y clientes sin 1:1 (query secuencial sobre IDs derivados)
-  const uhmCSRows = (uhmCS ?? []) as any[]
-  const sessions1x1Rows = (sessions1x1Raw ?? []) as any[]
-  const clientsWithSessionSet = new Set<string>(sessions1x1Rows.map((n: any) => n.user_id as string))
+  const uhmCSRows = (uhmCS as any[]) ?? []
+  const sessions1x1Rows = (sessions1x1Raw as any[]) ?? []
   const csIds = [...new Set<string>(uhmCSRows.map((r: any) => r.cs_id as string))]
-  const clientesSin1x1Rows = uhmCSRows.filter((r: any) => !clientsWithSessionSet.has(r.user_id as string))
-  const clientIdsNeeded = clientesSin1x1Rows.slice(0, 30).map((r: any) => r.user_id as string)
-  const profileIdsNeeded = [...new Set<string>([...csIds, ...clientIdsNeeded])]
+  const roster = ((rosterRaw as any[]) ?? []).map(p => ({ id: p.id as string, name: p.full_name as string }))
+  const profileMap = new Map<string, string>(roster.map(r => [r.id, r.name]))
 
-  const profileMap = new Map<string, string>()
-  if (profileIdsNeeded.length > 0) {
-    const { data: profData } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', profileIdsNeeded)
-    for (const p of (profData ?? []) as any[]) profileMap.set(p.id, p.full_name ?? '—')
-  }
-
-  // sesiones 1:1 por CS = coaching_notes agrupadas por admin_id (el CS que
-  // registró la sesión). clientes por CS sigue saliendo de la asignación (uhm.cs_id).
   const sessionsByCS = new Map<string, number>()
   for (const n of sessions1x1Rows) {
     if (n.admin_id) sessionsByCS.set(n.admin_id, (sessionsByCS.get(n.admin_id) ?? 0) + 1)
@@ -150,7 +131,7 @@ export default async function OwnerOpsSection({
 
   // Casos de éxito abiertos, atribuidos al CS que los marcó (created_by).
   const exitosByCS = new Map<string, number>()
-  for (const f of (exitosRaw ?? []) as any[]) {
+  for (const f of (exitosRaw as any[]) ?? []) {
     if (f.created_by) exitosByCS.set(f.created_by, (exitosByCS.get(f.created_by) ?? 0) + 1)
   }
 
@@ -164,19 +145,9 @@ export default async function OwnerOpsSection({
     exitos: exitosByCS.get(id) ?? 0,
   })).sort((a, b) => b.sesiones - a.sesiones)
 
-  // Filtro por CS (Operación CS): "" = todos. Si el filtro no coincide con
-  // ningún CS del alcance actual (ej. cambió de mes), cae a "todos" sin romper.
+  // Filtro por CS (comparte el ?cs= de la URL con CsOpsSection).
   const csFilterSel = csList.some(cs => cs.id === csFilterParam) ? csFilterParam : ''
   const csListFiltered = csFilterSel ? csList.filter(cs => cs.id === csFilterSel) : csList
-
-  // Clientes sin 1:1 (máx 10 mostrados en la card)
-  const totalSin1x1 = clientesSin1x1Rows.length
-  const clientesSin1x1 = clientesSin1x1Rows.slice(0, 10).map((r: any) => ({
-    userId: r.user_id as string,
-    name: profileMap.get(r.user_id as string) ?? '—',
-    csId: r.cs_id as string,
-    csName: profileMap.get(r.cs_id as string) ?? '—',
-  }))
 
   const activeRows = (activos as any[]) ?? []
   const activeIds = new Set<string>(activeRows.map(r => r.user_id))
@@ -258,41 +229,6 @@ export default async function OwnerOpsSection({
       pct: distribTotal ? (d.count / distribTotal) * 100 : 0,
     }))
     .sort((a, b) => b.count - a.count)
-
-  // --- Mentor por hiperfoco/mes (calibración 2026-07-06) ------------------
-  // Quién dictó cada hiperfoco en el mes seleccionado (csMesSel/csMesPeriodo,
-  // el mismo filtro que "Sesiones 1:1"), distinto de cs_id (coach 1:1 del
-  // cliente). De ahí se derivan los clientes que se relacionan con ese mentor.
-  const mentorByHf = new Map<string, string>(
-    ((mentoresMes as any[]) ?? []).map(m => [m.hiperfoco_id as string, m.mentor_id as string])
-  )
-  const clientesPorHfCsMes = new Map<string, Set<string>>()
-  for (const row of (historia as any[]) ?? []) {
-    if (row.periodo !== csMesPeriodo || row.estado !== 'en_curso' || !row.hiperfoco_id) continue
-    if (!activeIds.has(row.user_id)) continue
-    if (!clientesPorHfCsMes.has(row.hiperfoco_id)) clientesPorHfCsMes.set(row.hiperfoco_id, new Set())
-    clientesPorHfCsMes.get(row.hiperfoco_id)!.add(row.user_id)
-  }
-  const npsPorHfCsMes = new Map<string, { sum: number; count: number }>()
-  for (const r of npsAll) {
-    if (!r.hiperfoco_id || r.created_at.slice(0, 7) !== csMesSel) continue
-    const d = npsPorHfCsMes.get(r.hiperfoco_id) ?? { sum: 0, count: 0 }
-    d.sum += r.score; d.count++
-    npsPorHfCsMes.set(r.hiperfoco_id, d)
-  }
-  const hiperfocosMentorList = ((hiperfocos as any[]) ?? [])
-    .filter(h => h.is_active && (!productoFilter || h.products?.slug === productoFilter))
-    .map(h => {
-      const nps = npsPorHfCsMes.get(h.id)
-      return {
-        id: h.id as string,
-        title: hfTitle.get(h.id) ?? h.title,
-        clientes: clientesPorHfCsMes.get(h.id)?.size ?? 0,
-        nps: nps ? nps.sum / nps.count : null,
-        mentorId: mentorByHf.get(h.id) ?? '',
-      }
-    })
-    .sort((a, b) => b.clientes - a.clientes)
 
   // --- Upsell / multi-producto (calibración 2026-07-06) -------------------
   // Cualquier cliente con 2+ productos distintos en user_access (activos o
@@ -452,7 +388,7 @@ export default async function OwnerOpsSection({
         </div>
       </div>
 
-      {/* Distribución por hiperfoco */}
+      {/* Distribución por hiperfoco — cajas (2026-07-07) */}
       <div className="card mb-4">
         <div className="flex items-baseline justify-between mb-3">
           <p className="text-sm font-medium text-cream">Distribución por hiperfoco · {formatMonthLong(periodoActual)}</p>
@@ -461,18 +397,18 @@ export default async function OwnerOpsSection({
         {distribList.length === 0 ? (
           <p className="text-sm text-cream-muted">Nadie tiene un hiperfoco en curso este mes todavía.</p>
         ) : (
-          <div className="flex flex-col gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {distribList.map(d => (
-              <div key={d.title}>
-                <div className="flex items-baseline justify-between mb-1">
-                  <span className="text-sm text-cream">{d.title}</span>
-                  <span className="text-xs text-cream-muted">
-                    {d.count} empresarios{d.nps !== null && <> · <span className={npsColor(d.nps)}>NPS {d.nps.toFixed(1)}</span></>}
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
+              <div key={d.title} className="bg-surface-800 rounded-xl px-4 py-3.5">
+                <p className="text-sm text-cream font-medium truncate">{d.title}</p>
+                <p className="text-xs text-cream-muted mb-3">
+                  {d.count} empresario{d.count !== 1 ? 's' : ''}
+                  {d.nps !== null && <> · <span className={npsColor(d.nps)}>NPS {d.nps.toFixed(1)}</span></>}
+                </p>
+                <div className="h-2 rounded-full bg-surface-900 overflow-hidden">
                   <div className="h-full rounded-full" style={{ width: `${d.pct.toFixed(1)}%`, background: getHiperfocoVisual(d.title).solid }} />
                 </div>
+                <p className="text-xs text-cream-dim mt-1.5">{d.pct.toFixed(0)}% de la cartera en alcance</p>
               </div>
             ))}
           </div>
@@ -532,143 +468,7 @@ export default async function OwnerOpsSection({
         </div>
       )}
 
-      {/* ================================================================
-          Operación CS
-      ================================================================ */}
-      <div className="mt-8 mb-2">
-        <p className="text-xs font-semibold uppercase tracking-widest text-cream-dim">Operación CS</p>
-      </div>
-
-      {/* Bloque 1: Sesiones 1:1 por CS */}
-      <div className="card mb-4">
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <p className="text-sm font-medium text-cream">Sesiones 1:1 completadas · {formatMonthLong(csMesPeriodo)}</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <CsFilter value={csFilterSel} options={csList.map(cs => ({ id: cs.id, name: cs.name }))} />
-            <MonthFilter value={csMesSel} options={csMesOptions} />
-            <CsTargetEditor value={csTarget} />
-          </div>
-        </div>
-        {csList.length === 0 ? (
-          <p className="text-sm text-cream-muted">Sin CS asignados a clientes este mes.</p>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {csListFiltered.map(cs => {
-                const pct = Math.min(100, (cs.sesiones / csTarget) * 100)
-                const ok = cs.sesiones >= csTarget
-                const warn = cs.sesiones >= csTarget * 0.7
-                const barColor = ok ? '#1D9E75' : warn ? '#BA7517' : '#E24B4A'
-                const textColor = ok ? 'text-emerald-400' : warn ? 'text-amber-400' : 'text-red-400'
-                return (
-                  <div key={cs.id} className="bg-surface-800 rounded-xl px-4 py-3.5">
-                    <p className="text-sm text-cream font-medium truncate">{cs.name}</p>
-                    <p className="text-xs text-cream-muted mb-3">{cs.clientes} cliente{cs.clientes !== 1 ? 's' : ''}</p>
-                    <div className="h-2 rounded-full bg-surface-900 overflow-hidden mb-1.5">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
-                    </div>
-                    <div className="flex items-baseline justify-between">
-                      <span className={`text-lg font-bold leading-none ${textColor}`}>{cs.sesiones}/{csTarget}</span>
-                      <span className={`text-xs font-medium ${textColor}`}>{Math.round(pct)}%</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="pt-3 mt-2 border-t border-surface-700 grid grid-cols-3 gap-3 text-xs text-cream-muted">
-              <div>
-                <p>Total sesiones</p>
-                <p className="text-base font-semibold text-cream mt-0.5">{sessions1x1Rows.length} / {csList.length * csTarget}</p>
-              </div>
-              <div>
-                <p>Cumplimiento global</p>
-                <p className={`text-base font-semibold mt-0.5 ${
-                  csList.length * csTarget > 0
-                    ? sessions1x1Rows.length / (csList.length * csTarget) >= 1
-                      ? 'text-emerald-400'
-                      : sessions1x1Rows.length / (csList.length * csTarget) >= 0.7
-                      ? 'text-amber-400'
-                      : 'text-red-400'
-                    : 'text-cream'
-                }`}>
-                  {csList.length * csTarget > 0
-                    ? `${Math.round((sessions1x1Rows.length / (csList.length * csTarget)) * 100)}%`
-                    : '—'}
-                </p>
-              </div>
-              <div>
-                <p>Clientes sin 1:1</p>
-                <p className={`text-base font-semibold mt-0.5 ${totalSin1x1 > 0 ? 'text-red-400' : 'text-emerald-400'}`}>{totalSin1x1}</p>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Mentor por hiperfoco — quién dictó cada hiperfoco este mes, y qué
-          clientes se relacionan con él (los que tuvieron ese hiperfoco). */}
-      <div className="card mb-4">
-        <p className="text-sm font-medium text-cream mb-0.5">Mentor por hiperfoco · {formatMonthLong(csMesPeriodo)}</p>
-        <p className="text-xs text-cream-muted mb-3">Quién dictó cada hiperfoco ese mes (distinto del coach 1:1 asignado a cada cliente)</p>
-        {hiperfocosMentorList.length === 0 ? (
-          <p className="text-sm text-cream-muted">No hay hiperfocos activos en este alcance.</p>
-        ) : (
-          <div className="space-y-2">
-            {hiperfocosMentorList.map(h => (
-              <div key={h.id} className="grid grid-cols-[1fr_auto_auto] gap-3 items-center text-sm bg-surface-800 rounded-lg px-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="text-cream truncate">{h.title}</p>
-                  <p className="text-xs text-cream-muted">
-                    {h.clientes} cliente{h.clientes !== 1 ? 's' : ''}
-                    {h.nps !== null && <> · <span className={npsColor(h.nps)}>NPS {h.nps.toFixed(1)}</span></>}
-                  </p>
-                </div>
-                <HiperfocoMentorSelect
-                  hiperfocoId={h.id}
-                  periodo={csMesPeriodo}
-                  value={h.mentorId}
-                  options={csList.map(cs => ({ id: cs.id, name: cs.name }))}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Bloque 2: Clientes sin 1:1 este mes */}
-      {totalSin1x1 > 0 && (
-        <div className="card mb-4" style={{ borderColor: 'rgba(226,75,74,0.2)' }}>
-          <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle size={15} className="text-red-400 shrink-0" />
-            <p className="text-sm font-medium text-red-400">Clientes sin 1:1 · {formatMonthLong(csMesPeriodo)}</p>
-          </div>
-          <p className="text-xs text-cream-muted mb-3">
-            {totalSin1x1} empresario{totalSin1x1 !== 1 ? 's' : ''} con CS asignado no ha{totalSin1x1 !== 1 ? 'n' : ''} tenido su sesión individual ese mes
-          </p>
-          <div className="space-y-1.5">
-            <div className="grid grid-cols-[1fr_130px] gap-3 text-xs text-cream-muted pb-2 border-b border-surface-700">
-              <span>Cliente</span>
-              <span>CS responsable</span>
-            </div>
-            {clientesSin1x1.map(c => (
-              <div key={c.userId} className="grid grid-cols-[1fr_130px] gap-3 text-sm items-center">
-                <Link href={`/admin/clients/${c.userId}`} className="text-cream hover:text-brand-400 transition-colors truncate">
-                  {c.name}
-                </Link>
-                <span className="text-cream-muted text-xs truncate">{c.csName}</span>
-              </div>
-            ))}
-            {totalSin1x1 > 10 && (
-              <p className="text-xs text-cream-muted pt-1">
-                + {totalSin1x1 - 10} más ·{' '}
-                <Link href="/admin/clients" className="text-brand-400">Ver todos →</Link>
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Bloque 3: Salud por CS — NPS promedio + casos de éxito */}
+      {/* Salud por CS — NPS promedio + casos de éxito. Cajas (2026-07-07). */}
       <div className="card mb-4">
         <p className="text-sm font-medium text-cream mb-0.5">Salud por CS — NPS y casos de éxito</p>
         <p className="text-xs text-cream-muted mb-3">NPS promedio de este mes + casos de éxito abiertos, atribuidos a cada CS</p>
@@ -676,14 +476,19 @@ export default async function OwnerOpsSection({
           <p className="text-sm text-cream-muted">Sin respuestas NPS este mes {csFilterSel ? 'para este CS' : 'todavía'}.</p>
         ) : (
           <>
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {[...csListFiltered]
                 .filter(cs => cs.nps !== null)
                 .sort((a, b) => (b.nps ?? 0) - (a.nps ?? 0))
                 .map(cs => (
-                  <div key={cs.id} className="grid grid-cols-[140px_1fr_52px_74px] gap-3 items-center text-sm">
-                    <span className="text-cream truncate">{cs.name}</span>
-                    <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
+                  <div key={cs.id} className="bg-surface-800 rounded-xl px-4 py-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm text-cream font-medium truncate">{cs.name}</p>
+                      <span className="text-xs text-emerald-400 inline-flex items-center gap-1 shrink-0">
+                        <Star size={11} /> {cs.exitos}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-surface-900 overflow-hidden mb-1.5">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -692,10 +497,7 @@ export default async function OwnerOpsSection({
                         }}
                       />
                     </div>
-                    <span className={`text-right font-medium ${npsColor(cs.nps!)}`}>{cs.nps!.toFixed(1)}</span>
-                    <span className="text-right text-xs text-emerald-400 inline-flex items-center justify-end gap-1">
-                      <Star size={11} /> {cs.exitos}
-                    </span>
+                    <span className={`text-lg font-bold leading-none ${npsColor(cs.nps!)}`}>{cs.nps!.toFixed(1)}</span>
                   </div>
                 ))}
             </div>

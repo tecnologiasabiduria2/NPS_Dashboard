@@ -28,12 +28,19 @@ export async function GET(req: NextRequest, { params }: Props) {
   // 1. Obtener la sesión (service role: 404 sólo si realmente no existe).
   const { data: session } = await supabaseAdmin
     .from('live_sessions')
-    .select('id, zoom_url, starts_at, ends_at, product_id')
+    .select('id, zoom_url, starts_at, ends_at, product_id, audience, client_user_id')
     .eq('id', id)
     .single()
 
   if (!session) {
     return NextResponse.redirect(new URL('/dashboard?error=session_not_found', req.url))
+  }
+
+  // 1a. Sesión 1:1 (audience='individual'): SOLO el cliente al que pertenece
+  // puede unirse. La RLS ya la oculta de la lista de otros clientes, pero
+  // este endpoint no debe confiar solo en eso si alguien adivina el id.
+  if ((session as any).audience === 'individual' && (session as any).client_user_id !== user.id) {
+    return NextResponse.redirect(new URL('/sessions', req.url))
   }
 
   // 1b. GATING (5c): solo entra quien tiene acceso ACTIVO. Si la sesión restringe

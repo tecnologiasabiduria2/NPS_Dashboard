@@ -6,6 +6,7 @@ export type SessionTipo =
   | 'mentoria'
   | 'sala_gerencia'
   | 'entrenamiento_comercial'
+  | '1_a_1'
 
 // Ordenados para los selects del admin.
 export const SESSION_TIPOS: { value: SessionTipo; label: string }[] = [
@@ -14,6 +15,7 @@ export const SESSION_TIPOS: { value: SessionTipo; label: string }[] = [
   { value: 'mentoria', label: 'Mentoría' },
   { value: 'sala_gerencia', label: 'Sala de gerencia' },
   { value: 'entrenamiento_comercial', label: 'Entrenamiento comercial' },
+  { value: '1_a_1', label: 'Sesión 1:1' },
 ]
 
 const LABELS: Record<string, string> = Object.fromEntries(

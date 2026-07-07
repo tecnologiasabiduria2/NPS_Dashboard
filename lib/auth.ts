@@ -16,7 +16,7 @@ export async function requireAdmin() {
   return { user }
 }
 
-// Solo el owner (Diana). Para acciones exclusivas suyas (ej. mapear comerciales↔GHL).
+// Solo el owner (Diana). Para acciones exclusivas suyas (ej. asignar mentor por hiperfoco).
 export async function requireOwner() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

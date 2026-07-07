@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { SESSION_TIPO_VALUES } from '@/lib/sessionTypes'
+import { resolveCsIdForHiperfoco } from '@/lib/mentorLookup'
+
+function currentPeriodo() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
 
 // POST /api/admin/sessions — crea o actualiza una sesión en vivo
 export async function POST(req: NextRequest) {
@@ -24,6 +30,13 @@ export async function POST(req: NextRequest) {
   const hiperfoco_nombre: string = (body?.hiperfoco_nombre ?? '').trim()
   // Link recurrente: si viene, se guarda el link como el fijo de este tipo.
   const save_recurring = !!body?.save_recurring
+  // 1:1 agendada (calibración 2026-07-07): audience='individual' + client_user_id.
+  // El NPS post-sesión y el join genérico ya funcionan igual que en grupales.
+  const audience: string = body?.audience === 'individual' ? 'individual' : 'grupal'
+  const client_user_id: string | null = audience === 'individual' ? (body?.client_user_id || null) : null
+  if (audience === 'individual' && !client_user_id) {
+    return NextResponse.json({ error: 'Falta el cliente de la 1:1' }, { status: 400 })
+  }
 
   // El link es OPCIONAL: las sesiones "variables" se crean sin link y el coach lo
   // pega después (mientras, el cliente ve "Link próximamente").
@@ -43,7 +56,27 @@ export async function POST(req: NextRequest) {
     if (!product) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 400 })
   }
 
-  const payload: Record<string, any> = { product_id: product_id || null, title, tipo, zoom_url, starts_at, ends_at, is_published, descripcion: descripcion || null, hiperfoco_nombre: hiperfoco_nombre || null, updated_at: new Date().toISOString() }
+  // Para una 1:1, el CS responsable es el mentor ya asignado al hiperfoco
+  // actual del cliente ese mes (o quien la agenda, si todavía no hay mentor).
+  let cs_id: string | null = null
+  if (audience === 'individual' && client_user_id) {
+    const periodo = currentPeriodo()
+    const { data: uhm } = await supabaseAdmin
+      .from('user_hiperfoco_mes')
+      .select('hiperfoco_id')
+      .eq('user_id', client_user_id)
+      .eq('periodo', periodo)
+      .eq('estado', 'en_curso')
+      .maybeSingle()
+    cs_id = await resolveCsIdForHiperfoco((uhm as any)?.hiperfoco_id ?? null, periodo, auth.user.id)
+  }
+
+  const payload: Record<string, any> = {
+    product_id: product_id || null, title, tipo, zoom_url, starts_at, ends_at, is_published,
+    descripcion: descripcion || null, hiperfoco_nombre: hiperfoco_nombre || null,
+    audience, client_user_id, cs_id,
+    updated_at: new Date().toISOString(),
+  }
   // Reintento resiliente si faltan columnas opcionales (migración no corrida):
   // primero sin hiperfoco_nombre, luego además sin descripcion.
   const stripHf = (p: Record<string, any>) => { const { hiperfoco_nombre: _h, ...rest } = p; return rest }

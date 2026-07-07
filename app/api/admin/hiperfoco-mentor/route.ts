@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireOwner } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-// Mentor que dictó un hiperfoco en un mes dado (distinto del cs_id por cliente
-// en user_hiperfoco_mes). Solo el owner (Diana) lo edita — mismo patrón que
-// /api/admin/settings (CsTargetEditor).
+// Mentor que dicta un hiperfoco en un mes dado. Es la MISMA persona que hace
+// las 1:1 de los clientes en ese hiperfoco ese mes (calibración 2026-07-07),
+// así que asignar/cambiar mentor aquí propaga cs_id a todos los clientes con
+// ese hiperfoco en curso ese mes. Solo el owner (Diana) lo edita — mismo
+// patrón que /api/admin/settings (CsTargetEditor).
 export async function POST(req: NextRequest) {
   const auth = await requireOwner()
   if ('error' in auth) return auth.error
@@ -19,13 +21,21 @@ export async function POST(req: NextRequest) {
   }
 
   if (!mentor_id) {
-    // "" = quitar asignación
+    // "" = quitar asignación → también se limpia el cs_id que había propagado.
     const { error } = await supabaseAdmin
       .from('hiperfoco_mentor_mes')
       .delete()
       .eq('hiperfoco_id', hiperfoco_id)
       .eq('periodo', periodo)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+    await supabaseAdmin
+      .from('user_hiperfoco_mes')
+      .update({ cs_id: null })
+      .eq('hiperfoco_id', hiperfoco_id)
+      .eq('periodo', periodo)
+      .eq('estado', 'en_curso')
+
     return NextResponse.json({ ok: true, cleared: true })
   }
 
@@ -37,5 +47,15 @@ export async function POST(req: NextRequest) {
     )
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  // Propagar: todos los clientes con este hiperfoco en curso ese mes quedan
+  // con este mentor como su cs_id (responsable de la 1:1).
+  await supabaseAdmin
+    .from('user_hiperfoco_mes')
+    .update({ cs_id: mentor_id })
+    .eq('hiperfoco_id', hiperfoco_id)
+    .eq('periodo', periodo)
+    .eq('estado', 'en_curso')
+
   return NextResponse.json({ ok: true })
 }

@@ -6,7 +6,7 @@ import BackLink from '@/components/BackLink'
 import Timeline from '@/components/Timeline'
 import { buildTimeline } from '@/lib/timeline'
 import EditAccessForm from './EditAccessForm'
-import AddNoteForm from './AddNoteForm'
+import SesionesUnoAUnoTabs from './SesionesUnoAUnoTabs'
 import AddCsNoteForm from './AddCsNoteForm'
 import HiperfocoActions from './HiperfocoActions'
 import FlagsList from './FlagsList'
@@ -257,9 +257,9 @@ export default async function ClientDetailPage({ params }: Props) {
       </div>
 
       {/* Sesiones 1:1 (notas de coaching — visibles para el cliente según RLS) */}
-      <div className="card">
+      <div id="sesiones-1-1" className="card scroll-mt-4">
         <p className="text-xs text-cream-muted uppercase tracking-wider mb-4">Sesiones 1:1</p>
-        <AddNoteForm userId={id} />
+        <SesionesUnoAUnoTabs userId={id} productId={productId} />
         {notes && notes.length > 0 ? (
           <div className="space-y-3">
             {notes.map((note: any) => (
