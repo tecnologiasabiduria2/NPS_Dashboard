@@ -34,10 +34,10 @@ const DEFAULT_DURATION_MONTHS: Record<string, number> = {
   workshop: 6,
 }
 
-function defaultAccessUntil(productSlug: string): string | null {
+function defaultAccessUntil(productSlug: string, fromDate: Date): string | null {
   const months = DEFAULT_DURATION_MONTHS[productSlug]
   if (!months) return null
-  const d = new Date()
+  const d = new Date(fromDate)
   d.setUTCMonth(d.getUTCMonth() + months)
   return d.toISOString().split('T')[0]
 }
@@ -74,9 +74,13 @@ Deno.serve(async (req) => {
 
   const { email, full_name, product_access, ghl_contact_id, secret } = body
   const productSlug = resolveProductSlug(product_access)
-  const access_until = (body.access_until && body.access_until !== 'null' && body.access_until !== ''
-    ? body.access_until
-    : null) ?? defaultAccessUntil(productSlug)
+  // Si GHL manda access_until, ese valor SIEMPRE gana. Si no lo manda, se calcula
+  // un default por producto — pero la fecha BASE depende de si es alta nueva
+  // (hoy) o renovación de un acceso ya existente (ver más abajo: si renueva
+  // ANTES de vencer, se extiende desde su access_until vigente, no desde hoy,
+  // para no perder el tiempo que le quedaba — corrección 2026-07-08, B18).
+  const explicitAccessUntil: string | null =
+    body.access_until && body.access_until !== 'null' && body.access_until !== '' ? body.access_until : null
 
   const expectedSecret = Deno.env.get('GHL_WEBHOOK_SECRET')
   if (!expectedSecret || !timingSafeEqualStr(String(secret ?? ''), expectedSecret)) {
@@ -128,6 +132,8 @@ Deno.serve(async (req) => {
       })
     }
 
+    const access_until = explicitAccessUntil ?? defaultAccessUntil(productSlug, new Date())
+
     const { error: accessError } = await supabase.from('user_access').insert({
       user_id: userId,
       product_id: product.id,
@@ -150,14 +156,26 @@ Deno.serve(async (req) => {
 
   // Usuario existe — actualizar acceso
   const { data: existingAccess } = await supabase
-    .from('user_access').select('id')
+    .from('user_access').select('id, access_until')
     .eq('user_id', existingId).eq('product_id', product.id).single()
 
   if (existingAccess) {
+    // Renovación: si GHL no manda access_until explícito y el acceso actual
+    // todavía no venció, se extiende desde esa fecha vigente (no desde hoy) —
+    // así una renovación anticipada no le quita al cliente el tiempo que le
+    // quedaba (bug corregido 2026-07-08, B18).
+    const todayStr = new Date().toISOString().split('T')[0]
+    const baseDate = existingAccess.access_until && existingAccess.access_until > todayStr
+      ? new Date(`${existingAccess.access_until}T00:00:00Z`)
+      : new Date()
+    const access_until = explicitAccessUntil ?? defaultAccessUntil(productSlug, baseDate)
+
     await supabase.from('user_access')
       .update({ status: 'active', access_until: access_until ?? null, updated_at: new Date().toISOString() })
       .eq('user_id', existingId).eq('product_id', product.id)
   } else {
+    const access_until = explicitAccessUntil ?? defaultAccessUntil(productSlug, new Date())
+
     await supabase.from('user_access').insert({
       user_id: existingId,
       product_id: product.id,
