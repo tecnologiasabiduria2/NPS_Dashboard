@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { SESSION_TIPO_VALUES } from '@/lib/sessionTypes'
-import { resolveCsIdForHiperfoco } from '@/lib/mentorLookup'
-
-function currentPeriodo() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
-}
 
 // POST /api/admin/sessions — crea o actualiza una sesión en vivo
 export async function POST(req: NextRequest) {
@@ -56,20 +50,10 @@ export async function POST(req: NextRequest) {
     if (!product) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 400 })
   }
 
-  // Para una 1:1, el CS responsable es el mentor ya asignado al hiperfoco
-  // actual del cliente ese mes (o quien la agenda, si todavía no hay mentor).
-  let cs_id: string | null = null
-  if (audience === 'individual' && client_user_id) {
-    const periodo = currentPeriodo()
-    const { data: uhm } = await supabaseAdmin
-      .from('user_hiperfoco_mes')
-      .select('hiperfoco_id')
-      .eq('user_id', client_user_id)
-      .eq('periodo', periodo)
-      .eq('estado', 'en_curso')
-      .maybeSingle()
-    cs_id = await resolveCsIdForHiperfoco((uhm as any)?.hiperfoco_id ?? null, periodo, auth.user.id)
-  }
+  // Para una 1:1, el CS responsable es el Business Coach que la agenda
+  // (corregido 2026-07-07 noche: el mentor de hiperfoco no tiene cuenta ni
+  // hace 1:1, solo dicta la clase grupal).
+  const cs_id: string | null = audience === 'individual' ? auth.user.id : null
 
   const payload: Record<string, any> = {
     product_id: product_id || null, title, tipo, zoom_url, starts_at, ends_at, is_published,

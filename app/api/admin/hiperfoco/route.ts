@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { resolveCsIdForHiperfoco } from '@/lib/mentorLookup'
 
 // Primer día del mes actual en hora local (coincide con user_hiperfoco_mes.periodo).
 function currentPeriodo() {
@@ -28,15 +27,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
   }
 
-  // cs_id = el mentor ya asignado a este hiperfoco+mes (dicta el grupo Y hace
-  // las 1:1), o quien hace la asignación si todavía no hay mentor definido.
-  const cs_id = await resolveCsIdForHiperfoco(hiperfoco_id, periodo, user.id)
-
+  // cs_id = el Business Coach que hace la asignación (corregido 2026-07-07 noche:
+  // el mentor de hiperfoco NO tiene cuenta ni hace 1:1 — solo dicta la clase
+  // grupal. Quien acompaña al cliente y hace la 1:1 es el Business Coach).
   const base = {
     user_id,
     product_id,
     periodo,
-    cs_id,
+    cs_id: user.id,
     assigned_by: user.id,
     updated_at: new Date().toISOString(),
   }

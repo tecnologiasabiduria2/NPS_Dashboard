@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Map, User, LogOut, Users, BarChart2,
-  FileText, UserPlus, CalendarClock, Menu, X, Route,
+  FileText, UserPlus, CalendarClock, Menu, X, Route, ClipboardList, Briefcase,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import Logo from './Logo'
@@ -28,12 +28,13 @@ const clientLinks = [
 ]
 
 const adminLinks = [
-  { href: '/admin/dashboard', label: 'Dashboard',     icon: LayoutDashboard },
-  { href: '/admin/map',       label: 'Mapa clientes', icon: Map },
-  { href: '/admin/clients',   label: 'Clientes',      icon: Users },
-  { href: '/admin/content',   label: 'Contenido',     icon: FileText },
-  { href: '/admin/sessions',  label: 'Sesiones',      icon: CalendarClock },
-  { href: '/admin/nps',       label: 'NPS',           icon: BarChart2 },
+  { href: '/admin/dashboard',        label: 'Dashboard',          icon: LayoutDashboard },
+  { href: '/admin/map',              label: 'Mapa clientes',      icon: Map },
+  { href: '/admin/clients',          label: 'Clientes',           icon: Users },
+  { href: '/admin/clientes-resumen', label: 'Resumen operativo',  icon: ClipboardList },
+  { href: '/admin/content',          label: 'Contenido',          icon: FileText },
+  { href: '/admin/sessions',         label: 'Sesiones',           icon: CalendarClock },
+  { href: '/admin/nps',              label: 'NPS',                icon: BarChart2 },
 ]
 
 export default function Sidebar({ role, userName, productTitle, isOwner }: SidebarProps) {
@@ -125,6 +126,13 @@ export default function Sidebar({ role, userName, productTitle, isOwner }: Sideb
               {label}
             </Link>
           ))}
+
+          {role === 'admin' && isOwner && (
+            <Link href="/admin/business-coach" onClick={() => setMobileOpen(false)} className={linkClass('/admin/business-coach')}>
+              <Briefcase size={16} strokeWidth={isActive('/admin/business-coach') ? 2 : 1.5} />
+              Business Coach
+            </Link>
+          )}
 
           {role === 'admin' && (
             <>

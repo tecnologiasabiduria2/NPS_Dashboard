@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { AlertTriangle, Users, TrendingDown, Clock, CalendarClock, ArrowRight, UserPlus, Star } from 'lucide-react'
+import { AlertTriangle, Users, TrendingDown, Clock, CalendarClock, ArrowRight, UserPlus, Star, Briefcase, CalendarX } from 'lucide-react'
 import { formatDateOnly } from '@/lib/format'
 import DonutChart from '@/components/DonutChart'
 import NpsTrendChart from '@/components/admin/NpsTrendChart'
 import OwnerOpsSection from './OwnerOpsSection'
-import CsOpsSection from './CsOpsSection'
+import { getClientesEnRiesgoAsistencia } from '@/lib/attendanceRisk'
 
 const TREND_MESES = 6 // "ver la tendencia del último semestre o trimestre" (Diana, 2026-07-06)
 const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
@@ -73,6 +73,24 @@ export default async function AdminDashboardPage({
       .gte('created_at', periodoInicioTrend),
   ])
 
+  // Resúmenes de los otros 2 pilares (Business Coach, Clientes) — detalle en
+  // /admin/business-coach y /admin/clientes-resumen (calibración 2026-07-07 noche).
+  // Un KPI por Business Coach (no un total combinado — pedido de Juan,
+  // 2026-07-07 noche: "escalable", 1 tarjeta por cada uno con sus clientes).
+  const periodoActualBC = periodoKey(0)
+  const [{ data: bcRoster }, { data: uhmMesBC }, clientesEnRiesgo] = await Promise.all([
+    supabase.from('profiles').select('id, full_name').eq('role', 'admin').order('full_name'),
+    supabase.from('user_hiperfoco_mes').select('user_id, cs_id').eq('periodo', periodoActualBC).eq('estado', 'en_curso').not('cs_id', 'is', null),
+    getClientesEnRiesgoAsistencia(),
+  ])
+  const clientesPorBC = new Map<string, number>()
+  for (const r of (uhmMesBC as any[]) ?? []) clientesPorBC.set(r.cs_id, (clientesPorBC.get(r.cs_id) ?? 0) + 1)
+  const businessCoaches = ((bcRoster as any[]) ?? []).map(p => ({
+    id: p.id as string,
+    name: p.full_name as string,
+    clientes: clientesPorBC.get(p.id) ?? 0,
+  }))
+
   // Meses del rango de tendencia, en orden ascendente (más viejo primero).
   const mesesTrend = Array.from({ length: TREND_MESES }, (_, i) => periodoKey(-(TREND_MESES - 1) + i).slice(0, 7))
 
@@ -128,16 +146,18 @@ export default async function AdminDashboardPage({
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_1.4fr] gap-4 mb-8">
-        {/* Salud de cartera — resumen visual (Activos/Inactivos); el desglose
-            fino por estado (saludable/riesgo/pausa/bandera) está más abajo,
-            solo para owner. */}
+      <div className="grid lg:grid-cols-[0.75fr_1.6fr] gap-4 mb-8">
+        {/* Salud de cartera — más secundaria a propósito (pedido de Juan,
+            2026-07-07 noche): resumen visual chico de Activos/Inactivos; el
+            desglose fino por estado (saludable/riesgo/pausa/bandera) está más
+            abajo, solo para owner. NPS Global es el protagonista de esta fila. */}
         <div className="card animate-fade-up" style={{ animationDelay: '240ms' }}>
-          <p className="text-sm font-medium text-cream mb-4">Salud de cartera</p>
+          <p className="text-xs font-medium text-cream-muted mb-3">Salud de cartera</p>
           <DonutChart
             centerValue={(activeCount ?? 0) + (expiredCount ?? 0)}
             centerLabel="clientes totales"
-            size={188}
+            size={132}
+            thickness={14}
             segments={[
               { label: 'Activos', value: activeCount ?? 0, color: '#34d399' },
               { label: 'Inactivos', value: expiredCount ?? 0, color: '#5b4b3f' },
@@ -163,6 +183,48 @@ export default async function AdminDashboardPage({
           </div>
         </div>
       </div>
+
+      {/* Resumen de los otros 2 pilares (NPS ya tiene su tarjeta arriba) — un
+          KPI por Business Coach (escalable: 1 tarjeta por cada uno, con sus
+          clientes asignados) + Clientes en riesgo por asistencia, cada uno
+          con su apartado de detalle (calibración 2026-07-07 noche). */}
+      {(isOwner || isAdmin) && (
+        <div className="flex flex-wrap gap-4 mb-8">
+          {isOwner && businessCoaches.map(bc => (
+            <Link
+              key={bc.id}
+              href="/admin/business-coach"
+              className="card card-glow flex items-center gap-4 hover:border-brand-600/40 transition-colors flex-1 min-w-[240px]"
+            >
+              <div className="card-glow-orb opacity-20" style={{ background: '#DA7D41' }} />
+              <div className="relative w-11 h-11 rounded-xl bg-brand-600/15 flex items-center justify-center shrink-0">
+                <Briefcase size={19} className="text-brand-400" />
+              </div>
+              <div className="relative flex-1 min-w-0">
+                <p className="text-3xl font-bold tabular-nums text-cream">{bc.clientes}</p>
+                <p className="text-xs text-cream-muted mt-1 truncate">{bc.name} — ver detalle</p>
+              </div>
+              <ArrowRight size={16} className="relative text-cream-muted shrink-0" />
+            </Link>
+          ))}
+          <Link
+            href="/admin/clientes-resumen"
+            className="card card-glow flex items-center gap-4 hover:border-brand-600/40 transition-colors flex-1 min-w-[240px]"
+          >
+            {clientesEnRiesgo.length > 0 && <div className="card-glow-orb opacity-20" style={{ background: '#f87171' }} />}
+            <div className={`relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${clientesEnRiesgo.length > 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
+              <CalendarX size={19} className={clientesEnRiesgo.length > 0 ? 'text-red-400' : 'text-emerald-400'} />
+            </div>
+            <div className="relative flex-1 min-w-0">
+              <p className={`text-3xl font-bold tabular-nums ${clientesEnRiesgo.length > 0 ? 'text-red-400' : 'text-cream'}`}>{clientesEnRiesgo.length}</p>
+              <p className="text-xs text-cream-muted mt-1">En riesgo por asistencia — ver detalle</p>
+            </div>
+            <ArrowRight size={16} className="relative text-cream-muted shrink-0" />
+          </Link>
+        </div>
+      )}
+
+      {isOwner && <OwnerOpsSection searchParams={searchParams} />}
 
       {/* Alertas */}
       {alerts && alerts.length > 0 ? (
@@ -247,13 +309,6 @@ export default async function AdminDashboardPage({
           </div>
         </div>
       )}
-
-      {/* Operación CS (Sesiones 1:1, Mentor por hiperfoco, Clientes sin 1:1):
-          visible para cualquier admin, no solo owner (Lorena agenda las 1:1).
-          Operación y salud del negocio (KPIs, insights, upsell, Salud por CS):
-          solo owner (Diana) — calibración 2026-07-07. */}
-      {(isOwner || isAdmin) && <CsOpsSection searchParams={searchParams} />}
-      {isOwner && <OwnerOpsSection searchParams={searchParams} />}
     </div>
   )
 }

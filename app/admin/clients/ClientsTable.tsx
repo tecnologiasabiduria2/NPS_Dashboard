@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Search } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Search, Star } from 'lucide-react'
 import { formatDateOnly } from '@/lib/format'
 import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 
@@ -17,10 +18,15 @@ interface Props {
 }
 
 export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser, multiProductoIds }: Props) {
+  const searchParams = useSearchParams()
   const [q, setQ] = useState('')
   const [sort, setSort] = useState<SortMode>('default')
   const [hiperfocoFilter, setHiperfocoFilter] = useState('')
   const [productFilter, setProductFilter] = useState('')
+  // "Superclientes" = clientes con 2+ productos (pedido de Juan, 2026-07-08:
+  // marcarlos y poder verlos aparte). El link del KPI del dashboard trae
+  // ?supercliente=1 para que el filtro arranque activado.
+  const [superclienteOnly, setSuperclienteOnly] = useState(searchParams.get('supercliente') === '1')
 
   // Build unique hiperfoco options for the filter dropdown
   const hiperfocoOptions = useMemo(() => {
@@ -49,6 +55,9 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
         return name.includes(t) || phone.includes(t)
       })
     }
+    if (superclienteOnly) {
+      list = list.filter((c: any) => multiProductoIds.has(c.user_id))
+    }
     if (productFilter) {
       list = list.filter((c: any) => c.products?.slug === productFilter)
     }
@@ -71,7 +80,7 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
       })
     }
     return list
-  }, [q, clients, sort, hiperfocoFilter, productFilter, hiperfocoByUser])
+  }, [q, clients, sort, hiperfocoFilter, productFilter, hiperfocoByUser, superclienteOnly, multiProductoIds])
 
   function getBadge(client: any) {
     if (client.status === 'inactive') return <span className="badge-inactive">Inactivo</span>
@@ -115,6 +124,17 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
             <option key={h} value={h}>{h}</option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={() => setSuperclienteOnly(v => !v)}
+          className={`inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl border transition-colors ${
+            superclienteOnly
+              ? 'bg-brand-600/20 border-brand-600/40 text-brand-300'
+              : 'bg-surface-800 border-surface-600 text-cream-muted hover:text-cream'
+          }`}
+        >
+          <Star size={14} className={superclienteOnly ? 'fill-current' : ''} /> Solo superclientes
+        </button>
         <select
           className="select w-auto"
           value={sort}
@@ -149,10 +169,10 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
                         {client.profiles?.full_name ?? '—'}
                         {multiProductoIds.has(client.user_id) && (
                           <span
-                            className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-600/20 text-brand-300 font-normal"
+                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-brand-600/20 text-brand-300 font-normal"
                             title="Cliente con acceso a 2+ productos"
                           >
-                            ↗ 2+ productos
+                            <Star size={9} className="fill-current" /> Supercliente
                           </span>
                         )}
                       </p>

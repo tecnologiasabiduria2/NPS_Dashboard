@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import NpsModuloBoxes, { type NpsModuloRow } from '@/components/admin/NpsModuloBoxes'
 import NpsTrendChart from '@/components/admin/NpsTrendChart'
 
 interface Resp {
@@ -69,9 +68,11 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
     })
   }, [responses, meses])
 
-  // Serie mensual por hiperfoco — para las cajas (número del mes actual +
-  // tendencia recortada a la misma ventana elegida).
-  const byHiperfoco: NpsModuloRow[] = useMemo(() => {
+  // Serie mensual completa por hiperfoco (calibración 2026-07-07 noche: "una
+  // gráfica elaborada de verdad" en vez de mini-sparklines en cajas) — cada
+  // hiperfoco con su propia serie {label, value} lista para NpsTrendChart, más
+  // el conteo/promedio del mes actual para el desplegable y el resumen.
+  const byHiperfoco = useMemo(() => {
     const porTitle = new Map<string, Map<string, { sum: number; count: number }>>()
     for (const r of responses) {
       const label = labelOf(r) ?? 'Sin hiperfoco'
@@ -85,21 +86,25 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
     }
     return Array.from(porTitle.entries())
       .map(([title, porMes]) => {
-        const trend = meses.map(m => {
+        const series = meses.map(m => {
           const d = porMes.get(m)
-          return d ? Math.round((d.sum / d.count) * 10) / 10 : 0
+          const mo = Number(m.split('-')[1])
+          return { label: MES_CORTO[mo - 1], value: d ? Math.round((d.sum / d.count) * 10) / 10 : 0 }
         })
         const actual = porMes.get(mesActual)
         return {
           title,
           avg: actual ? Math.round((actual.sum / actual.count) * 10) / 10 : 0,
           count: actual?.count ?? 0,
-          trend,
+          series,
         }
       })
       .filter(row => row.count > 0)
       .sort((a, b) => b.count - a.count)
   }, [responses, meses, mesActual])
+
+  const [selectedHf, setSelectedHf] = useState('')
+  const selectedRow = byHiperfoco.find(h => h.title === selectedHf) ?? byHiperfoco[0]
 
   const hiperfocoOptions = useMemo(() => {
     const set = new Set<string>()
@@ -150,8 +155,30 @@ export default function NpsResults({ responses }: { responses: Resp[] }) {
       </div>
 
       <div className="card">
-        <h2 className="text-sm font-semibold text-cream mb-4">NPS por hiperfoco · mes actual</h2>
-        <NpsModuloBoxes rows={byHiperfoco} />
+        <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
+          <h2 className="text-sm font-semibold text-cream">NPS por hiperfoco</h2>
+          {byHiperfoco.length > 0 && (
+            <select
+              className="select w-auto text-xs"
+              value={selectedRow?.title ?? ''}
+              onChange={e => setSelectedHf(e.target.value)}
+            >
+              {byHiperfoco.map(h => (
+                <option key={h.title} value={h.title}>{h.title}</option>
+              ))}
+            </select>
+          )}
+        </div>
+        {selectedRow ? (
+          <>
+            <p className="text-xs text-cream-muted mb-2">
+              Mes actual: <span className={`font-bold ${scoreColor(selectedRow.avg)}`}>{selectedRow.avg}</span> · {selectedRow.count} respuesta{selectedRow.count !== 1 ? 's' : ''}
+            </p>
+            <NpsTrendChart data={selectedRow.series} height={220} />
+          </>
+        ) : (
+          <p className="text-sm text-cream-muted">Sin respuestas por hiperfoco todavía.</p>
+        )}
       </div>
 
       {/* Filtros */}
