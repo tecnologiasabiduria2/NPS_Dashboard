@@ -41,7 +41,7 @@ export default async function AdminDashboardPage({
     { count: noDateCount },
     { count: soonCount },
     { count: soonMonthCount },
-    { data: alerts },
+    { count: atencionInmediataCount },
     { data: soonMonthList },
     { data: npsTrendRaw },
   ] = await Promise.all([
@@ -52,12 +52,10 @@ export default async function AdminDashboardPage({
     // Predictibilidad de vencimientos (pedido de Diana, calibración 2026-07-06):
     // "vencen el próximo mes" además de "vencen en 7 días", para anticipar renovaciones.
     supabase.from('user_access').select('*', { count: 'exact', head: true }).eq('status', 'active').lte('access_until', soonMonthDate).gte('access_until', today),
-    supabase.from('user_access')
-      .select('id, user_id, status, access_until, profiles(full_name), products(title)')
-      .eq('status', 'active')
-      .or(`access_until.is.null,access_until.lt.${today}`)
-      .order('access_until', { ascending: true })
-      .limit(8),
+    // Solo el conteo — la lista completa de "Requieren atención inmediata" se
+    // movió a /admin/clientes-resumen (2026-07-09, pedido de Juan: vive junto
+    // al resto del resumen operativo, no en el dashboard general).
+    supabase.from('user_access').select('*', { count: 'exact', head: true }).eq('status', 'active').or(`access_until.is.null,access_until.lt.${today}`),
     supabase.from('user_access')
       .select('id, user_id, access_until, profiles(full_name), products(title)')
       .eq('status', 'active')
@@ -90,6 +88,7 @@ export default async function AdminDashboardPage({
     name: p.full_name as string,
     clientes: clientesPorBC.get(p.id) ?? 0,
   }))
+  const resumenOperativoCount = (atencionInmediataCount ?? 0) + clientesEnRiesgo.length
 
   // Meses del rango de tendencia, en orden ascendente (más viejo primero).
   const mesesTrend = Array.from({ length: TREND_MESES }, (_, i) => periodoKey(-(TREND_MESES - 1) + i).slice(0, 7))
@@ -181,7 +180,7 @@ export default async function AdminDashboardPage({
           con su apartado de detalle (calibración 2026-07-07 noche). */}
       {(isOwner || isAdmin) && (
         <div className="flex flex-wrap gap-4 mb-8">
-          {isOwner && businessCoaches.map(bc => (
+          {businessCoaches.map(bc => (
             <Link
               key={bc.id}
               href="/admin/business-coach"
@@ -202,13 +201,17 @@ export default async function AdminDashboardPage({
             href="/admin/clientes-resumen"
             className="card card-glow flex items-center gap-4 hover:border-brand-600/40 transition-colors flex-1 min-w-[240px]"
           >
-            {clientesEnRiesgo.length > 0 && <div className="card-glow-orb opacity-20" style={{ background: '#f87171' }} />}
-            <div className={`relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${clientesEnRiesgo.length > 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
-              <CalendarX size={19} className={clientesEnRiesgo.length > 0 ? 'text-red-400' : 'text-emerald-400'} />
+            {/* Resumen operativo — fusiona "requieren atención inmediata" (sin
+                fecha/vencidos) + "en riesgo por asistencia" en un solo número,
+                mismo patrón que NPS/Business Coach: resumen en el dashboard,
+                detalle en /admin/clientes-resumen (2026-07-09, pedido de Juan). */}
+            {resumenOperativoCount > 0 && <div className="card-glow-orb opacity-20" style={{ background: '#f87171' }} />}
+            <div className={`relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${resumenOperativoCount > 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
+              <CalendarX size={19} className={resumenOperativoCount > 0 ? 'text-red-400' : 'text-emerald-400'} />
             </div>
             <div className="relative flex-1 min-w-0">
-              <p className={`text-3xl font-bold tabular-nums ${clientesEnRiesgo.length > 0 ? 'text-red-400' : 'text-cream'}`}>{clientesEnRiesgo.length}</p>
-              <p className="text-xs text-cream-muted mt-1">En riesgo por asistencia — ver detalle</p>
+              <p className={`text-3xl font-bold tabular-nums ${resumenOperativoCount > 0 ? 'text-red-400' : 'text-cream'}`}>{resumenOperativoCount}</p>
+              <p className="text-xs text-cream-muted mt-1">Resumen operativo — ver detalle</p>
             </div>
             <ArrowRight size={16} className="relative text-cream-muted shrink-0" />
           </Link>
@@ -217,63 +220,10 @@ export default async function AdminDashboardPage({
 
       {isOwner && <OwnerOpsSection searchParams={searchParams} />}
 
-      {/* Alertas + Vencimientos próximos — lado a lado en pantallas grandes
-          (pedido de Juan, 2026-07-08: mejor uso del espacio, antes iban
-          apiladas a todo el ancho, mismo tipo de contenido: cliente + badge).
-          Si uno de los dos no tiene datos, el otro ocupa el ancho completo
-          (col-span-2) en vez de dejar la mitad vacía. */}
-      {(() => {
-        const hayVencimientos = !!(soonMonthList && (soonMonthList as any[]).length > 0)
-        const alertasSpan = hayVencimientos ? '' : 'lg:col-span-2'
-        return (
-      <div className="grid lg:grid-cols-2 gap-4">
-      {alerts && alerts.length > 0 ? (
-        <div className={`card border-red-500/20 ${alertasSpan}`}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={16} className="text-red-400" />
-              <p className="text-sm font-medium text-cream">Requieren atención inmediata</p>
-            </div>
-            <Link href="/admin/clients" className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
-              Ver todos <ArrowRight size={12} />
-            </Link>
-          </div>
-          <div className="divide-y divide-surface-700">
-            {alerts.map((a: any) => (
-              <Link key={a.id} href={`/admin/clients/${a.user_id}`}>
-                <div className="flex items-center justify-between py-3 hover:bg-surface-800/50 -mx-2 px-2 rounded-lg transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-surface-700 flex items-center justify-center">
-                      <span className="text-xs text-cream-muted font-medium">
-                        {(a.profiles?.full_name ?? '?').charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm text-cream font-medium">{a.profiles?.full_name ?? '—'}</p>
-                      <p className="text-xs text-cream-muted">{a.products?.title}</p>
-                    </div>
-                  </div>
-                  <span className={a.access_until ? 'badge-inactive' : 'badge-warning'}>
-                    {a.access_until ? 'Vencido' : 'Sin fecha'}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className={`card border-emerald-500/20 text-center py-10 ${alertasSpan}`}>
-          <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
-            <Users size={20} className="text-emerald-400" />
-          </div>
-          <p className="text-cream font-medium">Todo en orden</p>
-          <p className="text-cream-muted text-sm mt-1">No hay clientes con alertas pendientes</p>
-        </div>
-      )}
-
       {/* Vencimientos próximos — predictibilidad de renovaciones (pedido de
-          Diana, calibración 2026-07-06), separado de "Requieren atención
-          inmediata" (que es sin fecha o ya vencidos). */}
+          Diana, calibración 2026-07-06). "Requieren atención inmediata" (sin
+          fecha o ya vencidos) se movió a /admin/clientes-resumen (2026-07-09),
+          junto al resto del resumen operativo — el KPI de arriba enlaza ahí. */}
       {soonMonthList && soonMonthList.length > 0 && (
         <div className="card border-sky-500/20">
           <div className="flex items-center justify-between mb-4">
@@ -309,9 +259,6 @@ export default async function AdminDashboardPage({
           </div>
         </div>
       )}
-      </div>
-        )
-      })()}
     </div>
   )
 }

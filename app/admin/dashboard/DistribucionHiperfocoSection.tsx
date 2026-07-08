@@ -109,18 +109,23 @@ export default async function DistribucionHiperfocoSection({
             return (
               <div key={d.title} className="card-glow bg-surface-800 border border-surface-700 rounded-xl px-4 py-3.5">
                 <div className="card-glow-orb opacity-20" style={{ background: hue }} />
-                <p className="relative text-sm text-cream font-medium truncate mb-3">{d.title}</p>
-                {/* Etiqueta flotante alineada a la derecha, justo encima de la
-                    barra (spec exacta de Juan, 2026-07-08): valor + "NPS" en
-                    Sand Beige desaturado, DM Sans. El conteo de empresarios va
-                    a la izquierda, mismo renglón. */}
-                <div className="relative flex items-baseline justify-between mb-1.5">
-                  <span className="text-xs text-cream-muted">{d.count} empresario{d.count !== 1 ? 's' : ''}</span>
-                  <span className="text-sm font-medium" style={{ color: 'rgba(234,173,116,0.85)' }}>
-                    {d.nps !== null ? d.nps.toFixed(1) : '—'} <span className="text-xs">NPS</span>
-                  </span>
+                <p className="relative text-sm text-cream font-medium truncate mb-2">{d.title}</p>
+                {/* Conteo de empresarios + NPS priorizados (pedido de Juan,
+                    2026-07-09): números grandes, mismo lenguaje que los KPI del
+                    dashboard — la barra baja a un rol secundario/decorativo. */}
+                <div className="relative flex items-end justify-between gap-3 mb-2">
+                  <div>
+                    <p className="text-2xl font-bold tabular-nums text-cream leading-none">{d.count}</p>
+                    <p className="text-xs text-cream-muted mt-1">empresario{d.count !== 1 ? 's' : ''}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-cream-muted mb-1">NPS</p>
+                    <p className="text-3xl font-bold tabular-nums leading-none" style={{ color: 'rgba(234,173,116,0.9)' }}>
+                      {d.nps !== null ? d.nps.toFixed(1) : '—'}
+                    </p>
+                  </div>
                 </div>
-                <div className="relative h-2 rounded-full overflow-hidden" style={{ background: 'rgba(38,28,33,0.2)' }}>
+                <div className="relative h-1 rounded-full overflow-hidden" style={{ background: 'rgba(38,28,33,0.2)' }}>
                   <div
                     className="h-full rounded-full"
                     style={{ width: `${d.pct.toFixed(1)}%`, background: 'linear-gradient(90deg, #7e301f, #da7d41)' }}

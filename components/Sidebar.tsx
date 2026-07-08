@@ -131,7 +131,7 @@ export default function Sidebar({ role, userName, productTitle, isOwner }: Sideb
             </Link>
           ))}
 
-          {role === 'admin' && isOwner && (
+          {role === 'admin' && (
             <Link href="/admin/business-coach" onClick={() => setMobileOpen(false)} className={linkClass('/admin/business-coach')}>
               <Briefcase size={16} strokeWidth={isActive('/admin/business-coach') ? 2 : 1.5} />
               Business Coach

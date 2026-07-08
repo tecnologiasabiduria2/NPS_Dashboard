@@ -8,7 +8,11 @@
 export function isValidPhoneWithPrefix(phone: string | null | undefined): boolean {
   const trimmed = (phone ?? '').trim()
   if (!trimmed) return true
-  return /^\+[1-9]\d{6,14}$/.test(trimmed)
+  // Se ignoran espacios internos para validar: los propios placeholders de la
+  // app ("+57 300 1234567") los incluyen, así que el formato sugerido debe
+  // pasar la validación (bug encontrado 2026-07-09, los 3 puntos de entrada
+  // rechazaban su propio ejemplo).
+  return /^\+[1-9]\d{6,14}$/.test(trimmed.replace(/\s+/g, ''))
 }
 
 // Link de WhatsApp (api.whatsapp.com/send, pedido explícito de Garzón, en vez

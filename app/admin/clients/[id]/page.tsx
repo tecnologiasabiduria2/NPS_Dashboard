@@ -37,13 +37,20 @@ export default async function ClientDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: profile }, { data: access }, { data: notes }] = await Promise.all([
+  const [{ data: profile }, { data: accessRows }, { data: notes }] = await Promise.all([
     supabase.from('profiles').select('full_name, phone, created_at').eq('id', id).single(),
-    supabase.from('user_access').select('*, products(title, slug)').eq('user_id', id).single(),
+    // Sin .single(): un "supercliente" (producto anterior terminado + uno nuevo)
+    // tiene 2+ filas en user_access (historial permanente) y .single() truena
+    // por múltiples filas. Se prioriza el acceso activo; si no hay ninguno
+    // (ej. entre productos), se cae al más reciente en vez de dejar la ficha vacía.
+    supabase.from('user_access').select('*, products(title, slug)').eq('user_id', id).order('access_started', { ascending: false }),
     supabase.from('coaching_notes').select('*, profiles!admin_id(full_name)').eq('user_id', id).order('session_date', { ascending: false }),
   ])
 
   if (!profile) notFound()
+
+  const accessList = (accessRows as any[]) ?? []
+  const access = accessList.find(a => a.status === 'active') ?? accessList[0] ?? null
 
   const productId: string | null = (access as any)?.product_id ?? null
 
@@ -181,6 +188,7 @@ export default async function ClientDetailPage({ params }: Props) {
         <p className="text-xs text-cream-muted uppercase tracking-wider mb-4">Control de acceso</p>
         <EditAccessForm
           userId={id}
+          productId={productId ?? ''}
           currentDate={access?.access_until ?? ''}
           ghlContactId={access?.ghl_contact_id ?? ''}
           status={access?.status ?? 'pending'}

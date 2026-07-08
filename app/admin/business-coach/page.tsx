@@ -36,7 +36,11 @@ export default async function BusinessCoachPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (me?.role !== 'owner') redirect('/admin/dashboard')
+  // Antes era solo-owner; abierto a cualquier admin (2026-07-09, pedido de
+  // Juan). Crear Business Coach, el CRUD de mentores y asignar mentor por
+  // hiperfoco siguen siendo acciones solo-owner (requireOwner() en sus APIs)
+  // — se ocultan para un admin no-owner en vez de mostrar botones que fallan.
+  const isOwner = me?.role === 'owner'
 
   const { cs_mes: csMesParam, producto: productoFilter = '' } = await searchParams
   const csMesOptions = Array.from({ length: 6 }, (_, i) => {
@@ -255,7 +259,7 @@ export default async function BusinessCoachPage({
           <h1 className="page-title">Business Coach</h1>
           <p className="page-subtitle">Desempeño y distribución de clientes por Business Coach · {formatMonthLong(csMesPeriodo)}</p>
         </div>
-        <CreateBusinessCoachForm />
+        {isOwner && <CreateBusinessCoachForm />}
       </div>
 
       <div className="flex justify-end gap-2 mb-4">
@@ -332,14 +336,22 @@ export default async function BusinessCoachPage({
                     {h.nps !== null && <> · <span style={{ color: 'rgba(234,173,116,0.9)' }}>NPS {h.nps.toFixed(1)}</span></>}
                   </p>
                 </div>
-                <HiperfocoMentorSelect hiperfocoId={h.id} periodo={csMesPeriodo} value={h.mentorId} options={mentorRosterActivos} />
+                {isOwner ? (
+                  <HiperfocoMentorSelect hiperfocoId={h.id} periodo={csMesPeriodo} value={h.mentorId} options={mentorRosterActivos} />
+                ) : (
+                  <span className="text-xs text-cream-muted truncate">
+                    {mentorRosterActivos.find(m => m.id === h.mentorId)?.name ?? '—'}
+                  </span>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <MentorCrud mentores={((mentoresRaw as any[]) ?? []).map(m => ({ id: m.id, nombre: m.nombre, activo: m.activo }))} />
+      {isOwner && (
+        <MentorCrud mentores={((mentoresRaw as any[]) ?? []).map(m => ({ id: m.id, nombre: m.nombre, activo: m.activo }))} />
+      )}
     </div>
   )
 }

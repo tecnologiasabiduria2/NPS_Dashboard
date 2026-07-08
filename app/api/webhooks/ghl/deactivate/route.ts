@@ -17,13 +17,18 @@ export async function POST(req: NextRequest) {
       .update({ status: 'inactive', updated_at: new Date().toISOString() })
       .eq('ghl_contact_id', ghl_contact_id)
   } else if (email) {
-    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers()
+    // Sin perPage, listUsers() trae solo 50 usuarios (default de GoTrue) — con
+    // más de 50 cuentas de auth, una baja real podía no encontrar al usuario y
+    // fallar en silencio (bug encontrado 2026-07-09).
+    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
     const user = users.find(u => u.email === email)
     if (user) {
       await supabaseAdmin
         .from('user_access')
         .update({ status: 'inactive', updated_at: new Date().toISOString() })
         .eq('user_id', user.id)
+    } else {
+      console.error('ghl/deactivate: no se encontró usuario con email', email)
     }
   }
 

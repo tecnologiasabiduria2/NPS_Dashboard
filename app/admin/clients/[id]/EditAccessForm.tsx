@@ -6,12 +6,13 @@ import { toast } from '@/lib/toast'
 
 interface Props {
   userId: string
+  productId: string
   currentDate: string
   ghlContactId: string
   status: string
 }
 
-export default function EditAccessForm({ userId, currentDate, ghlContactId, status }: Props) {
+export default function EditAccessForm({ userId, productId, currentDate, ghlContactId, status }: Props) {
   const router = useRouter()
   const [date, setDate] = useState(currentDate)
   const [loading, setLoading] = useState(false)
@@ -26,7 +27,7 @@ export default function EditAccessForm({ userId, currentDate, ghlContactId, stat
     const res = await fetch('/api/ghl/update-access', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, access_until: date, ghl_contact_id: ghlContactId }),
+      body: JSON.stringify({ user_id: userId, product_id: productId, access_until: date, ghl_contact_id: ghlContactId }),
     })
 
     if (!res.ok) {

@@ -13,7 +13,10 @@ import RiesgoMotivoFilter from './RiesgoMotivoFilter'
 // /admin/business-coach el 2026-07-08 (es sobre la clase grupal del mes, no
 // sobre operativa de clientes individuales). Se agrega "Clientes en riesgo
 // por asistencia" (lib/attendanceRisk.ts, compartido con el KPI resumen del
-// dashboard).
+// dashboard). "Requieren atención inmediata" (sin fecha o ya vencidos) se
+// movió aquí desde el dashboard general el 2026-07-09 — el KPI "Resumen
+// operativo" del dashboard enlaza a esta página, mismo patrón que NPS/Business
+// Coach (resumen arriba, detalle acá).
 // ============================================================================
 
 function periodoKey(offset = 0): string {
@@ -41,10 +44,13 @@ export default async function ClientesResumenPage({
   csMesPeriodoNextDate.setMonth(csMesPeriodoNextDate.getMonth() + 1)
   const csMesPeriodoNext = `${csMesPeriodoNextDate.getFullYear()}-${String(csMesPeriodoNextDate.getMonth() + 1).padStart(2, '0')}-01`
 
+  const today = new Date().toISOString().split('T')[0]
+
   const [
     { data: hiperfocos },
     { data: uhmMes },
     { data: sessions1x1Raw },
+    { data: alerts },
   ] = await Promise.all([
     supabase.from('hiperfocos').select('id, title, products(title)'),
     supabase
@@ -56,6 +62,14 @@ export default async function ClientesResumenPage({
       .select('user_id, admin_id, session_date')
       .gte('session_date', csMesPeriodo)
       .lt('session_date', csMesPeriodoNext),
+    // "Requieren atención inmediata" — movido desde el dashboard general
+    // (2026-07-09): clientes activos sin fecha de vencimiento o ya vencidos.
+    supabase.from('user_access')
+      .select('id, user_id, access_until, profiles(full_name), products(title)')
+      .eq('status', 'active')
+      .or(`access_until.is.null,access_until.lt.${today}`)
+      .order('access_until', { ascending: true })
+      .limit(8),
   ])
 
   const hfTitle = new Map<string, string>(
@@ -121,7 +135,45 @@ export default async function ClientesResumenPage({
         </div>
       </div>
 
-      {/* Clientes en riesgo por asistencia — primero (pedido de Juan, 2026-07-07 noche) */}
+      {/* Requieren atención inmediata — primero (movido desde el dashboard
+          general, 2026-07-09): sin fecha de vencimiento o ya vencidos. */}
+      {alerts && alerts.length > 0 && (
+        <div className="card mb-4 border-red-500/20">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={15} className="text-red-400 shrink-0" />
+              <p className="text-sm font-medium text-red-400">Requieren atención inmediata</p>
+            </div>
+            <Link href="/admin/clients" className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
+              Ver todos
+            </Link>
+          </div>
+          <div className="divide-y divide-surface-700">
+            {(alerts as any[]).map((a: any) => (
+              <Link key={a.id} href={`/admin/clients/${a.user_id}`}>
+                <div className="flex items-center justify-between py-3 hover:bg-surface-800/50 -mx-2 px-2 rounded-lg transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-surface-700 flex items-center justify-center">
+                      <span className="text-xs text-cream-muted font-medium">
+                        {(a.profiles?.full_name ?? '?').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm text-cream font-medium">{a.profiles?.full_name ?? '—'}</p>
+                      <p className="text-xs text-cream-muted">{a.products?.title}</p>
+                    </div>
+                  </div>
+                  <span className={a.access_until ? 'badge-inactive' : 'badge-warning'}>
+                    {a.access_until ? 'Vencido' : 'Sin fecha'}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Clientes en riesgo por asistencia — segundo (pedido de Juan, 2026-07-07 noche) */}
       <div className="card mb-4" style={{ borderColor: clientesEnRiesgo.length > 0 ? 'rgba(226,75,74,0.2)' : undefined }}>
         <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
           <div className="flex items-center gap-2">

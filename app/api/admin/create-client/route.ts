@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Programa '${product_access}' no encontrado` }, { status: 400 })
     }
 
-    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+    // Sin perPage, listUsers() trae solo 50 usuarios (default de GoTrue) — con
+    // más de 50 cuentas, un cliente existente podía no detectarse y crearse
+    // duplicado (bug encontrado 2026-07-09).
+    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
     if (listError) {
       console.error('[create-client] listUsers failed:', listError)
       return NextResponse.json({ error: 'Error al consultar usuarios existentes.' }, { status: 500 })
