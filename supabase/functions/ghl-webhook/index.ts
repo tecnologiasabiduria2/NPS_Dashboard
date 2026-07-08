@@ -109,7 +109,11 @@ async function findUserByEmail(email: string): Promise<string | null> {
   )
   const json = await res.json()
   const users: any[] = json.users ?? []
-  const found = users.find((u: any) => u.email === email)
+  // Sin normalizar, "Juan@Gmail.com" (como puede mandarlo GHL) no hacía match
+  // con una cuenta ya existente guardada en minúsculas — creaba una cuenta
+  // duplicada en vez de reusar la existente (bug encontrado 2026-07-09).
+  const target = email.toLowerCase()
+  const found = users.find((u: any) => u.email?.toLowerCase() === target)
   return found?.id ?? null
 }
 

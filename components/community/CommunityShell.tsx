@@ -111,7 +111,11 @@ export default function CommunityShell({ userName, avatarUrl, products, children
             identidad de marca sigue presente en el riel de la izquierda y en
             el drawer mobile. */}
         <div className="sticky top-0 z-30 h-14 bg-surface-900 border-b border-surface-700 flex items-center justify-between gap-3 px-4">
-          <div className="flex items-center gap-1 min-w-0 overflow-x-auto">
+          {/* overflow-y-hidden explícito: sin él, el navegador fuerza el eje Y
+              también a "auto" (regla CSS al fijar solo overflow-x) y aparecía
+              un scrollbar vertical no deseado junto a la última pestaña
+              (2026-07-09, se veía junto a "Acerca de" por ser la última). */}
+          <div className="flex items-center gap-1 min-w-0 overflow-x-auto overflow-y-hidden">
             <button
               onClick={() => setDrawerOpen(true)}
               className="lg:hidden p-2 -ml-2 rounded-xl text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors shrink-0"

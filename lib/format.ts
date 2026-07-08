@@ -61,3 +61,12 @@ export function formatCODayNum(iso: string): string {
 export function formatCOMonthShort(iso: string): string {
   return new Date(iso).toLocaleDateString('es-CO', { timeZone: CO_TZ, month: 'short' })
 }
+
+// Meses transcurridos entre una fecha-solo 'YYYY-MM-DD' y hoy.
+export function mesesDesde(value: string | null | undefined): number | null {
+  if (!value) return null
+  const [y, m] = value.split('-').map(Number)
+  if (!y || !m) return null
+  const now = new Date()
+  return Math.max(0, (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - m))
+}

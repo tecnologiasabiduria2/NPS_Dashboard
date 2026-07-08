@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { formatDateOnly, formatMonthShort } from '@/lib/format'
+import { formatDateOnly, formatMonthShort, mesesDesde } from '@/lib/format'
 import { notFound } from 'next/navigation'
 import { Flag, Star, Play } from 'lucide-react'
 import BackLink from '@/components/BackLink'
@@ -24,14 +24,6 @@ function npsColor(score: number) {
   return 'text-red-400'
 }
 
-// Meses transcurridos entre una fecha-solo 'YYYY-MM-DD' y hoy.
-function mesesDesde(value: string | null | undefined): number | null {
-  if (!value) return null
-  const [y, m] = value.split('-').map(Number)
-  if (!y || !m) return null
-  const now = new Date()
-  return Math.max(0, (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - m))
-}
 
 export default async function ClientDetailPage({ params }: Props) {
   const { id } = await params

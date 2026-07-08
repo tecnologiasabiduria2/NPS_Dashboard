@@ -39,7 +39,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Error al consultar usuarios existentes.' }, { status: 500 })
     }
 
-    const existing = users.find(u => u.email === email)
+    // Comparación sin distinguir mayúsculas/minúsculas — mismo bug que en
+    // ghl-webhook (2026-07-09): un email con distinta capitalización no
+    // detectaba la cuenta existente y creaba una duplicada.
+    const existing = users.find(u => u.email?.toLowerCase() === email.toLowerCase())
 
     if (existing) {
       if (phone) {
