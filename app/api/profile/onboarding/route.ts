@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { isValidPhoneWithPrefix } from '@/lib/phone'
 
 // Onboarding del miembro (Bloque 5e): guarda su presentación (bio) y, opcional,
 // su foto de perfil (subida real al bucket público 'avatars' con service role).
@@ -15,12 +16,18 @@ export async function POST(req: NextRequest) {
   const bio = String(form.get('bio') ?? '').trim()
   const instagram = String(form.get('instagram') ?? '').trim()
   const website = String(form.get('website') ?? '').trim()
+  const phone = String(form.get('phone') ?? '').trim()
   const file = form.get('avatar')
+
+  if (!isValidPhoneWithPrefix(phone)) {
+    return NextResponse.json({ error: 'El teléfono debe incluir el indicativo, ej: +57 300 1234567' }, { status: 400 })
+  }
 
   const update: Record<string, string> = {}
   if (bio) update.bio = bio
   if (instagram) update.instagram = instagram
   if (website) update.website = website
+  if (phone) update.phone = phone
 
   if (file && file instanceof File && file.size > 0) {
     if (!file.type.startsWith('image/')) {

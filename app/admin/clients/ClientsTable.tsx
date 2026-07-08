@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Search, Star } from 'lucide-react'
+import { Search, Star, ChevronRight } from 'lucide-react'
 import { formatDateOnly } from '@/lib/format'
 import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 
@@ -27,6 +27,23 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
   // marcarlos y poder verlos aparte). El link del KPI del dashboard trae
   // ?supercliente=1 para que el filtro arranque activado.
   const [superclienteOnly, setSuperclienteOnly] = useState(searchParams.get('supercliente') === '1')
+
+  // Señal de que la tabla se puede seguir deslizando a la derecha — en mobile
+  // la tabla es más ancha que la tarjeta (min-w-[640px]) y sin esto se veía
+  // como si las columnas de la derecha faltaran, en vez de estar a un scroll
+  // de distancia (feedback de Juan, 2026-07-08).
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setCanScrollRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 4)
+  }, [])
+  useEffect(() => {
+    checkScroll()
+    window.addEventListener('resize', checkScroll)
+    return () => window.removeEventListener('resize', checkScroll)
+  }, [checkScroll])
 
   // Build unique hiperfoco options for the filter dropdown
   const hiperfocoOptions = useMemo(() => {
@@ -146,8 +163,8 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
         </select>
       </div>
 
-      <div className="card p-0 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="card p-0 overflow-hidden relative">
+        <div ref={scrollRef} onScroll={checkScroll} className="overflow-x-auto">
         <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-surface-700">
@@ -216,6 +233,11 @@ export default function ClientsTable({ clients, today, soonDate, hiperfocoByUser
           </tbody>
         </table>
         </div>
+        {canScrollRight && (
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-12 flex items-center justify-end bg-gradient-to-l from-surface-850 to-transparent">
+            <ChevronRight size={16} className="text-cream-muted mr-1 animate-pulse" />
+          </div>
+        )}
       </div>
     </>
   )

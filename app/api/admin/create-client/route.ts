@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { isValidPhoneWithPrefix } from '@/lib/phone'
 
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
@@ -16,6 +17,10 @@ export async function POST(req: NextRequest) {
     const ghlContactId = typeof ghl_contact_id === 'string' ? ghl_contact_id.trim() : ''
     if (!ghlContactId) {
       return NextResponse.json({ error: 'El ID de contacto en GHL es obligatorio.' }, { status: 400 })
+    }
+
+    if (!isValidPhoneWithPrefix(phone)) {
+      return NextResponse.json({ error: 'El teléfono debe incluir el indicativo, ej: +57 300 1234567' }, { status: 400 })
     }
 
     const { data: product } = await supabaseAdmin
@@ -34,6 +39,10 @@ export async function POST(req: NextRequest) {
     const existing = users.find(u => u.email === email)
 
     if (existing) {
+      if (phone) {
+        await supabaseAdmin.from('profiles').update({ phone }).eq('id', existing.id)
+      }
+
       const { data: existingAccess } = await supabaseAdmin
         .from('user_access').select('id').eq('user_id', existing.id).eq('product_id', product.id).single()
 

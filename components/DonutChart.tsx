@@ -13,6 +13,7 @@ export default function DonutChart({
   size = 148,
   thickness = 18,
   glow,
+  hideLegend,
 }: {
   segments: DonutSegment[]
   centerValue: string | number
@@ -22,6 +23,10 @@ export default function DonutChart({
   /** Color del resplandor ambiental detrás del anillo (ej. la tarjeta "instrumento"
    * de un KPI hero). Sin esta prop, el anillo se ve exactamente igual que antes. */
   glow?: string
+  /** Oculta la lista de segmentos a la derecha — para usos compactos (ej. una
+   * tarjeta KPI chica) donde solo cabe el anillo. Sin esta prop, se ve igual
+   * que antes (con leyenda). */
+  hideLegend?: boolean
 }) {
   const total = segments.reduce((a, s) => a + s.value, 0)
   let cumulative = 0
@@ -56,22 +61,24 @@ export default function DonutChart({
         >
           <span
             className="font-bold text-cream leading-none tabular-nums"
-            style={{ fontSize: size >= 180 ? '2.25rem' : '1.5rem' }}
+            style={{ fontSize: size >= 180 ? '2.25rem' : size >= 100 ? '1.5rem' : '1rem' }}
           >
             {centerValue}
           </span>
           {centerLabel && <span className="text-[10px] text-cream-muted mt-1 leading-tight">{centerLabel}</span>}
         </div>
       </div>
-      <div className="flex flex-col gap-1.5 min-w-[120px]">
-        {segments.map(s => (
-          <div key={s.label} className="flex items-center gap-2 text-xs">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
-            <span className="text-cream-dim flex-1">{s.label}</span>
-            <span className="text-cream font-medium">{s.value}</span>
-          </div>
-        ))}
-      </div>
+      {!hideLegend && (
+        <div className="flex flex-col gap-1.5 min-w-[120px]">
+          {segments.map(s => (
+            <div key={s.label} className="flex items-center gap-2 text-xs">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+              <span className="text-cream-dim flex-1">{s.label}</span>
+              <span className="text-cream font-medium">{s.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

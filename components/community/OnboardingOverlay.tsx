@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Camera, X } from 'lucide-react'
+import { isValidPhoneWithPrefix } from '@/lib/phone'
 
 // Overlay de bienvenida (Bloque 5e): al unirse, el miembro se presenta (bio) y
 // sube foto de perfil. Se muestra mientras el cliente no tenga bio. "Ahora no"
@@ -13,6 +14,7 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
   const [bio, setBio] = useState('')
   const [instagram, setInstagram] = useState('')
   const [website, setWebsite] = useState('')
+  const [phone, setPhone] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -38,11 +40,13 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
 
   async function submit() {
     if (!bio.trim() && !file) { setError('Escribe una presentación o sube una foto'); return }
+    if (!isValidPhoneWithPrefix(phone)) { setError('El teléfono debe incluir el indicativo, ej: +57 300 1234567'); return }
     setSubmitting(true); setError(null)
     const fd = new FormData()
     fd.set('bio', bio)
     fd.set('instagram', instagram)
     fd.set('website', website)
+    fd.set('phone', phone)
     if (file) fd.set('avatar', file)
     const res = await fetch('/api/profile/onboarding', { method: 'POST', body: fd })
     setSubmitting(false)
@@ -105,6 +109,13 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
           placeholder="Ej: Soy [nombre], CEO de [empresa]. Me dedico a... y busco..."
           rows={4}
           className="input resize-none"
+        />
+
+        <input
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+          placeholder="Teléfono (opcional) — si lo llenas, con indicativo: +57 300 1234567"
+          className="input mt-3"
         />
 
         <div className="grid grid-cols-2 gap-3 mt-3">

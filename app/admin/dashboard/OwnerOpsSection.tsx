@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { Lightbulb, Target, TrendingUp } from 'lucide-react'
 import { formatMonthLong } from '@/lib/format'
 import { createClient } from '@/lib/supabase/server'
-import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 import DonutChart from '@/components/DonutChart'
 import ProductFilter from './ProductFilter'
 
@@ -259,8 +258,6 @@ export default async function OwnerOpsSection({
     })
   }
 
-  const npsColor = (v: number) => (v >= 8 ? 'text-emerald-400' : v >= 6 ? 'text-amber-400' : 'text-red-400')
-
   return (
     <div className="mt-8">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
@@ -312,36 +309,6 @@ export default async function OwnerOpsSection({
             )}
           </p>
         </Link>
-      </div>
-
-      {/* Distribución por hiperfoco — cajas (2026-07-07) */}
-      <div className="card mb-4">
-        <div className="flex items-baseline justify-between mb-3">
-          <p className="text-sm font-medium text-cream">Distribución por hiperfoco · {formatMonthLong(periodoActual)}</p>
-          <p className="text-xs text-cream-dim">{distribTotal} empresarios</p>
-        </div>
-        {distribList.length === 0 ? (
-          <p className="text-sm text-cream-muted">Nadie tiene un hiperfoco en curso este mes todavía.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {distribList.map(d => {
-              const hue = getHiperfocoVisual(d.title).solid
-              return (
-                <div key={d.title} className="card-glow bg-surface-800 rounded-xl px-4 py-3.5">
-                  <div className="card-glow-orb opacity-20" style={{ background: hue }} />
-                  <p className="relative text-sm text-cream font-medium truncate">{d.title}</p>
-                  <p className="relative text-xs text-cream-muted mb-3">
-                    {d.count} empresario{d.count !== 1 ? 's' : ''}
-                    {d.nps !== null && <> · <span className={npsColor(d.nps)}>NPS {d.nps.toFixed(1)}</span></>}
-                  </p>
-                  <div className="relative h-2 rounded-full bg-surface-900 overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${d.pct.toFixed(1)}%`, background: hue }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
       </div>
 
       {/* Top repetidos + Estado de la cartera */}

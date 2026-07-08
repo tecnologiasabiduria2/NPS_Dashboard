@@ -11,7 +11,7 @@
 * { box-sizing: border-box; }
 
 body {
-  background-color: #1c1613;
+  background-color: #261c21;
   color: #F2E8D5;
   font-family: var(--font-dm-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -22,8 +22,8 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #261c21; }
-::-webkit-scrollbar-thumb { background: #3a2f28; border-radius: 3px; }
+::-webkit-scrollbar-track { background: #2f2621; }
+::-webkit-scrollbar-thumb { background: #443830; border-radius: 3px; }
 
 /* ---- Motion (pase de animaciones, 2026-07-05) ----
    Micro-interacciones deliberadas, no decoración suelta: feedback al presionar

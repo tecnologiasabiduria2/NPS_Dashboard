@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import BackLink from '@/components/BackLink'
+import { isValidPhoneWithPrefix } from '@/lib/phone'
 
 export default function CreateClientForm({ products }: { products: { slug: string; title: string }[] }) {
   const router = useRouter()
@@ -27,8 +28,14 @@ export default function CreateClientForm({ products }: { products: { slug: strin
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError('')
+
+    if (!isValidPhoneWithPrefix(form.phone)) {
+      setError('El teléfono debe incluir el indicativo, ej: +57 300 1234567')
+      return
+    }
+
+    setLoading(true)
 
     const res = await fetch('/api/admin/create-client', {
       method: 'POST',
@@ -111,11 +118,11 @@ export default function CreateClientForm({ products }: { products: { slug: strin
 
           <div>
             <label className="label">Teléfono</label>
-            <input type="tel" className="input" placeholder="300 000 0000"
+            <input type="tel" className="input" placeholder="+57 300 000 0000"
               value={form.phone} onChange={e => handle('phone', e.target.value)} />
             <p className="text-xs text-cream-muted mt-1">
-              Si es de Colombia, va sin indicativo (se asume 57 automático). Si es de otro país,
-              escríbelo con "+" — ej. +1 305 000 0000 — para que el botón de WhatsApp le llegue bien.
+              Opcional. Si lo llenas, debe llevar el indicativo del país con "+" (ej. +57 300 000 0000)
+              para que el botón de WhatsApp funcione bien.
             </p>
           </div>
         </div>

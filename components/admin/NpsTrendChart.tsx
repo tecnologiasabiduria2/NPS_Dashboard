@@ -70,14 +70,26 @@ export default function NpsTrendChart({
             key={f}
             x1={padX} x2={width - padX}
             y1={padTop + plotH * (1 - f)} y2={padTop + plotH * (1 - f)}
-            stroke="#2b2740" strokeWidth={1}
+            stroke="#443830" strokeWidth={1}
           />
         ))}
         {areaPath && <path d={areaPath} fill={`url(#${gradId})`} stroke="none" />}
-        <path d={linePath} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-        {coords.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={i === coords.length - 1 ? 4 : 2.5} fill={color} />
-        ))}
+        <path
+          d={linePath}
+          fill="none"
+          stroke={color}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {coords.map(([x, y], i) => {
+          const isLast = i === coords.length - 1
+          return (
+            <g key={i}>
+              <circle cx={x} cy={y} r={isLast ? 4 : 2.5} fill={color} />
+            </g>
+          )
+        })}
       </svg>
       <div className="flex justify-between mt-1.5 px-1">
         {data.map((d, i) => (

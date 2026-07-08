@@ -2,9 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { AlertTriangle, Users, TrendingDown, Clock, CalendarClock, ArrowRight, UserPlus, Star, Briefcase, CalendarX } from 'lucide-react'
 import { formatDateOnly } from '@/lib/format'
-import DonutChart from '@/components/DonutChart'
 import NpsTrendChart from '@/components/admin/NpsTrendChart'
 import OwnerOpsSection from './OwnerOpsSection'
+import DistribucionHiperfocoSection from './DistribucionHiperfocoSection'
 import { getClientesEnRiesgoAsistencia } from '@/lib/attendanceRisk'
 
 const TREND_MESES = 6 // "ver la tendencia del último semestre o trimestre" (Diana, 2026-07-06)
@@ -112,7 +112,10 @@ export default async function AdminDashboardPage({
     <div className="w-full">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="page-title">Dashboard</h1>
+          <h1 className="page-title inline-flex items-baseline gap-2">
+            Dashboard
+            <span className="text-sm font-normal text-cream-muted">{new Date().getFullYear()}</span>
+          </h1>
           <p className="page-subtitle">Resumen de la plataforma</p>
         </div>
         <Link href="/admin/clients/create" className="btn-primary">
@@ -120,69 +123,57 @@ export default async function AdminDashboardPage({
         </Link>
       </div>
 
-      {/* KPIs — tarjetas "instrumento": badge de ícono + resplandor ambiental
-          detrás, como luces de panel de control (identidad de marca:
-          Sabiduría Empresarial = "cabina de control"). */}
+      {/* KPIs — degradado propio y visible por tarjeta (réplica de
+          propuesta_dark.png, 2026-07-08), toda la familia cálida (nada de
+          verde/azul). "Salud de cartera" se eliminó de aquí — aportaba lo
+          mismo que "Estado de la cartera" más abajo (solo owner). */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         {[
-          { label: 'Activos', value: activeCount ?? 0, icon: Users, color: 'text-emerald-400', bg: 'bg-emerald-500/10', glow: '#34d399' },
-          { label: 'Inactivos', value: expiredCount ?? 0, icon: TrendingDown, color: 'text-cream-muted', bg: 'bg-surface-700', glow: undefined },
-          { label: 'Sin fecha', value: noDateCount ?? 0, icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/10', urgent: true, glow: '#f87171' },
-          { label: 'Vencen en 7d', value: soonCount ?? 0, icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10', glow: '#fbbf24' },
-          { label: 'Vencen próx. mes', value: soonMonthCount ?? 0, icon: CalendarClock, color: 'text-sky-400', bg: 'bg-sky-500/10', glow: '#38bdf8' },
-        ].map(({ label, value, icon: Icon, color, bg, urgent, glow }, i) => (
+          { label: 'Activos', value: activeCount ?? 0, icon: Users, tint: '#C1622E' },
+          { label: 'Inactivos', value: expiredCount ?? 0, icon: TrendingDown, tint: '#6b6357' },
+          { label: 'Sin fecha', value: noDateCount ?? 0, icon: AlertTriangle, tint: '#9B3A2A', urgent: true },
+          { label: 'Vencen en 7d', value: soonCount ?? 0, icon: Clock, tint: '#D9A441' },
+          { label: 'Vencen próx. mes', value: soonMonthCount ?? 0, icon: CalendarClock, tint: '#8a6a4a' },
+        ].map(({ label, value, icon: Icon, tint, urgent }, i) => (
           <div
             key={label}
-            className={`card card-glow animate-fade-up ${urgent && Number(value) > 0 ? 'border-red-500/30' : ''}`}
-            style={{ animationDelay: `${i * 60}ms` }}
+            className={`rounded-2xl p-6 border border-surface-700 animate-fade-up ${urgent && Number(value) > 0 ? 'border-red-500/30' : ''}`}
+            style={{
+              animationDelay: `${i * 60}ms`,
+              background: `linear-gradient(135deg, ${tint} 0%, #2f2621 78%)`,
+            }}
           >
-            {glow && <div className="card-glow-orb" style={{ background: glow }} />}
-            <div className={`relative w-11 h-11 rounded-xl ${bg} flex items-center justify-center mb-3`}>
-              <Icon size={19} className={color} />
+            <div className="w-11 h-11 rounded-xl bg-black/20 flex items-center justify-center mb-3">
+              <Icon size={19} className="text-cream" />
             </div>
-            <p className={`relative text-3xl font-bold tabular-nums ${urgent && Number(value) > 0 ? 'text-red-400' : 'text-cream'}`}>{value}</p>
-            <p className="relative text-xs text-cream-muted mt-1">{label}</p>
+            <p className="text-3xl font-bold tabular-nums text-cream">{value}</p>
+            <p className="text-xs text-cream/80 mt-1">{label}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-[0.75fr_1.6fr] gap-4 mb-8">
-        {/* Salud de cartera — más secundaria a propósito (pedido de Juan,
-            2026-07-07 noche): resumen visual chico de Activos/Inactivos; el
-            desglose fino por estado (saludable/riesgo/pausa/bandera) está más
-            abajo, solo para owner. NPS Global es el protagonista de esta fila. */}
-        <div className="card animate-fade-up" style={{ animationDelay: '240ms' }}>
-          <p className="text-xs font-medium text-cream-muted mb-3">Salud de cartera</p>
-          <DonutChart
-            centerValue={(activeCount ?? 0) + (expiredCount ?? 0)}
-            centerLabel="clientes totales"
-            size={132}
-            thickness={14}
-            segments={[
-              { label: 'Activos', value: activeCount ?? 0, color: '#34d399' },
-              { label: 'Inactivos', value: expiredCount ?? 0, color: '#5b4b3f' },
-            ]}
-          />
+      {/* NPS Global — hero a todo el ancho, justo debajo de los KPIs (réplica
+          de propuesta_dark.png). El desglose por módulo/hiperfoco y el filtro
+          de meses viven en /admin/nps (calibración 2026-07-06). */}
+      <div className="card card-glow animate-fade-up mb-8" style={{ animationDelay: '360ms' }}>
+        <div className="card-glow-orb opacity-20" style={{ background: '#DA7D41' }} />
+        <div className="relative flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Star size={16} className="text-amber-400" />
+            <p className="text-sm font-medium text-cream">NPS Global · últimos {TREND_MESES} meses</p>
+          </div>
+          <Link href="/admin/nps" className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
+            Ver desglose por módulo <ArrowRight size={12} />
+          </Link>
         </div>
-
-        {/* NPS Global — vistazo visual; el desglose por módulo/hiperfoco y el
-            filtro de meses viven en /admin/nps (calibración 2026-07-06). */}
-        <div className="card card-glow animate-fade-up" style={{ animationDelay: '300ms' }}>
-          <div className="card-glow-orb opacity-20" style={{ background: '#DA7D41' }} />
-          <div className="relative flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Star size={16} className="text-amber-400" />
-              <p className="text-sm font-medium text-cream">NPS Global · últimos {TREND_MESES} meses</p>
-            </div>
-            <Link href="/admin/nps" className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
-              Ver desglose por módulo <ArrowRight size={12} />
-            </Link>
-          </div>
-          <div className="relative">
-            <NpsTrendChart data={npsTrendGlobal} height={170} />
-          </div>
+        <div className="relative">
+          <NpsTrendChart data={npsTrendGlobal} height={220} />
         </div>
       </div>
+
+      {/* Distribución por hiperfoco — debajo de NPS Global (réplica de
+          propuesta_dark.png; antes iba arriba de NPS). Solo owner. */}
+      {isOwner && <DistribucionHiperfocoSection searchParams={searchParams} />}
 
       {/* Resumen de los otros 2 pilares (NPS ya tiene su tarjeta arriba) — un
           KPI por Business Coach (escalable: 1 tarjeta por cada uno, con sus
@@ -226,9 +217,18 @@ export default async function AdminDashboardPage({
 
       {isOwner && <OwnerOpsSection searchParams={searchParams} />}
 
-      {/* Alertas */}
+      {/* Alertas + Vencimientos próximos — lado a lado en pantallas grandes
+          (pedido de Juan, 2026-07-08: mejor uso del espacio, antes iban
+          apiladas a todo el ancho, mismo tipo de contenido: cliente + badge).
+          Si uno de los dos no tiene datos, el otro ocupa el ancho completo
+          (col-span-2) en vez de dejar la mitad vacía. */}
+      {(() => {
+        const hayVencimientos = !!(soonMonthList && (soonMonthList as any[]).length > 0)
+        const alertasSpan = hayVencimientos ? '' : 'lg:col-span-2'
+        return (
+      <div className="grid lg:grid-cols-2 gap-4">
       {alerts && alerts.length > 0 ? (
-        <div className="card border-red-500/20">
+        <div className={`card border-red-500/20 ${alertasSpan}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <AlertTriangle size={16} className="text-red-400" />
@@ -262,7 +262,7 @@ export default async function AdminDashboardPage({
           </div>
         </div>
       ) : (
-        <div className="card border-emerald-500/20 text-center py-10">
+        <div className={`card border-emerald-500/20 text-center py-10 ${alertasSpan}`}>
           <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
             <Users size={20} className="text-emerald-400" />
           </div>
@@ -275,7 +275,7 @@ export default async function AdminDashboardPage({
           Diana, calibración 2026-07-06), separado de "Requieren atención
           inmediata" (que es sin fecha o ya vencidos). */}
       {soonMonthList && soonMonthList.length > 0 && (
-        <div className="card border-sky-500/20 mt-4">
+        <div className="card border-sky-500/20">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <CalendarClock size={16} className="text-sky-400" />
@@ -309,6 +309,9 @@ export default async function AdminDashboardPage({
           </div>
         </div>
       )}
+      </div>
+        )
+      })()}
     </div>
   )
 }

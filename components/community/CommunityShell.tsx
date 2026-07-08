@@ -104,35 +104,31 @@ export default function CommunityShell({ userName, avatarUrl, products, children
 
       {/* ---------- Columna principal ---------- */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 h-14 bg-surface-900 border-b border-surface-700 flex items-center justify-between gap-3 px-4">
-          <div className="flex items-center gap-3 min-w-0">
+        {/* Barra superior única (fusionada 2026-07-08, pedido de Juan): antes
+            eran 2 filas apiladas (una con el logo de Sabiduría Empresarial,
+            otra con las pestañas) — mostrar el logo de Sabiduría no tenía
+            sentido si el cliente está en la comunidad de Desafío/Impulso. La
+            identidad de marca sigue presente en el riel de la izquierda y en
+            el drawer mobile. */}
+        <div className="sticky top-0 z-30 h-14 bg-surface-900 border-b border-surface-700 flex items-center justify-between gap-3 px-4">
+          <div className="flex items-center gap-1 min-w-0 overflow-x-auto">
             <button
               onClick={() => setDrawerOpen(true)}
-              className="lg:hidden p-2 -ml-2 rounded-xl text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors"
+              className="lg:hidden p-2 -ml-2 rounded-xl text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors shrink-0"
               aria-label="Abrir menú"
             >
               <Menu size={20} />
             </button>
-            <Image
-              src="/logo-horizontal.png"
-              alt="Sabiduría Empresarial"
-              width={138}
-              height={36}
-              className="object-contain hidden sm:block"
-              priority
-            />
-            <Image
-              src="/logo-icon.png"
-              alt="Sabiduría Empresarial"
-              width={26}
-              height={26}
-              className="object-contain sm:hidden"
-              priority
-            />
+            <nav className="hidden lg:flex items-center gap-1">
+              {TABS.map(t => (
+                <Link key={t.href} href={t.href} className={tabClass(t.match(pathname))}>
+                  {t.label}
+                </Link>
+              ))}
+            </nav>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Campana — hueco para notificaciones (pendiente) */}
             <button
               type="button"
@@ -186,16 +182,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
               )}
             </div>
           </div>
-        </header>
-
-        {/* Pestañas (desktop) */}
-        <nav className="hidden lg:flex items-center gap-1 px-4 h-12 bg-surface-900 border-b border-surface-700 sticky top-14 z-20 overflow-x-auto">
-          {TABS.map(t => (
-            <Link key={t.href} href={t.href} className={tabClass(t.match(pathname))}>
-              {t.label}
-            </Link>
-          ))}
-        </nav>
+        </div>
 
         {/* Contenido + sidebar derecho */}
         <div className="flex flex-1 min-w-0">

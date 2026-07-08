@@ -200,9 +200,6 @@ export default async function BusinessCoachPage({
     }
   })
 
-  const npsColor = (v: number) => (v >= 8 ? 'text-emerald-400' : v >= 6 ? 'text-amber-400' : 'text-red-400')
-  const totalClientesDistribuidos = coaches.reduce((a, c) => a + c.clientesActivos, 0)
-
   // --- Mentor por hiperfoco (informativo) — movido desde /admin/clientes-resumen ---
   const hfTitle = new Map<string, string>(
     ((hiperfocos as any[]) ?? []).map(h => [
@@ -266,28 +263,6 @@ export default async function BusinessCoachPage({
         <MonthFilter value={csMesSel} options={csMesOptions} />
       </div>
 
-      {/* Distribución de clientes por Business Coach */}
-      <div className="card mb-4">
-        <p className="text-sm font-medium text-cream mb-3">Distribución de clientes por Business Coach</p>
-        {totalClientesDistribuidos === 0 ? (
-          <p className="text-sm text-cream-muted">Sin clientes asignados este mes.</p>
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {coaches.filter(c => c.clientesActivos > 0).sort((a, b) => b.clientesActivos - a.clientesActivos).map(c => (
-              <div key={c.id}>
-                <div className="flex items-baseline justify-between mb-1">
-                  <span className="text-sm text-cream">{c.name}</span>
-                  <span className="text-xs text-cream-muted">{c.clientesActivos} cliente{c.clientesActivos !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="h-2 rounded-full bg-surface-800 overflow-hidden">
-                  <div className="h-full rounded-full bg-brand-600" style={{ width: `${(c.clientesActivos / totalClientesDistribuidos) * 100}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Tarjetas por Business Coach */}
       <div className="grid md:grid-cols-2 gap-4 mb-4">
         {coaches.map(c => (
@@ -326,7 +301,7 @@ export default async function BusinessCoachPage({
               </div>
               <div className="bg-surface-800 rounded-lg px-3 py-2.5">
                 <p className="text-xs text-cream-muted inline-flex items-center gap-1 mb-1"><Star size={11} /> NPS promedio</p>
-                <p className={`text-lg font-bold tabular-nums ${c.nps !== null ? npsColor(c.nps) : 'text-cream-muted'}`}>{c.nps !== null ? c.nps.toFixed(1) : '—'}</p>
+                <p className={`text-lg font-bold tabular-nums ${c.nps === null ? 'text-cream-muted' : ''}`} style={c.nps !== null ? { color: 'rgba(234,173,116,0.9)' } : undefined}>{c.nps !== null ? c.nps.toFixed(1) : '—'}</p>
               </div>
               <div className="bg-surface-800 rounded-lg px-3 py-2.5">
                 <p className="text-xs text-cream-muted mb-1">Asistencia a clases</p>
@@ -354,7 +329,7 @@ export default async function BusinessCoachPage({
                   <p className="text-cream truncate">{h.title}</p>
                   <p className="text-xs text-cream-muted">
                     {h.clientes} cliente{h.clientes !== 1 ? 's' : ''}
-                    {h.nps !== null && <> · <span className={npsColor(h.nps)}>NPS {h.nps.toFixed(1)}</span></>}
+                    {h.nps !== null && <> · <span style={{ color: 'rgba(234,173,116,0.9)' }}>NPS {h.nps.toFixed(1)}</span></>}
                   </p>
                 </div>
                 <HiperfocoMentorSelect hiperfocoId={h.id} periodo={csMesPeriodo} value={h.mentorId} options={mentorRosterActivos} />

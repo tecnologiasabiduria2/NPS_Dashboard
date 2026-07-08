@@ -17,20 +17,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (profile?.role !== 'admin' && profile?.role !== 'owner') redirect('/dashboard')
 
   return (
-    <div className="relative flex min-h-screen bg-surface-950 overflow-hidden">
+    <div className="relative flex min-h-screen bg-surface-950 overflow-hidden lg:gap-4">
       {/* Atmósfera de fondo (mismo recurso que el login, app/(auth)/layout.tsx: degradado
           + glows borrosos en la paleta de marca) — antes admin era un fondo plano sin
           textura, pedido explícito de Juan (2026-07-05) de que "se note" más el front. */}
       <div
-        className="pointer-events-none fixed inset-0 opacity-60"
-        style={{ background: 'radial-gradient(1400px 900px at 85% -10%, #2A0E07 0%, transparent 55%)' }}
+        className="pointer-events-none fixed inset-0 opacity-40"
+        style={{ background: 'radial-gradient(1400px 900px at 85% -10%, #1a1115 0%, transparent 55%)' }}
       />
       <div
-        className="pointer-events-none fixed -top-40 -right-32 w-[560px] h-[560px] rounded-full opacity-[0.14] blur-3xl"
+        className="pointer-events-none fixed -top-40 -right-32 w-[560px] h-[560px] rounded-full opacity-[0.10] blur-3xl"
         style={{ background: 'radial-gradient(circle, #7E301F 0%, transparent 70%)' }}
       />
       <div
-        className="pointer-events-none fixed bottom-0 left-64 w-[420px] h-[420px] rounded-full opacity-[0.08] blur-3xl"
+        className="pointer-events-none fixed bottom-0 left-64 w-[420px] h-[420px] rounded-full opacity-[0.06] blur-3xl"
         style={{ background: 'radial-gradient(circle, #DA7D41 0%, transparent 70%)' }}
       />
 

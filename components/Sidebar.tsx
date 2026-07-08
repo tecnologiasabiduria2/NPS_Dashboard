@@ -59,7 +59,7 @@ export default function Sidebar({ role, userName, productTitle, isOwner }: Sideb
     return clsx(
       'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',
       isActive(href)
-        ? 'bg-brand-600/15 text-brand-400 border border-brand-600/25'
+        ? 'bg-brand-600 text-cream'
         : 'text-cream-muted hover:text-cream hover:bg-surface-800'
     )
   }
@@ -89,10 +89,14 @@ export default function Sidebar({ role, userName, productTitle, isOwner }: Sideb
         />
       )}
 
-      {/* Sidebar (drawer en mobile, estático en desktop) */}
+      {/* Sidebar — drawer a todo alto en mobile; en desktop (lg+) queda
+          flotante: separado de los 3 bordes con margen limpio, esquinas
+          redondeadas, no corta la pantalla de extremo a extremo (spec de
+          Juan, 2026-07-08). */}
       <aside className={clsx(
-        'fixed lg:static inset-y-0 left-0',
-        'w-64 min-h-screen bg-surface-900 border-r border-surface-700',
+        'fixed lg:static inset-y-0 left-0 lg:inset-auto',
+        'w-64 min-h-screen lg:min-h-0 lg:h-[calc(100vh-2rem)] lg:my-4 lg:ml-4',
+        'bg-surface-900 border border-surface-700 lg:rounded-2xl',
         'flex flex-col shrink-0 z-50',
         'transition-transform duration-300 ease-in-out',
         mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'

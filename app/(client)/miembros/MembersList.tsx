@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Search, X, MessageCircle, Instagram, Globe } from 'lucide-react'
 import { clsx } from 'clsx'
+import { whatsappHref } from '@/lib/phone'
 
 export interface Member {
   id: string
@@ -37,17 +38,6 @@ function initials(name: string) {
 function joinedLabel(d: string | null) {
   if (!d) return null
   return new Date(d).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-// wa.me solo necesita los dígitos (sin '+'). La mayoría de los clientes son
-// colombianos y muchos no digitan el indicativo — por decisión de negocio
-// (2026-07-03), un número de 10 dígitos sin "+" se asume Colombia (57). Si se
-// digitó con "+" (cualquier país), eso se respeta tal cual sin tocarlo.
-function whatsappHref(phone: string): string {
-  const hasCountryCode = phone.trim().startsWith('+')
-  const digits = phone.replace(/\D/g, '')
-  const withCountry = !hasCountryCode && digits.length === 10 ? `57${digits}` : digits
-  return `https://wa.me/${withCountry}`
 }
 
 export default function MembersList({ members }: { members: Member[] }) {
