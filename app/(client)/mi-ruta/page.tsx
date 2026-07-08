@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { formatDateOnly, mesesDesde } from '@/lib/format'
 import { Play } from 'lucide-react'
 import Timeline from '@/components/Timeline'
+import Sparkline from '@/components/Sparkline'
 import { buildTimeline } from '@/lib/timeline'
 
 const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL ?? ''
@@ -31,7 +32,8 @@ export default async function MiRutaPage() {
       supabase
         .from('nps_responses')
         .select('score, created_at, hiperfocos(title)')
-        .eq('user_id', user.id),
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true }),
       // coaching_notes: el cliente lee las suyas (RLS notes_select). Son sus sesiones 1:1.
       supabase
         .from('coaching_notes')
@@ -61,14 +63,16 @@ export default async function MiRutaPage() {
 
   const unoAuno = (notes as any[]) ?? []
 
-  // Panel de estadísticas (derecha) — reemplaza el sparkline de NPS: con pocos
-  // votos se veía como una línea sin sentido; el promedio desde el inicio es
-  // más legible (2026-07-09).
+  // Panel de estadísticas (derecha) — el promedio es el dato principal (el
+  // sparkline solo, con pocos votos, se veía sin sentido — 2026-07-09); ahora
+  // el sparkline vuelve como detalle de apoyo bajo el número, en orden
+  // cronológico (la query ya viene ordenada ascendente).
   const npsScores = ((nps as any[]) ?? []).map(n => Number(n.score))
   const npsPromedio = npsScores.length > 0
     ? Math.round((npsScores.reduce((a, b) => a + b, 0) / npsScores.length) * 10) / 10
     : null
-  const sesionesTotales = (((attendance as any[]) ?? []).length) + unoAuno.length
+  const sesionesGrupales = ((attendance as any[]) ?? []).length
+  const sesionesTotales = sesionesGrupales + unoAuno.length
   const mesesActivo = mesesDesde((access as any)?.access_started)
 
   return (
@@ -127,24 +131,43 @@ export default async function MiRutaPage() {
           </div>
         </div>
 
-        {/* Estadísticas — ocupa el espacio que antes quedaba vacío en
-            pantallas anchas (2026-07-09). */}
-        <aside className="hidden xl:block w-72 shrink-0 sticky top-24 space-y-4">
-          <div className="card">
-            <p className="section-label !mb-1">NPS promedio</p>
-            <p className="text-3xl font-bold tabular-nums text-cream">{npsPromedio ?? '—'}</p>
-            <p className="text-xs text-cream-muted mt-1">
-              {npsScores.length} voto{npsScores.length !== 1 ? 's' : ''} desde el inicio
-            </p>
-          </div>
-          <div className="card">
-            <p className="section-label !mb-1">Sesiones totales</p>
-            <p className="text-3xl font-bold tabular-nums text-cream">{sesionesTotales}</p>
-            <p className="text-xs text-cream-muted mt-1">grupales + 1:1</p>
-          </div>
-          <div className="card">
-            <p className="section-label !mb-1">Meses activo</p>
-            <p className="text-3xl font-bold tabular-nums text-cream">{mesesActivo ?? '—'}</p>
+        {/* Estadísticas — piloto del sistema "alta gama" (2026-07-09, tercera
+            pasada): glow-border + glass-card real (deja ver la atmósfera del
+            shell detrás, por eso funciona acá y no sobre un fondo plano). El
+            NPS es el dato protagonista (escala "hero"); Sesiones/Meses quedan
+            secundarios a propósito — no todo puede ser hero a la vez. */}
+        <aside className="hidden xl:block w-72 shrink-0 sticky top-24">
+          <div className="glow-border">
+            <div className="glass-card divide-y divide-white/5 overflow-hidden">
+              <div className="p-5 hover-lift">
+                <p className="section-label !mb-1 !text-[11px]">NPS promedio</p>
+                <p className="text-3xl font-bold tabular-nums text-cream leading-none">{npsPromedio ?? '—'}</p>
+                <p className="text-[11px] tracking-widest text-cream-muted mt-2 uppercase">
+                  {npsScores.length} voto{npsScores.length !== 1 ? 's' : ''} desde el inicio
+                </p>
+                {npsScores.length >= 2 && (
+                  <div className="mt-2">
+                    <Sparkline points={npsScores} color="#DA7D41" width={220} height={32} />
+                  </div>
+                )}
+              </div>
+              <div className="p-5 hover-lift">
+                <p className="section-label !mb-1 !text-[11px]">Sesiones totales</p>
+                <p className="text-3xl font-bold tabular-nums text-cream">{sesionesTotales}</p>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] tracking-wide text-cream-muted">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-400" /> {sesionesGrupales} grupales
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] tracking-wide text-cream-muted">
+                    <span className="w-1.5 h-1.5 rounded-full bg-surface-500" /> {unoAuno.length} individuales
+                  </span>
+                </div>
+              </div>
+              <div className="p-5 hover-lift">
+                <p className="section-label !mb-1 !text-[11px]">Meses activo</p>
+                <p className="text-3xl font-bold tabular-nums text-cream">{mesesActivo ?? '—'}</p>
+              </div>
+            </div>
           </div>
         </aside>
       </div>

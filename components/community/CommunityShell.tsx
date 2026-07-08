@@ -70,18 +70,26 @@ export default function CommunityShell({ userName, avatarUrl, products, children
     <div className="relative flex min-h-screen bg-surface-950 overflow-hidden">
       {/* Atmósfera de fondo — mismo recurso que admin y el login (degradado + glows
           borrosos en la paleta de marca), a pedido de Juan (2026-07-05) de que el
-          área cliente tenga la misma textura de fondo que ya tiene admin. */}
+          área cliente tenga la misma textura de fondo que ya tiene admin. Valores
+          unificados con admin — antes tenían la misma intención pero números
+          distintos (2026-07-09). */}
       <div
-        className="pointer-events-none fixed inset-0 opacity-60"
+        className="pointer-events-none fixed inset-0 opacity-50"
         style={{ background: 'radial-gradient(1400px 900px at 85% -10%, #2A0E07 0%, transparent 55%)' }}
       />
       <div
-        className="pointer-events-none fixed -top-40 -right-32 w-[560px] h-[560px] rounded-full opacity-[0.14] blur-3xl"
+        className="pointer-events-none fixed -top-40 -right-32 w-[560px] h-[560px] rounded-full opacity-[0.12] blur-3xl"
         style={{ background: 'radial-gradient(circle, #7E301F 0%, transparent 70%)' }}
       />
       <div
-        className="pointer-events-none fixed bottom-0 left-64 w-[420px] h-[420px] rounded-full opacity-[0.08] blur-3xl"
+        className="pointer-events-none fixed bottom-0 left-64 w-[420px] h-[420px] rounded-full opacity-[0.07] blur-3xl"
         style={{ background: 'radial-gradient(circle, #DA7D41 0%, transparent 70%)' }}
+      />
+      {/* Radial mesh adicional (2026-07-09): círculo grande, desenfoque extremo,
+          casi invisible — profundidad extra sin competir con los 2 glows de arriba. */}
+      <div
+        className="pointer-events-none fixed top-1/3 left-1/4 w-[800px] h-[800px] rounded-full opacity-[0.025] blur-[120px]"
+        style={{ background: 'radial-gradient(circle, #7E301F 0%, transparent 70%)' }}
       />
 
       {/* ---------- Riel de producto (desktop) ---------- */}
@@ -199,11 +207,17 @@ export default function CommunityShell({ userName, avatarUrl, products, children
           <main className="flex-1 p-4 lg:p-8 min-w-0">{children}</main>
 
           {showRightRail && (
-            <aside className="hidden xl:block w-72 shrink-0 p-6 border-l border-surface-700 space-y-4">
-              {/* Mismas clases exactas que la tarjeta de Conversación
-                  (Foro.tsx) — antes usaba w-80 + .card (p-6/p-5), un ancho y
-                  padding distintos que hacían que el degradado se viera más
-                  tenue aquí que allá (2026-07-09). */}
+            <aside className="relative hidden xl:block w-72 shrink-0 p-6 border-l border-surface-700 bg-surface-950 space-y-4">
+              {/* bg-surface-950 (2026-07-09, tercer intento): el ancho/clases de
+                  la tarjeta ya eran idénticos a Conversación, y mover el glow
+                  circular no bastó — el degradado grande de fondo (inset-0,
+                  1400x900px) también tiene su punto más intenso justo en esta
+                  esquina y seguía tiñendo el área alrededor de la tarjeta,
+                  haciendo que el mismo naranja se viera más apagado por
+                  contraste (comparado con Conversación, donde el fondo
+                  inmediato es negro parejo). Un fondo sólido propio en el
+                  riel bloquea TODA la atmósfera ahí, sin tener que perseguir
+                  cada glow nuevo que se agregue a futuro. */}
               <div className="rounded-2xl border border-surface-700 bg-surface-850 overflow-hidden">
                 <div className="h-24 bg-gradient-to-br from-sand via-accent to-brand-600 flex items-center justify-center px-4">
                   {isSabiduria(primaryProduct!.title) ? (
