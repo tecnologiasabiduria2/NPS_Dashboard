@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import CommunityShell, { type ShellProduct } from '@/components/community/CommunityShell'
 import OnboardingOverlay from '@/components/community/OnboardingOverlay'
+import BannersRail from '@/components/community/BannersRail'
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -60,7 +61,7 @@ export default async function ClientLayout({ children }: { children: React.React
   // 2026-06-30). Se califica vía link público por sesión (/nps/{token}).
   return (
     <>
-      <CommunityShell userName={displayName} avatarUrl={avatarUrl} products={products}>
+      <CommunityShell userName={displayName} avatarUrl={avatarUrl} products={products} banners={<BannersRail />}>
         {children}
       </CommunityShell>
       {needsOnboarding && <OnboardingOverlay userName={displayName} />}

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { ArrowRight, Video, Calendar, AlertTriangle, Target, History, Award } from 'lucide-react'
+import { ArrowRight, Video, Calendar, AlertTriangle, Target, History } from 'lucide-react'
 import { formatDateOnly, formatMonthLong, formatMonthShort, formatCODateLong, formatCOTime } from '@/lib/format'
 import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 
@@ -196,28 +196,29 @@ export default async function DashboardPage({
 
       {/* Próximo evento en vivo — hero de Inicio: es el llamado a la acción con más
           urgencia de la página (a diferencia de Aprendizaje, cuya tesis es el
-          hiperfoco del mes). Mismo lenguaje visual que el hero de Aprendizaje
-          (color pleno + ícono como marca de agua), en tono de marca porque un
-          evento no pertenece a un solo hiperfoco. */}
+          hiperfoco del mes). Efecto editorial (2026-07-09): contenedor
+          monocromático integrado al sistema (bg-surface-850, no un bloque de
+          color pleno) con un borde izquierdo grueso en degradado como acento,
+          en vez de tinta plana de marca. */}
       {nextSession && (
-        <section className="relative rounded-3xl overflow-hidden mb-6 animate-fade-up">
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-600 to-[#2A0E07]" />
-          <Video size={180} strokeWidth={1} className="absolute -right-6 -bottom-8 text-white/10 pointer-events-none" />
+        <section className="relative rounded-3xl overflow-hidden mb-6 animate-fade-up bg-surface-850">
+          <div className="absolute left-0 top-0 bottom-0 w-[5px]" style={{ background: 'linear-gradient(180deg, #7E301F, #DA7D41)' }} />
+          <Video size={180} strokeWidth={1} className="absolute -right-6 -bottom-8 text-cream/5 pointer-events-none" />
           <div className="relative p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
             <div>
-              <p className="text-xs uppercase tracking-widest font-semibold mb-2 text-white/70">Próximo evento</p>
-              <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-2">{nextSession.title}</p>
-              <p className="text-sm text-white/80 inline-flex items-center gap-1.5 capitalize">
+              <p className="text-xs uppercase tracking-widest font-semibold mb-2 text-sand">Próximo evento</p>
+              <p className="text-2xl sm:text-3xl font-bold text-cream tracking-tight mb-2">{nextSession.title}</p>
+              <p className="text-sm text-cream-muted inline-flex items-center gap-1.5 capitalize">
                 <Calendar size={13} />
                 {formatCODateLong(nextSession.starts_at)} · {formatCOTime(nextSession.starts_at)}
-                <span className="text-white/60"> (hora Colombia)</span>
+                <span className="text-cream-dim"> (hora Colombia)</span>
               </p>
             </div>
             <a
               href={`/api/sessions/${nextSession.id}/join`}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-white hover:bg-cream text-brand-700 font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 text-sm inline-flex items-center gap-2 shrink-0 self-start sm:self-auto"
+              className="bg-transparent border border-cream/30 hover:border-cream/50 text-cream font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 text-sm inline-flex items-center gap-2 shrink-0 self-start sm:self-auto"
             >
               Unirme al Zoom <ArrowRight size={14} />
             </a>
@@ -286,40 +287,54 @@ export default async function DashboardPage({
             Todavía no hay hiperfocos registrados. Aparecerán aquí mes a mes.
           </p>
         ) : (
-          <div className="flex flex-col">
-            {historialView.map((row, i) => {
-              const meta = ESTADO_META[row.estado] ?? ESTADO_META.no_elegido
-              const conHiperfoco = Boolean(row.hiperfocos?.title)
-              return (
-                <div
-                  key={row.periodo}
-                  className={`grid grid-cols-[88px_1fr_auto] gap-3 items-center py-2.5 animate-fade-up ${
-                    i < historialView.length - 1 ? 'border-b border-surface-700/60' : ''
-                  }`}
-                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-                >
-                  <span className="text-xs text-cream-muted capitalize">
-                    {formatMonthShort(row.periodo)}
-                  </span>
-                  <span className={`text-sm ${conHiperfoco ? 'text-cream' : 'text-cream-muted'}`}>
-                    {row.hiperfocos?.title ?? (row.estado === 'pausa' ? 'Pausa' : 'Sin asignar')}
-                    {row.repitio && <span className="text-xs text-cream-muted ml-1.5">· repitió</span>}
-                    {row.asistio && <span className="text-xs text-cream-muted ml-1.5">· asistió ✓</span>}
-                  </span>
-                  {/* El NPS del mes reemplaza al chip de estado cuando existe (ver boceto). */}
-                  {row.nps !== null ? (
-                    <span className={`text-sm font-medium text-right ${npsColorClass(row.nps)}`}>
-                      NPS {row.nps}
-                    </span>
-                  ) : (
-                    <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full ${meta.chip}`}>
-                      {row.estado === 'cerrado' && <Award size={11} />}
-                      {meta.label}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
+          // Timeline minimalista (2026-07-09, corregido): línea vertical fina
+          // dibujada en el wrapper exterior (contenedor de posición real de la
+          // línea) + un nodo simple por fila, cada fila con su PROPIO
+          // position:relative — la versión anterior posicionaba el nodo
+          // "absolute" dentro de un <li> sin position:relative, así que el
+          // navegador lo ubicaba respecto al <ol> (el único ancestro
+          // posicionado), no respecto a cada fila — todos los nodos quedaban
+          // apilados en el mismo punto, superpuestos con el texto (ver
+          // historial.png). Sin íconos de color (pedido explícito): solo un
+          // punto neutro, sin verde/naranja.
+          <div className="relative pl-2">
+            <div className="absolute left-2 top-1 bottom-1 w-px bg-surface-700" />
+            <div className="flex flex-col gap-5">
+              {historialView.map((row, i) => {
+                const meta = ESTADO_META[row.estado] ?? ESTADO_META.no_elegido
+                const conHiperfoco = Boolean(row.hiperfocos?.title)
+                return (
+                  <div
+                    key={row.periodo}
+                    className="relative pl-6 animate-fade-up"
+                    style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                  >
+                    <span className="absolute left-[5px] top-1.5 w-2 h-2 rounded-full bg-cream-muted" />
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-xs text-cream-muted capitalize">
+                        {formatMonthShort(row.periodo)}
+                      </span>
+                      {/* El NPS del mes reemplaza al estado en texto plano cuando existe —
+                          sin bloque de fondo, mismo tratamiento que "asistió". */}
+                      {row.nps !== null ? (
+                        <span className={`text-sm font-medium ${npsColorClass(row.nps)}`}>
+                          NPS {row.nps}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-emerald-300/70 inline-flex items-center gap-1">
+                          {row.estado === 'cerrado' && '✓'} {meta.label}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-sm mt-0.5 ${conHiperfoco ? 'text-cream' : 'text-cream-muted'}`}>
+                      {row.hiperfocos?.title ?? (row.estado === 'pausa' ? 'Pausa' : 'Sin asignar')}
+                      {row.repitio && <span className="text-xs text-cream-muted ml-1.5">· repitió</span>}
+                      {row.asistio && <span className="text-xs text-cream-muted ml-1.5">· asistió ✓</span>}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>

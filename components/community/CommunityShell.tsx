@@ -20,6 +20,10 @@ interface CommunityShellProps {
   avatarUrl?: string | null
   products: ShellProduct[]
   children: React.ReactNode
+  // Server Component (BannersRail) — no se puede importar/renderizar directo
+  // acá porque este archivo es 'use client'; el layout (server component) lo
+  // resuelve y lo pasa como prop, patrón estándar de Next App Router.
+  banners?: React.ReactNode
 }
 
 // Pestañas = navegación primaria (estilo comunidad GHL/Skool). El foro real
@@ -35,7 +39,7 @@ const TABS: { href: string; label: string; match: (p: string) => boolean }[] = [
   { href: '/acerca',    label: 'Acerca de',   match: p => p.startsWith('/acerca') },
 ]
 
-export default function CommunityShell({ userName, avatarUrl, products, children }: CommunityShellProps) {
+export default function CommunityShell({ userName, avatarUrl, products, children, banners }: CommunityShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -52,11 +56,13 @@ export default function CommunityShell({ userName, avatarUrl, products, children
   }
 
   function tabClass(active: boolean) {
+    // Sin línea/subrayado (antes border-b-2 cortaba el texto) — la pestaña
+    // activa se distingue solo por color pleno vs. atenuado (2026-07-09).
     return clsx(
-      'px-3 h-12 inline-flex items-center text-sm font-medium border-b-2 -mb-px transition-colors',
+      'px-3 h-12 inline-flex items-center text-sm font-medium transition-all',
       active
-        ? 'text-cream border-accent'
-        : 'text-cream-muted border-transparent hover:text-cream'
+        ? 'text-sand'
+        : 'text-cream/50 hover:text-cream/80'
     )
   }
 
@@ -193,8 +199,12 @@ export default function CommunityShell({ userName, avatarUrl, products, children
           <main className="flex-1 p-4 lg:p-8 min-w-0">{children}</main>
 
           {showRightRail && (
-            <aside className="hidden xl:block w-80 shrink-0 p-6 border-l border-surface-700">
-              <div className="card overflow-hidden p-0">
+            <aside className="hidden xl:block w-72 shrink-0 p-6 border-l border-surface-700 space-y-4">
+              {/* Mismas clases exactas que la tarjeta de Conversación
+                  (Foro.tsx) — antes usaba w-80 + .card (p-6/p-5), un ancho y
+                  padding distintos que hacían que el degradado se viera más
+                  tenue aquí que allá (2026-07-09). */}
+              <div className="rounded-2xl border border-surface-700 bg-surface-850 overflow-hidden">
                 <div className="h-24 bg-gradient-to-br from-sand via-accent to-brand-600 flex items-center justify-center px-4">
                   {isSabiduria(primaryProduct!.title) ? (
                     <Image src="/logo-horizontal.png" alt={primaryProduct!.title} width={150} height={40} className="object-contain" />
@@ -204,7 +214,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
                     </p>
                   )}
                 </div>
-                <div className="p-5">
+                <div className="p-4">
                   <p className="text-sm font-semibold text-cream">{primaryProduct!.title}</p>
                   <p className="text-xs text-cream-muted mt-0.5">Comunidad privada</p>
                   <p className="text-xs text-cream-dim mt-3 leading-relaxed">
@@ -213,6 +223,9 @@ export default function CommunityShell({ userName, avatarUrl, products, children
                   </p>
                 </div>
               </div>
+              {/* Banners de anuncios (2026-07-09) — apilados debajo, uno por
+                  cada banner vigente. Sin espacio vacío si no hay ninguno. */}
+              {banners}
             </aside>
           )}
         </div>

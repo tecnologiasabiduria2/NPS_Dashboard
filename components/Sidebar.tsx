@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Map, User, LogOut, Users, BarChart2,
-  FileText, UserPlus, CalendarClock, Menu, X, Route, ClipboardList, Briefcase,
+  FileText, UserPlus, CalendarClock, Menu, X, Route, ClipboardList, Briefcase, Megaphone,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import Logo from './Logo'
@@ -33,6 +33,7 @@ const adminLinks = [
   { href: '/admin/clients',          label: 'Clientes',           icon: Users },
   { href: '/admin/clientes-resumen', label: 'Resumen operativo',  icon: ClipboardList },
   { href: '/admin/content',          label: 'Contenido',          icon: FileText },
+  { href: '/admin/banners',          label: 'Banners',            icon: Megaphone },
   { href: '/admin/sessions',         label: 'Sesiones',           icon: CalendarClock },
   { href: '/admin/nps',              label: 'NPS',                icon: BarChart2 },
 ]
