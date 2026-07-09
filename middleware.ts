@@ -37,7 +37,11 @@ export async function middleware(request: NextRequest) {
   if (isProd) requestHeaders.set('x-nonce', nonce)
 
   function withCsp(res: NextResponse): NextResponse {
-    if (isProd) res.headers.set('Content-Security-Policy-Report-Only', buildCsp(nonce))
+    // Bloqueante desde 2026-07-09 — confirmado en consola de producción (login,
+    // dashboard, conversación, roadmap con video reproduciéndose) que con el nonce
+    // ya no había ninguna violación real de script-src antes de pasar de Report-Only
+    // a esto.
+    if (isProd) res.headers.set('Content-Security-Policy', buildCsp(nonce))
     return res
   }
 
