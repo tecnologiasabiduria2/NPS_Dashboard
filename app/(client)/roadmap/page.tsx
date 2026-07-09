@@ -46,7 +46,6 @@ export default async function MiContenidoPage() {
   const historial = (historialRaw ?? []) as any[]
   const accessibleIds = new Set<string>(historial.map((h: any) => h.hiperfoco_id))
   const allProdHfList = (allProdHfs ?? []) as { id: string; title: string }[]
-  const allProdHfIds = allProdHfList.map(h => h.id)
   const freeAccess = accessibleIds.size === 0
 
   const [{ data: mainRecsRaw }, { data: transversalRecsRaw }] = await Promise.all([
@@ -59,15 +58,16 @@ export default async function MiContenidoPage() {
           .eq('is_published', true)
           .order('order')
       : Promise.resolve({ data: [] as any[] }),
-    allProdHfIds.length > 0
-      ? supabase
-          .from('recordings')
-          .select('id, hiperfoco_id, tipo, title, type, fathom_share_id, storage_path')
-          .in('hiperfoco_id', allProdHfIds)
-          .in('tipo', [...TRANSVERSAL_TIPOS])
-          .eq('is_published', true)
-          .order('order')
-      : Promise.resolve({ data: [] as any[] }),
+    // Transversales (Sala de Gerencia/Entrenamiento Comercial): comparten los
+    // 3 productos, no solo el del cliente que las ve (corregido 2026-07-09 —
+    // antes solo traía hiperfocos del producto activo, dejando este contenido
+    // aislado por producto cuando debía ser realmente global).
+    supabase
+      .from('recordings')
+      .select('id, hiperfoco_id, tipo, title, type, fathom_share_id, storage_path')
+      .in('tipo', [...TRANSVERSAL_TIPOS])
+      .eq('is_published', true)
+      .order('order'),
   ])
 
   const mainByHf = new Map<string, any[]>()

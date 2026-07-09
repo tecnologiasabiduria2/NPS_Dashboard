@@ -25,17 +25,24 @@ export async function GET(req: NextRequest) {
   const hf = (rec as any)?.hiperfocos
   if (!rec || !hf) return NextResponse.json({ error: 'File not found' }, { status: 404 })
 
-  const { data: access } = await supabaseAdmin
+  const isTransversal = TRANSVERSAL_TIPOS.includes((rec as any).tipo)
+
+  // Transversales (Sala de Gerencia/Entrenamiento Comercial) comparten los 3
+  // productos — basta con tener CUALQUIER producto activo, no el especifico
+  // del hiperfoco donde quedo colgado el archivo (corregido 2026-07-09).
+  const { data: activeAccess } = await supabaseAdmin
     .from('user_access')
     .select('product_id')
     .eq('user_id', user.id)
-    .eq('product_id', hf.product_id)
     .eq('status', 'active')
-    .maybeSingle()
+
+  const access = isTransversal
+    ? (activeAccess ?? [])[0]
+    : (activeAccess ?? []).find(a => a.product_id === hf.product_id)
 
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  if (!TRANSVERSAL_TIPOS.includes((rec as any).tipo)) {
+  if (!isTransversal) {
     const { data: uhm } = await supabaseAdmin
       .from('user_hiperfoco_mes')
       .select('id')

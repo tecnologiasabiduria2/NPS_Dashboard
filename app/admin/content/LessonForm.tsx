@@ -31,7 +31,19 @@ export interface HiperfocoConTipos {
 interface Props {
   products: { id: string; title: string }[]
   hiperfocos: HiperfocoConTipos[]
+  transversal: { tipo: string; recordings: Recording[] }[]
 }
+
+// Sentinels para las 2 opciones "transversales" dentro del mismo desplegable
+// de hiperfoco — no son hiperfocos reales, comparten los 3 productos (Sala de
+// Gerencia/Entrenamiento Comercial), así que no deberían depender de elegir
+// un Producto primero (pedido de Juan, 2026-07-09: "dentro del desplegable de
+// los hiperfocos podría ser una opción que salgan esos 2").
+const TRANSVERSAL_OPTIONS = [
+  { value: 'sala_gerencia', label: 'Sala de Gerencia (todos los productos)' },
+  { value: 'entrenamiento_comercial', label: 'Entrenamiento Comercial (todos los productos)' },
+] as const
+const TRANSVERSAL_VALUES: string[] = TRANSVERSAL_OPTIONS.map(o => o.value)
 
 const EMPTY = {
   recordingId: '',
@@ -43,7 +55,7 @@ const EMPTY = {
   is_published: false,
 }
 
-export default function LessonForm({ products, hiperfocos }: Props) {
+export default function LessonForm({ products, hiperfocos, transversal }: Props) {
   const router = useRouter()
   const [productId, setProductId] = useState('')
   const [hiperfocoId, setHiperfocoId] = useState('')
@@ -54,15 +66,18 @@ export default function LessonForm({ products, hiperfocos }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState('')
 
+  const isTransversal = TRANSVERSAL_VALUES.includes(hiperfocoId)
+
   const filteredHiperfocos = useMemo(
     () => hiperfocos.filter(h => h.product_id === productId),
     [productId, hiperfocos]
   )
 
   const tipoData = useMemo(() => {
+    if (isTransversal) return transversal.find(t => t.tipo === hiperfocoId) ?? null
     const h = hiperfocos.find(h => h.id === hiperfocoId)
     return h?.tipos.find(t => t.tipo === tipo) ?? null
-  }, [hiperfocoId, tipo, hiperfocos])
+  }, [hiperfocoId, tipo, hiperfocos, isTransversal, transversal])
 
   function reset() { setF({ ...EMPTY }); setError(''); setConfirmDelete(false) }
 
@@ -89,7 +104,13 @@ export default function LessonForm({ products, hiperfocos }: Props) {
   }
 
   function changeProduct(id: string) { setProductId(id); setHiperfocoId(''); setTipo(''); reset() }
-  function changeHiperfoco(id: string) { setHiperfocoId(id); setTipo(''); reset() }
+  function changeHiperfoco(id: string) {
+    setHiperfocoId(id)
+    // Las 2 opciones transversales ya traen su tipo implícito (Sala de Gerencia
+    // = tipo 'sala_gerencia') — no hace falta el paso extra de elegir tipo.
+    setTipo(TRANSVERSAL_VALUES.includes(id) ? id : '')
+    reset()
+  }
   function changeTipo(t: string) { setTipo(t); reset() }
 
   async function submit(e: React.FormEvent) {
@@ -99,12 +120,19 @@ export default function LessonForm({ products, hiperfocos }: Props) {
     }
     setLoading(true); setError('')
 
+    // La FK recordings.hiperfoco_id sigue exigiendo un hiperfoco real — para
+    // las 2 opciones transversales no importa cuál (ya no restringe
+    // visibilidad, corregido 2026-07-09), así que se resuelve a cualquiera
+    // existente (el primero de la lista completa) en vez de pedirle al admin
+    // que elija uno sin sentido.
+    const realHiperfocoId = isTransversal ? (hiperfocos[0]?.id ?? '') : hiperfocoId
+
     const res = await fetch('/api/admin/lessons', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: f.recordingId || undefined,
-        hiperfoco_id: hiperfocoId,
+        hiperfoco_id: realHiperfocoId,
         tipo,
         title: f.title,
         type: f.type,
@@ -135,7 +163,9 @@ export default function LessonForm({ products, hiperfocos }: Props) {
     router.refresh()
   }
 
-  const canSubmit = !!productId && !!hiperfocoId && !!tipo && !!f.title.trim()
+  // Producto solo hace falta para un hiperfoco real — las 2 opciones
+  // transversales no dependen de ningún producto en particular.
+  const canSubmit = (isTransversal || !!productId) && !!hiperfocoId && !!tipo && !!f.title.trim()
 
   return (
     <div className="card mb-8">
@@ -144,36 +174,47 @@ export default function LessonForm({ products, hiperfocos }: Props) {
         <h2 className="text-lg font-semibold text-cream">Cargar grabación</h2>
       </div>
       <p className="text-sm text-cream-muted mb-5">
-        Elige producto → hiperfoco → tipo de sesión y agrega las grabaciones.
+        Elige producto → hiperfoco → tipo de sesión y agrega las grabaciones — o directamente
+        Sala de Gerencia/Entrenamiento Comercial en el desplegable de hiperfoco (son de los 3
+        productos, no hace falta elegir uno).
       </p>
 
       <form onSubmit={submit} className="space-y-4">
         {/* Producto */}
         <div>
-          <label className="label">Producto *</label>
-          <select className="select" value={productId} onChange={e => changeProduct(e.target.value)} required>
+          <label className="label">Producto {!isTransversal && '*'}</label>
+          <select className="select" value={productId} onChange={e => changeProduct(e.target.value)} required={!isTransversal}>
             <option value="">— Selecciona un producto —</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
         </div>
 
-        {/* Hiperfoco */}
-        {productId && (
-          <div>
-            <label className="label">Hiperfoco *</label>
-            <select className="select" value={hiperfocoId} onChange={e => changeHiperfoco(e.target.value)} required>
-              <option value="">— Selecciona un hiperfoco —</option>
-              {filteredHiperfocos.map(h => <option key={h.id} value={h.id}>{h.title}</option>)}
-            </select>
-          </div>
-        )}
+        {/* Hiperfoco — siempre visible: las 2 opciones transversales no
+            dependen de elegir producto primero, los hiperfocos reales sí. */}
+        <div>
+          <label className="label">Hiperfoco *</label>
+          <select className="select" value={hiperfocoId} onChange={e => changeHiperfoco(e.target.value)} required>
+            <option value="">— Selecciona —</option>
+            <optgroup label="Transversal (todos los productos)">
+              {TRANSVERSAL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </optgroup>
+            {productId && (
+              <optgroup label="Hiperfocos">
+                {filteredHiperfocos.map(h => <option key={h.id} value={h.id}>{h.title}</option>)}
+              </optgroup>
+            )}
+          </select>
+        </div>
 
-        {/* Tipo de sesión */}
-        {hiperfocoId && (
+        {/* Tipo de sesión — no aplica a las 2 opciones transversales (su tipo
+            ya queda implícito al elegirlas arriba); tampoco se ofrecen acá
+            Sala de Gerencia/Entrenamiento Comercial para no duplicar la vía
+            de crearlas (ahora es solo desde el desplegable de hiperfoco). */}
+        {hiperfocoId && !isTransversal && (
           <div>
             <label className="label">Tipo de sesión *</label>
             <div className="grid grid-cols-2 gap-2">
-              {CONTENT_TIPOS.map(t => (
+              {CONTENT_TIPOS.filter(t => !TRANSVERSAL_VALUES.includes(t.value)).map(t => (
                 <button key={t.value} type="button" onClick={() => changeTipo(t.value)}
                   className={`px-3 py-2.5 rounded-xl border text-sm transition-colors ${
                     tipo === t.value

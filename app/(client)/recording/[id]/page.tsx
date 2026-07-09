@@ -48,24 +48,35 @@ export default async function RecordingPage({ params }: Props) {
   const hf = rec.hiperfocos as any
   if (!hf) notFound()
 
-  // Verificar que el contenido es del producto activo del usuario
-  if (hf.product_id !== access.product_id) notFound()
-
-  // B12: verificar acceso al hiperfoco (tipos SG/EC son transversales: siempre accesibles)
+  // Transversales (Sala de Gerencia/Entrenamiento Comercial): comparten los 3
+  // productos, no solo el del hiperfoco donde quedó cargada la grabación —
+  // por eso el chequeo de producto/hiperfoco de abajo se salta para estos tipos
+  // (corregido 2026-07-09, antes bloqueaba cruzar de producto incluso para
+  // contenido que debía ser global).
   const isTransversal = TRANSVERSAL_TIPOS.includes(rec.tipo)
+
   if (!isTransversal) {
+    // Verificar que el contenido es del producto activo del usuario
+    if (hf.product_id !== access.product_id) notFound()
+
+    // B12: verificar acceso al hiperfoco
     const accessible = new Set((historialRes.data ?? []).map((h: any) => h.hiperfoco_id as string))
     if (!accessible.has(rec.hiperfoco_id)) redirect('/roadmap')
   }
 
-  // Grabaciones hermanas (mismo hiperfoco + tipo) para navegación prev/next
-  const { data: siblings } = await supabase
+  // Grabaciones hermanas para navegación prev/next: mismo hiperfoco + tipo para
+  // contenido normal, pero solo por tipo para transversales (pueden quedar
+  // colgadas de hiperfocos distintos entre sí y aun así ser "hermanas" — mismo
+  // criterio de agrupación que ya usa ContentPanel.tsx en /roadmap).
+  const siblingsQuery = supabase
     .from('recordings')
     .select('id, title, order')
-    .eq('hiperfoco_id', rec.hiperfoco_id)
     .eq('tipo', rec.tipo)
     .eq('is_published', true)
     .order('order')
+  const { data: siblings } = isTransversal
+    ? await siblingsQuery
+    : await siblingsQuery.eq('hiperfoco_id', rec.hiperfoco_id)
 
   const siblingList = (siblings ?? []) as Array<{ id: string; title: string; order: number }>
   const idx = siblingList.findIndex(s => s.id === id)
