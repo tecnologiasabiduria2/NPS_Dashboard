@@ -23,6 +23,7 @@ function addHoursLocal(localStr: string, hours: number): string {
 // resuelve el servidor a partir del hiperfoco actual del cliente.
 export default function Schedule1a1Form({ userId, productId }: { userId: string; productId: string | null }) {
   const router = useRouter()
+  const [title, setTitle] = useState('')
   const [startsAt, setStartsAt] = useState('')
   const [endsAt, setEndsAt] = useState('')
   const [zoomUrl, setZoomUrl] = useState('')
@@ -48,7 +49,7 @@ export default function Schedule1a1Form({ userId, productId }: { userId: string;
         audience: 'individual',
         client_user_id: userId,
         product_id: productId ?? '',
-        title: 'Sesión 1:1',
+        title: title.trim() || 'Sesión 1:1',
         tipo: '1_a_1',
         starts_at: coLocalToISO(startsAt),
         ends_at: coLocalToISO(endsAt),
@@ -64,12 +65,19 @@ export default function Schedule1a1Form({ userId, productId }: { userId: string;
       setError(msg); toast.error(msg); return
     }
     toast.success('1:1 agendada — el cliente ya la ve en su calendario.')
-    setStartsAt(''); setEndsAt(''); setZoomUrl('')
+    setTitle(''); setStartsAt(''); setEndsAt(''); setZoomUrl('')
     router.refresh()
   }
 
   return (
     <form onSubmit={submit} className="space-y-3 mb-5 pb-5 border-b border-surface-800">
+      <input
+        type="text"
+        className="input"
+        placeholder="Título (opcional, ej. Sesión 1:1 — Finanzas julio)"
+        value={title}
+        onChange={e => setTitle(e.target.value)}
+      />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="label">Inicio * <span className="text-cream-muted font-normal">(hora Colombia)</span></label>

@@ -120,9 +120,13 @@ export default function ContentPanel({ card, userId, onClose }: Props) {
 
       {/* Cuerpo: 2 columnas desde lg:, apilado antes de eso */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8">
-        <div className="lg:flex lg:gap-8 lg:max-w-6xl lg:mx-auto">
-          {/* Columna principal: video + flechas + material de apoyo */}
-          <div className="lg:flex-1 max-w-3xl mx-auto lg:max-w-none lg:mx-0 min-w-0">
+        <div className="lg:flex lg:gap-8">
+          {/* Columna principal: video + flechas + material de apoyo — centrada
+              dentro de SU propio espacio (no de toda la pantalla), para que la
+              lista de la derecha quede pegada al borde real del panel en vez
+              de que todo el bloque quede centrado dejando aire a los lados
+              (hallazgo de Juan, 2026-07-09). */}
+          <div className="lg:flex-1 max-w-3xl mx-auto min-w-0">
 
             {selectedVideo?.fathom_share_id && (
               <div className="mb-4">
