@@ -1,8 +1,47 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// CSP con nonce por request (2026-07-09) — antes vivía en next.config.js como un
+// string fijo calculado una sola vez al arrancar, lo que forzaba script-src 'self'
+// SIN nonce/unsafe-inline: bloqueaba (en modo bloqueante) o reportaba como violación
+// (en Report-Only, que es el modo actual) los propios scripts inline que Next.js
+// inyecta para hidratar cada página. Se mueve acá porque el nonce tiene que ser
+// distinto en cada request. Sigue en Report-Only a propósito — pasar a bloqueante es
+// un cambio aparte, solo después de confirmar en consola que ya no hay violaciones.
+function buildCsp(nonce: string): string {
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL ?? ''
+  return [
+    `default-src 'self'`,
+    `script-src 'self' 'nonce-${nonce}'`,
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+    `font-src 'self' https://fonts.gstatic.com`,
+    `img-src 'self' data: ${SUPABASE_URL}`,
+    `connect-src 'self' ${SUPABASE_URL}`,
+    `frame-src ${WORKER_URL}`,
+    `object-src 'none'`,
+    `worker-src 'none'`,
+    `form-action 'self'`,
+    `base-uri 'self'`,
+    `frame-ancestors 'self'`,
+  ].join('; ')
+}
+
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  // Nonce nuevo por request, mismo criterio que ya usaba next.config.js: solo en
+  // producción (en dev, el HMR de Next necesita permisos que esta CSP rompería).
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  const isProd = process.env.NODE_ENV === 'production'
+
+  const requestHeaders = new Headers(request.headers)
+  if (isProd) requestHeaders.set('x-nonce', nonce)
+
+  function withCsp(res: NextResponse): NextResponse {
+    if (isProd) res.headers.set('Content-Security-Policy-Report-Only', buildCsp(nonce))
+    return res
+  }
+
+  let supabaseResponse = withCsp(NextResponse.next({ request: { headers: requestHeaders } }))
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +51,7 @@ export async function middleware(request: NextRequest) {
         getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet: { name: string; value: string; options?: object }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
+          supabaseResponse = withCsp(NextResponse.next({ request: { headers: requestHeaders } }))
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options as any)
           )
@@ -36,7 +75,7 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/api/nps/public')
 
   if (!user && !isPublic && !isWebhook && !isCron && !isPublicNps) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return withCsp(NextResponse.redirect(new URL('/login', request.url)))
   }
 
   // Usuarios autenticados fuera de rutas públicas — EXCEPTO /activate: el usuario
@@ -44,7 +83,7 @@ export async function middleware(request: NextRequest) {
   // necesita poner su contraseña antes de ser redirigido al dashboard.
   const isActivate = request.nextUrl.pathname.startsWith('/activate')
   if (user && isPublic && !isActivate) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return withCsp(NextResponse.redirect(new URL('/dashboard', request.url)))
   }
 
   if (request.nextUrl.pathname.startsWith('/admin') && user) {
@@ -56,7 +95,7 @@ export async function middleware(request: NextRequest) {
 
     // admin y owner (Diana) acceden al panel admin. Cualquier otro → dashboard.
     if (profile?.role !== 'admin' && profile?.role !== 'owner') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      return withCsp(NextResponse.redirect(new URL('/dashboard', request.url)))
     }
   }
 
