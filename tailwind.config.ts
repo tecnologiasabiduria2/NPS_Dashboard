@@ -43,14 +43,20 @@ const config: Config = {
         // mismo #261c21 con una capa blanca encima a baja opacidad (2/4/6/8/
         // 12/18%), nunca un hex de otra familia — así nada dentro de la
         // interfaz se ve "de otro color", solo más o menos iluminado.
+        // Base actualizada 2026-07-09 (feedback de Sebastián, llamada 9 jul): el
+        // café original (#261c21, hue 330°) se corrió a azul-violeta (#201929,
+        // hue ~265°) — misma fórmula de siempre (capa blanca 2/4/6/8/12/18%
+        // sobre el base), solo cambia el único valor de partida. Comparado
+        // visualmente contra los colores de marca reales antes de aplicar
+        // (candidato "Moderado" de 4, elegido por Juan).
         surface: {
-          950: '#261c21', // base pura, 0% — fondo de página
-          900: '#2a2125', // ~2%
-          850: '#2f252a', // ~4% — tarjetas
-          800: '#332a2e', // ~6% — inputs/botones/hover
-          700: '#372e33', // ~8% — bordes/divisores (casi imperceptible)
-          600: '#40373c', // ~12%
-          500: '#4d4549', // ~18%
+          950: '#201929', // base pura, 0% — fondo de página
+          900: '#241e2d', // ~2%
+          850: '#292232', // ~4% — tarjetas
+          800: '#2d2736', // ~6% — inputs/botones/hover
+          700: '#322b3a', // ~8% — bordes/divisores (casi imperceptible)
+          600: '#3b3543', // ~12%
+          500: '#484250', // ~18%
         },
       },
       fontFamily: {

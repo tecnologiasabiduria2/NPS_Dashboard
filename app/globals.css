@@ -11,7 +11,7 @@
 * { box-sizing: border-box; }
 
 body {
-  background-color: #261c21;
+  background-color: #201929; /* misma base que surface.950 en tailwind.config.ts */
   color: #F2E8D5;
   font-family: var(--font-dm-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
