@@ -1,9 +1,10 @@
-import { Flag, Star, CalendarCheck, Target, MessageSquare, Gauge, Play, Award } from 'lucide-react'
+import { Flag, Star, CalendarCheck, Target, MessageSquare, Gauge, Play, Award, Milestone } from 'lucide-react'
 import { formatDateOnly } from '@/lib/format'
 import type { TimelineEvent, TimelineKind, TimelineTone } from '@/lib/timeline'
 
 const ICON: Record<TimelineKind, typeof Flag> = {
   inicio: Play,
+  producto: Milestone,
   hiperfoco: Target,
   sesion: CalendarCheck,
   unoauno: MessageSquare,

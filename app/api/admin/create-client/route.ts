@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { isValidPhoneWithPrefix } from '@/lib/phone'
+import { sendProductAddedEmail } from '@/lib/productAddedEmail'
 
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: product } = await supabaseAdmin
-      .from('products').select('id').eq('slug', product_access).single()
+      .from('products').select('id, title').eq('slug', product_access).single()
 
     if (!product) {
       return NextResponse.json({ error: `Programa '${product_access}' no encontrado` }, { status: 400 })
@@ -62,6 +63,10 @@ export async function POST(req: NextRequest) {
           access_until, ghl_contact_id: ghlContactId,
           platform_invite_sent: true, access_started: new Date().toISOString().split('T')[0],
         })
+        // Producto realmente nuevo para un cliente ya registrado (no una
+        // renovación del mismo producto) — mismo aviso que ya manda el flujo
+        // de GHL en este caso (ghl-webhook: sendProductAddedEmail).
+        await sendProductAddedEmail(email, full_name ?? '', product.title)
       }
       return NextResponse.json({ ok: true, existing: true })
     }

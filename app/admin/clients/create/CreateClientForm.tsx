@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import BackLink from '@/components/BackLink'
+import DateField from '@/components/DateField'
 import { isValidPhoneWithPrefix } from '@/lib/phone'
 
 export default function CreateClientForm({ products }: { products: { slug: string; title: string }[] }) {
@@ -32,6 +33,11 @@ export default function CreateClientForm({ products }: { products: { slug: strin
 
     if (!isValidPhoneWithPrefix(form.phone)) {
       setError('El teléfono debe incluir el indicativo, ej: +57 300 1234567')
+      return
+    }
+
+    if (!form.access_until) {
+      setError('Elige la fecha de acceso hasta.')
       return
     }
 
@@ -142,8 +148,7 @@ export default function CreateClientForm({ products }: { products: { slug: strin
 
           <div>
             <label className="label">Acceso hasta *</label>
-            <input type="date" className="input"
-              value={form.access_until} onChange={e => handle('access_until', e.target.value)} required />
+            <DateField value={form.access_until} onChange={v => handle('access_until', v)} required />
           </div>
 
           <div>

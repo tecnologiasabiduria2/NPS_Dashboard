@@ -14,12 +14,14 @@ export default async function MiRutaPage() {
 
   const [{ data: accessRows }, { data: historial }, { data: attendance }, { data: nps }, { data: notes }] =
     await Promise.all([
+      // Sin filtro de status ni .limit(1): un "supercliente" (producto anterior
+      // terminado + uno nuevo) tiene 2+ filas en user_access — se necesita el
+      // historial completo para el hito "producto anterior" del timeline.
       supabase
         .from('user_access')
-        .select('access_started, products(title)')
+        .select('access_started, product_id, status, products(title)')
         .eq('user_id', user.id)
-        .eq('status', 'active')
-        .limit(1),
+        .order('access_started', { ascending: false }),
       supabase
         .from('user_hiperfoco_mes')
         .select('periodo, estado, hiperfocos(title)')
@@ -42,10 +44,16 @@ export default async function MiRutaPage() {
         .order('session_date', { ascending: false }),
     ])
 
-  const access = (accessRows as any[] | null)?.[0]
+  const accessList = (accessRows as any[]) ?? []
+  const access = accessList.find(a => a.status === 'active') ?? accessList[0] ?? null
+
+  const productos = accessList
+    .filter(a => a.access_started)
+    .map(a => ({ producto: a.products?.title ?? 'Producto', inicio: a.access_started as string }))
 
   const timeline = buildTimeline({
     inicio: (access as any)?.access_started,
+    productos,
     hiperfocos: ((historial as any[]) ?? []).map(r => ({
       periodo: r.periodo, title: r.hiperfocos?.title ?? null, estado: r.estado,
     })),

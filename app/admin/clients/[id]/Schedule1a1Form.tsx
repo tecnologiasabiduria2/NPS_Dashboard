@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { CalendarPlus } from 'lucide-react'
 import { coLocalToISO } from '@/lib/format'
 import { toast } from '@/lib/toast'
+import DateField from '@/components/DateField'
 
 // Suma horas a un valor de <input datetime-local> manteniendo la hora de pared.
 function addHoursLocal(localStr: string, hours: number): string {
@@ -72,11 +73,11 @@ export default function Schedule1a1Form({ userId, productId }: { userId: string;
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="label">Inicio * <span className="text-cream-muted font-normal">(hora Colombia)</span></label>
-          <input type="datetime-local" className="input" value={startsAt} onChange={e => setStart(e.target.value)} required />
+          <DateField mode="datetime" required value={startsAt} onChange={setStart} />
         </div>
         <div>
           <label className="label">Fin * <span className="text-cream-muted font-normal">(hora Colombia)</span></label>
-          <input type="datetime-local" className="input" value={endsAt} onChange={e => { setEndsAt(e.target.value); setError('') }} required />
+          <DateField mode="datetime" required value={endsAt} onChange={v => { setEndsAt(v); setError('') }} />
         </div>
       </div>
       <input

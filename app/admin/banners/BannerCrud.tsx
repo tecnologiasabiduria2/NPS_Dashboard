@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { formatDateOnly } from '@/lib/format'
+import DateField from '@/components/DateField'
 
 interface Banner {
   id: string
@@ -221,11 +222,11 @@ function BannerForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label">Vigente desde (opcional)</label>
-          <input type="date" className="input" value={form.starts_at} onChange={e => setForm({ ...form, starts_at: e.target.value })} />
+          <DateField value={form.starts_at} onChange={v => setForm({ ...form, starts_at: v })} placeholder="Sin definir" />
         </div>
         <div>
           <label className="label">Vigente hasta (opcional)</label>
-          <input type="date" className="input" value={form.ends_at} onChange={e => setForm({ ...form, ends_at: e.target.value })} />
+          <DateField value={form.ends_at} onChange={v => setForm({ ...form, ends_at: v })} placeholder="Sin definir" />
         </div>
       </div>
       <label className="flex items-center gap-2 text-sm text-cream-muted">

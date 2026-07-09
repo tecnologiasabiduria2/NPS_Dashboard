@@ -114,9 +114,14 @@ export default async function ClientDetailPage({ params }: Props) {
     }
   })
 
-  // Hoja de vida (timeline): fusiona inicio + hiperfocos + sesiones + 1:1 + NPS + banderas.
+  const productos = accessList
+    .filter(a => a.access_started)
+    .map(a => ({ producto: a.products?.title ?? 'Producto', inicio: a.access_started as string }))
+
+  // Hoja de vida (timeline): fusiona inicio/producto + hiperfocos + sesiones + 1:1 + NPS + banderas.
   const timeline = buildTimeline({
     inicio: (access as any)?.access_started ?? profile.created_at,
+    productos,
     hiperfocos: ((historialRaw as any[]) ?? []).map(r => ({
       periodo: r.periodo, title: r.hiperfocos?.title ?? null, estado: r.estado,
     })),

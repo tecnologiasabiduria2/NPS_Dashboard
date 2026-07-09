@@ -1,7 +1,7 @@
 // Construcción de la "hoja de vida" (timeline) del cliente a partir de sus datos.
 // Lo usan tanto el detalle admin (incluye banderas) como la vista cliente (no).
 
-export type TimelineKind = 'inicio' | 'hiperfoco' | 'sesion' | 'unoauno' | 'nps' | 'flag'
+export type TimelineKind = 'inicio' | 'producto' | 'hiperfoco' | 'sesion' | 'unoauno' | 'nps' | 'flag'
 export type TimelineTone = 'default' | 'good' | 'warn' | 'bad'
 
 export interface TimelineEvent {
@@ -14,6 +14,10 @@ export interface TimelineEvent {
 
 export interface TimelineInputs {
   inicio?: string | null
+  // Historial de productos (un supercliente terminó uno y adquirió otro).
+  // Con 2+ entradas, reemplaza el hito genérico "inicio" por uno por
+  // producto ("Comenzó en X"); con 0 o 1, el timeline no cambia.
+  productos?: { producto: string; inicio: string }[]
   hiperfocos?: { periodo: string; title: string | null; estado: string }[]
   sesiones?: { date: string; title: string }[]
   unoAuno?: { date: string; content: string; fathomShareId?: string | null }[]
@@ -26,7 +30,12 @@ const d10 = (v: string) => String(v).slice(0, 10)
 export function buildTimeline(input: TimelineInputs): TimelineEvent[] {
   const events: TimelineEvent[] = []
 
-  if (input.inicio) {
+  const productos = (input.productos ?? []).filter(p => p.inicio)
+  if (productos.length >= 2) {
+    for (const p of productos) {
+      events.push({ date: d10(p.inicio), kind: 'producto', title: `Comenzó en ${p.producto}` })
+    }
+  } else if (input.inicio) {
     events.push({ date: d10(input.inicio), kind: 'inicio', title: 'Inicio en el programa' })
   }
 

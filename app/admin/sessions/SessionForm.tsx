@@ -6,6 +6,7 @@ import { CalendarPlus, Trash2 } from 'lucide-react'
 import { SESSION_TIPOS } from '@/lib/sessionTypes'
 import { coLocalToISO } from '@/lib/format'
 import { toast } from '@/lib/toast'
+import DateField from '@/components/DateField'
 
 // Suma horas a un valor de <input datetime-local> manteniendo la hora de pared.
 function addHoursLocal(localStr: string, hours: number): string {
@@ -111,6 +112,10 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (!f.starts_at || !f.ends_at) {
+      setError('Elige el inicio y el fin de la sesión.')
+      return
+    }
     setLoading(true); setError('')
     const res = await fetch('/api/admin/sessions', {
       method: 'POST',
@@ -213,13 +218,11 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="label">Inicio * <span className="text-cream-muted font-normal">(hora Colombia)</span></label>
-            <input type="datetime-local" className="input"
-              value={f.starts_at} onChange={e => setStart(e.target.value)} required />
+            <DateField mode="datetime" required value={f.starts_at} onChange={setStart} />
           </div>
           <div>
             <label className="label">Fin * <span className="text-cream-muted font-normal">(hora Colombia)</span></label>
-            <input type="datetime-local" className="input"
-              value={f.ends_at} onChange={e => set('ends_at', e.target.value)} required />
+            <DateField mode="datetime" required value={f.ends_at} onChange={v => set('ends_at', v)} />
           </div>
         </div>
         <p className="text-xs text-cream-muted -mt-2">Al poner el inicio, el fin se completa solo a +2 horas (puedes cambiarlo).</p>

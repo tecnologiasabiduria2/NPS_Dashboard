@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/lib/toast'
+import DateField from '@/components/DateField'
 
 interface Props {
   userId: string
@@ -60,12 +61,7 @@ export default function EditAccessForm({ userId, productId, currentDate, ghlCont
       <div>
         <label className="label">Acceso hasta</label>
         <div className="flex gap-3">
-          <input
-            type="date"
-            className="input"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-          />
+          <DateField value={date} onChange={setDate} required className="flex-1" />
           <button onClick={handleSave} disabled={loading} className="btn-primary whitespace-nowrap">
             {loading ? 'Guardando...' : 'Guardar'}
           </button>

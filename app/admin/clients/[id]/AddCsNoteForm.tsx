@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import DateField from '@/components/DateField'
 
 // Fecha de hoy en local (evita el desfase UTC de toISOString)
 function localToday() {
@@ -44,7 +45,7 @@ export default function AddCsNoteForm({ userId }: { userId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 mb-5 pb-5 border-b border-surface-800">
-      <input type="date" className="input w-auto" value={date} onChange={e => setDate(e.target.value)} />
+      <DateField value={date} onChange={setDate} required className="w-auto" />
       <textarea
         className="input min-h-20 resize-y"
         placeholder="Nota interna del CS (no visible para el cliente)…"
