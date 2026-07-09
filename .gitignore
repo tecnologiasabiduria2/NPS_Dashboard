@@ -13,3 +13,18 @@ out/
 # Los .md de notas internas no van al repo público, pero el README sí.
 *.md
 !README.md
+
+# Material de referencia y de trabajo local (2026-07-09) — capturas, PDFs,
+# transcripciones y scripts de un solo uso. Nunca deben subirse: algunas
+# capturas tienen datos reales de clientes (nombres, cifras), Contenidos.txt
+# tiene IDs reales de video de Fathom, y las transcripciones son de reuniones
+# internas. Solo se ignoran a nivel raíz del repo (la barra inicial), no
+# afecta imágenes reales de la app en public/ ni en otras carpetas del código.
+/*.png
+/*.jpeg
+/*.jpg
+/Contenidos.txt
+/transcripcion-*.txt
+/Brandbook*.pdf
+/scripts/
+/supabase/.temp/
