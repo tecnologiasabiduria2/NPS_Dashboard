@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Lock, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
+import { Lock, ArrowRight } from 'lucide-react'
 import { clsx } from 'clsx'
 import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 import ProgressBar from '@/components/ProgressBar'
@@ -12,6 +12,7 @@ export interface CardRecording {
   id: string
   title: string
   type: string
+  tipo: string
   fathom_share_id: string | null
   storage_path: string | null
   completed: boolean
@@ -88,6 +89,7 @@ function HeroCard({ card, onOpen }: { card: ContentCard; onOpen: () => void }) {
   const visual = getHiperfocoVisual(card.title)
   const Icon = visual.icon
   const hasContent = card.total > 0
+  const pct = card.total > 0 ? Math.round((card.completed / card.total) * 100) : 0
 
   return (
     <section
@@ -106,17 +108,11 @@ function HeroCard({ card, onOpen }: { card: ContentCard; onOpen: () => void }) {
 
         {hasContent ? (
           <>
-            <ul className="space-y-2 mb-7 max-w-xl">
-              {card.recordings.map(rec => (
-                <li key={rec.id} className="flex items-center gap-2.5 text-sm">
-                  {rec.completed
-                    ? <CheckCircle2 size={17} className="text-white shrink-0" />
-                    : <Circle size={17} className="text-white/40 shrink-0" />}
-                  <span className={rec.completed ? 'text-white/70 line-through decoration-white/30' : 'text-white font-medium'}>{rec.title}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex items-center gap-4">
+            {/* Antes listaba cada grabación como texto plano sin poder hacer
+                clic — con contenido real (12+ ítems) esa lista sola ocupaba
+                la pantalla. Se reduce a resumen; elegir/saltar a un video
+                específico ahora vive dentro del panel (2026-07-09). */}
+            <div className="flex items-center gap-4 mb-2">
               <button
                 type="button"
                 onClick={onOpen}
@@ -126,6 +122,9 @@ function HeroCard({ card, onOpen }: { card: ContentCard; onOpen: () => void }) {
                 <ArrowRight size={15} />
               </button>
               <span className="text-xs text-white/70">{card.completed}/{card.total} completados</span>
+            </div>
+            <div className="max-w-xs">
+              <ProgressBar percent={pct} color="#FFFFFF" />
             </div>
           </>
         ) : (

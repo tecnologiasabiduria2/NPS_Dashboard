@@ -99,6 +99,7 @@ export default async function MiContenidoPage() {
     id: r.id,
     title: r.title,
     type: r.type,
+    tipo: r.tipo,
     fathom_share_id: r.fathom_share_id ?? null,
     storage_path: r.storage_path ?? null,
     completed: completedSet.has(r.id),

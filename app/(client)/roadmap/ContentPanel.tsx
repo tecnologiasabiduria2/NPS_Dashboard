@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { X, ChevronLeft, FileText, CheckCircle2, FileDown, Loader2, Download } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { X, ChevronLeft, ChevronRight, FileText, CheckCircle2, FileDown, Loader2, Download } from 'lucide-react'
+import { clsx } from 'clsx'
 import VideoPlayer from '@/components/VideoPlayer'
 import VideoMark from '@/components/VideoMark'
+import { contentTipoLabel, CONTENT_TIPOS } from '@/lib/sessionTypes'
 import type { ContentCard, CardRecording } from './ContentCards'
 
 interface Props {
@@ -12,18 +14,41 @@ interface Props {
   onClose: () => void
 }
 
-// Panel a pantalla completa: una sola columna, siempre (pedido explícito de
-// Diana, reunión 2026-07-03 — rechazó el selector horizontal/lateral porque
-// "esta gente no es tecnológica" y "no se mueva hacia los lados"). Orden fijo:
-// video arriba → material de apoyo (documentos) justo debajo → si hay más de
-// un video, un desplegable para cambiar de contenido, hacia abajo, no al costado.
+// Panel a pantalla completa. Layout responsive (2026-07-09, segunda pasada):
+// la regla de Diana de "una sola columna" (reunión 2026-07-03) era por
+// responsive (que no se rompiera en celular), no una prohibición de layout en
+// 2 columnas en desktop — confirmado con Juan. Desde lg: video a la
+// izquierda, lista de contenidos a la derecha; por debajo de lg: todo se
+// apila (video → flechas → material → lista), igual que antes.
 export default function ContentPanel({ card, userId, onClose }: Props) {
-  const videos = card.recordings.filter(r => r.type === 'video')
   const documents = card.recordings.filter(r => r.type === 'document')
+
+  // Orden real: por tipo (Inmersión antes que Mentoría, mismo orden de
+  // CONTENT_TIPOS) y luego por el orden ya traído de la base — sin esto,
+  // grabaciones de tipos distintos con el mismo `order` (se reinicia por
+  // hiperfoco+tipo) podían intercalarse al traerlas juntas, y "siguiente"
+  // no avanzaba de forma predecible (hallazgo 2026-07-09).
+  const videos = useMemo(() => {
+    const tipoIndex = new Map<string, number>(CONTENT_TIPOS.map((t, i) => [t.value, i]))
+    return card.recordings
+      .filter(r => r.type === 'video')
+      .slice()
+      .sort((a, b) => (tipoIndex.get(a.tipo) ?? 99) - (tipoIndex.get(b.tipo) ?? 99))
+  }, [card.recordings])
 
   const firstPendingVideo = videos.find(r => !r.completed) ?? videos[0]
   const [selectedVideoId, setSelectedVideoId] = useState<string | undefined>(firstPendingVideo?.id)
-  const selectedVideo: CardRecording | undefined = videos.find(r => r.id === selectedVideoId)
+  const selectedIndex = videos.findIndex(r => r.id === selectedVideoId)
+  const selectedVideo: CardRecording | undefined = videos[selectedIndex]
+
+  const videoGroups = useMemo(() => {
+    const map = new Map<string, CardRecording[]>()
+    for (const v of videos) {
+      if (!map.has(v.tipo)) map.set(v.tipo, [])
+      map.get(v.tipo)!.push(v)
+    }
+    return [...map.entries()]
+  }, [videos])
 
   // Documentos nuevos son links de Drive (storage_path = URL completa); solo
   // los legados (subidos al bucket antes del cambio, calibración 2026-07-06)
@@ -93,73 +118,120 @@ export default function ContentPanel({ card, userId, onClose }: Props) {
         </div>
       </div>
 
-      {/* Cuerpo: una sola columna vertical, siempre */}
+      {/* Cuerpo: 2 columnas desde lg:, apilado antes de eso */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8">
-        <div className="max-w-3xl mx-auto">
+        <div className="lg:flex lg:gap-8 lg:max-w-6xl lg:mx-auto">
+          {/* Columna principal: video + flechas + material de apoyo */}
+          <div className="lg:flex-1 max-w-3xl mx-auto lg:max-w-none lg:mx-0 min-w-0">
 
-          {/* Video (el seleccionado, o el primero pendiente) */}
-          {selectedVideo?.fathom_share_id && (
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold text-cream truncate pr-3">{selectedVideo.title}</h3>
-                <VideoMark
-                  key={selectedVideo.id}
-                  recordingId={selectedVideo.id}
-                  userId={userId}
-                  initialCompleted={selectedVideo.completed}
-                />
+            {selectedVideo?.fathom_share_id && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-cream truncate pr-3">{selectedVideo.title}</h3>
+                  <VideoMark
+                    key={selectedVideo.id}
+                    recordingId={selectedVideo.id}
+                    userId={userId}
+                    initialCompleted={selectedVideo.completed}
+                  />
+                </div>
+                <VideoPlayer shareId={selectedVideo.fathom_share_id} />
               </div>
-              <VideoPlayer shareId={selectedVideo.fathom_share_id} />
-            </div>
-          )}
+            )}
 
-          {/* Material de apoyo — siempre debajo del video, nunca en una pestaña aparte */}
-          {documents.length > 0 && (
-            <div className="card mb-6">
-              <p className="text-sm font-medium text-cream-dim mb-3">📎 Material de apoyo</p>
-              <div className="space-y-2">
-                {documents.map(doc => (
-                  <div key={doc.id} className="flex items-center gap-2">
-                    <a
-                      href={
-                        doc.storage_path && isDriveLink(doc.storage_path)
-                          ? doc.storage_path
-                          : `/api/download?path=${encodeURIComponent(doc.storage_path ?? '')}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 bg-surface-800 hover:bg-surface-700 rounded-lg transition-colors group"
-                    >
-                      <FileDown size={16} className="text-cream-muted group-hover:text-brand-400 transition-colors shrink-0" />
-                      <span className="text-sm text-cream-dim group-hover:text-cream truncate">{doc.title}</span>
-                    </a>
-                    {doc.completed && <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />}
+            {/* Sesión anterior / siguiente — mismo lenguaje visual que
+                recording/[id]/page.tsx, pero cambia el video seleccionado en
+                vez de navegar a otra URL (acá todo vive en un solo panel). */}
+            {videos.length > 1 && (
+              <div className="flex items-center justify-between gap-3 mb-6">
+                {selectedIndex > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedVideoId(videos[selectedIndex - 1].id)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-surface-800 hover:bg-surface-700 rounded-lg text-sm text-cream-dim hover:text-cream transition-colors min-w-0 flex-1"
+                  >
+                    <ChevronLeft size={16} className="shrink-0 text-cream-muted" />
+                    <span className="truncate">{videos[selectedIndex - 1].title}</span>
+                  </button>
+                ) : <div className="flex-1" />}
+                {selectedIndex >= 0 && selectedIndex < videos.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedVideoId(videos[selectedIndex + 1].id)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-surface-800 hover:bg-surface-700 rounded-lg text-sm text-cream-dim hover:text-cream transition-colors min-w-0 flex-1 justify-end"
+                  >
+                    <span className="truncate">{videos[selectedIndex + 1].title}</span>
+                    <ChevronRight size={16} className="shrink-0 text-cream-muted" />
+                  </button>
+                ) : <div className="flex-1" />}
+              </div>
+            )}
+
+            {/* Material de apoyo — siempre en la columna principal, nunca en la lista lateral */}
+            {documents.length > 0 && (
+              <div className="card mb-6">
+                <p className="text-sm font-medium text-cream-dim mb-3">📎 Material de apoyo</p>
+                <div className="space-y-2">
+                  {documents.map(doc => (
+                    <div key={doc.id} className="flex items-center gap-2">
+                      <a
+                        href={
+                          doc.storage_path && isDriveLink(doc.storage_path)
+                            ? doc.storage_path
+                            : `/api/download?path=${encodeURIComponent(doc.storage_path ?? '')}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 bg-surface-800 hover:bg-surface-700 rounded-lg transition-colors group"
+                      >
+                        <FileDown size={16} className="text-cream-muted group-hover:text-brand-400 transition-colors shrink-0" />
+                        <span className="text-sm text-cream-dim group-hover:text-cream truncate">{doc.title}</span>
+                      </a>
+                      {doc.completed && <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {videos.length === 0 && documents.length === 0 && (
+              <p className="text-sm text-cream-muted">Sin contenido disponible.</p>
+            )}
+          </div>
+
+          {/* Lista de contenidos — agrupada por tipo, clickeable. A la derecha
+              desde lg:, debajo del resto en pantallas angostas. Reemplaza el
+              <select> nativo (incómodo con 10+ opciones sin agrupar). */}
+          {videos.length > 1 && (
+            <div className="lg:w-80 shrink-0 mt-8 lg:mt-0 max-w-3xl mx-auto lg:max-w-none lg:mx-0">
+              <div className="lg:sticky lg:top-0 space-y-5">
+                {videoGroups.map(([tipo, items]) => (
+                  <div key={tipo}>
+                    <p className="section-label !mb-2">{contentTipoLabel(tipo)}</p>
+                    <div className="space-y-1">
+                      {items.map(v => {
+                        const active = v.id === selectedVideoId
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => setSelectedVideoId(v.id)}
+                            className={clsx(
+                              'w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg text-sm transition-colors',
+                              active ? 'bg-brand-600/15 text-brand-300' : 'text-cream-dim hover:bg-surface-800 hover:text-cream'
+                            )}
+                          >
+                            {v.completed
+                              ? <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                              : <FileText size={15} className="text-cream-muted shrink-0" />}
+                            <span className="truncate">{v.title}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Si no hay ningún video (solo documentos), avisar en vez de dejar vacío */}
-          {videos.length === 0 && documents.length === 0 && (
-            <p className="text-sm text-cream-muted">Sin contenido disponible.</p>
-          )}
-
-          {/* Otro contenido — desplegable hacia abajo, solo si hay más de un video */}
-          {videos.length > 1 && (
-            <div>
-              <label className="label">Otro contenido de {card.title}</label>
-              <select
-                className="select"
-                value={selectedVideoId}
-                onChange={e => setSelectedVideoId(e.target.value)}
-              >
-                {videos.map(v => (
-                  <option key={v.id} value={v.id}>
-                    {v.title}{v.completed ? ' ✓' : ''}
-                  </option>
-                ))}
-              </select>
             </div>
           )}
         </div>
