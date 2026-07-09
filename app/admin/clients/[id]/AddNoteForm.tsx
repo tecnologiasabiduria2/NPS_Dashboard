@@ -15,7 +15,7 @@ export default function AddNoteForm({ userId }: { userId: string }) {
   const [content, setContent] = useState('')
   const [date, setDate] = useState(localToday())
   const [fathom, setFathom] = useState('')
-  const [somai, setSomai] = useState('')
+  const [summary, setSummary] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -33,7 +33,7 @@ export default function AddNoteForm({ userId }: { userId: string }) {
         content,
         session_date: date,
         fathom_share_id: fathom,
-        somai,
+        summary,
       }),
     })
 
@@ -47,7 +47,7 @@ export default function AddNoteForm({ userId }: { userId: string }) {
     setContent('')
     setDate(localToday())
     setFathom('')
-    setSomai('')
+    setSummary('')
     setLoading(false)
     router.refresh()
   }
@@ -76,8 +76,8 @@ export default function AddNoteForm({ userId }: { userId: string }) {
       <textarea
         className="input min-h-16 resize-y"
         placeholder="Summary de Fathom (opcional) — pega aquí el resumen de la sesión"
-        value={somai}
-        onChange={e => setSomai(e.target.value)}
+        value={summary}
+        onChange={e => setSummary(e.target.value)}
       />
       {error && <p className="text-red-400 text-xs">{error}</p>}
       <div className="flex justify-end">

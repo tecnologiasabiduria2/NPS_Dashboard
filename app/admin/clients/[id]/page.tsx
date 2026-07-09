@@ -269,10 +269,10 @@ export default async function ClientDetailPage({ params }: Props) {
                   <span className="text-xs text-cream-muted">{note.profiles?.full_name}</span>
                 </div>
                 <p className="text-sm text-cream-dim whitespace-pre-wrap">{note.content}</p>
-                {note.somai && (
+                {note.summary && (
                   <div className="mt-3 rounded-lg bg-surface-900/60 border border-surface-700 p-3">
                     <p className="text-[10px] text-cream-muted uppercase tracking-wide mb-1">Summary</p>
-                    <p className="text-xs text-cream-dim whitespace-pre-wrap">{note.somai}</p>
+                    <p className="text-xs text-cream-dim whitespace-pre-wrap">{note.summary}</p>
                   </div>
                 )}
                 {note.fathom_share_id && WORKER_URL && (

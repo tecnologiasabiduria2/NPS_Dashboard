@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { formatDateOnly } from '@/lib/format'
 import { redirect } from 'next/navigation'
+import ProfileForm from './ProfileForm'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -9,7 +10,7 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, phone, created_at')
+    .select('full_name, phone, created_at, bio, instagram, website, avatar_url')
     .eq('id', user.id)
     .single()
 
@@ -25,23 +26,15 @@ export default async function ProfilePage() {
     <div className="max-w-lg">
       <h1 className="page-title mb-8">Mi perfil</h1>
 
-      <div className="card mb-4">
-        <p className="section-label">Información personal</p>
-        <div className="space-y-3">
-          <div>
-            <p className="text-xs text-cream-muted">Nombre</p>
-            <p className="text-cream">{profile?.full_name ?? '—'}</p>
-          </div>
-          <div>
-            <p className="text-xs text-cream-muted">Email</p>
-            <p className="text-cream">{user.email}</p>
-          </div>
-          <div>
-            <p className="text-xs text-cream-muted">Teléfono</p>
-            <p className="text-cream">{profile?.phone ?? '—'}</p>
-          </div>
-        </div>
-      </div>
+      <ProfileForm
+        email={user.email ?? ''}
+        fullName={profile?.full_name ?? ''}
+        phone={profile?.phone ?? ''}
+        bio={profile?.bio ?? ''}
+        instagram={profile?.instagram ?? ''}
+        website={profile?.website ?? ''}
+        avatarUrl={profile?.avatar_url ?? null}
+      />
 
       <div className="card">
         <p className="section-label">Mi suscripción</p>

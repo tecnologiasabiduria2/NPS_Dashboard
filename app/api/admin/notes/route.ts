@@ -7,13 +7,13 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
   if ('error' in auth) return auth.error
 
-  const { user_id, content, session_date, fathom_share_id, somai } = await req.json()
+  const { user_id, content, session_date, fathom_share_id, summary } = await req.json()
   if (!user_id || !content?.trim() || !session_date) {
     return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
   }
 
   const fathomId = typeof fathom_share_id === 'string' ? fathom_share_id.trim() : ''
-  const somaiText = typeof somai === 'string' ? somai.trim() : ''
+  const summaryText = typeof summary === 'string' ? summary.trim() : ''
 
   const { error } = await supabaseAdmin.from('coaching_notes').insert({
     user_id,
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     content: content.trim(),
     session_date,
     fathom_share_id: fathomId || null,
-    somai: somaiText || null,
+    summary: summaryText || null,
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

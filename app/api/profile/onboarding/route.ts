@@ -3,8 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { isValidPhoneWithPrefix } from '@/lib/phone'
 
-// Onboarding del miembro (Bloque 5e): guarda su presentación (bio) y, opcional,
-// su foto de perfil (subida real al bucket público 'avatars' con service role).
+// Onboarding del miembro (Bloque 5e) Y edición de perfil desde /profile
+// (2026-07-09, antes era de solo lectura): mismo endpoint para las dos
+// pantallas — guarda nombre/bio/redes/teléfono y, opcional, la foto de
+// perfil (subida real al bucket público 'avatars' con service role).
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -13,6 +15,7 @@ export async function POST(req: NextRequest) {
   const form = await req.formData().catch(() => null)
   if (!form) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
 
+  const fullName = String(form.get('full_name') ?? '').trim()
   const bio = String(form.get('bio') ?? '').trim()
   const instagram = String(form.get('instagram') ?? '').trim()
   const website = String(form.get('website') ?? '').trim()
@@ -23,7 +26,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'El teléfono debe incluir el indicativo, ej: +57 300 1234567' }, { status: 400 })
   }
 
+  // full_name sí puede "vaciarse" a propósito desde /profile si el campo llega
+  // en el form (a diferencia de bio/instagram/website, que en el onboarding
+  // original nunca se mandan vacíos porque el campo ni existe ahí).
   const update: Record<string, string> = {}
+  if (form.has('full_name')) update.full_name = fullName
   if (bio) update.bio = bio
   if (instagram) update.instagram = instagram
   if (website) update.website = website
@@ -51,7 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (Object.keys(update).length === 0) {
-    return NextResponse.json({ error: 'Escribe una presentación o sube una foto' }, { status: 400 })
+    return NextResponse.json({ error: 'No hay nada que guardar' }, { status: 400 })
   }
 
   const { error } = await supabaseAdmin.from('profiles').update(update).eq('id', user.id)
