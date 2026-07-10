@@ -122,33 +122,45 @@ export default async function AdminDashboardPage({
         </Link>
       </div>
 
-      {/* KPIs — degradado propio y visible por tarjeta (réplica de
-          propuesta_dark.png, 2026-07-08), toda la familia cálida (nada de
-          verde/azul). "Salud de cartera" se eliminó de aquí — aportaba lo
-          mismo que "Estado de la cartera" más abajo (solo owner). */}
+      {/* KPIs — superficie monocromática (misma .card que el resto del
+          dashboard) con un glow ambiental de color por tarjeta, mismo
+          lenguaje que ya usan NPS Global/Business Coach/Resumen operativo
+          (.card-glow + .card-glow-orb). Reemplaza el degradado diagonal
+          plano (2026-07-08) que Sebastián señaló que ya no combinaba tras el
+          cambio de fondo a azul-violeta (2026-07-09) — no era cuestión de
+          elegir otros tintes, era que el degradado en sí rompía con el resto
+          de la app. "Sin fecha" solo enciende su rojo cuando el conteo es
+          mayor a 0 (mismo patrón condicional que ya usa "Resumen operativo"
+          más abajo); los otros 4 llevan su acento siempre, incluido
+          "Inactivos" con el mismo tono cream-dim que ya usa la app para
+          texto secundario — para que ningún KPI se sienta "sin efecto". */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         {[
-          { label: 'Activos', value: activeCount ?? 0, icon: Users, tint: '#C1622E' },
-          { label: 'Inactivos', value: expiredCount ?? 0, icon: TrendingDown, tint: '#6b6357' },
-          { label: 'Sin fecha', value: noDateCount ?? 0, icon: AlertTriangle, tint: '#9B3A2A', urgent: true },
-          { label: 'Vencen en 7d', value: soonCount ?? 0, icon: Clock, tint: '#D9A441' },
-          { label: 'Vencen próx. mes', value: soonMonthCount ?? 0, icon: CalendarClock, tint: '#8a6a4a' },
-        ].map(({ label, value, icon: Icon, tint, urgent }, i) => (
-          <div
-            key={label}
-            className={`rounded-2xl p-6 border border-surface-700 animate-fade-up ${urgent && Number(value) > 0 ? 'border-red-500/30' : ''}`}
-            style={{
-              animationDelay: `${i * 60}ms`,
-              background: `linear-gradient(135deg, ${tint} 0%, #2f2621 78%)`,
-            }}
-          >
-            <div className="w-11 h-11 rounded-xl bg-black/20 flex items-center justify-center mb-3">
-              <Icon size={19} className="text-cream" />
+          { label: 'Activos', value: activeCount ?? 0, icon: Users, orb: '#DA7D41', iconBg: 'bg-brand-600/15', iconText: 'text-brand-400' },
+          { label: 'Inactivos', value: expiredCount ?? 0, icon: TrendingDown, orb: '#C0AA90', iconBg: 'bg-cream-dim/15', iconText: 'text-cream-dim' },
+          { label: 'Sin fecha', value: noDateCount ?? 0, icon: AlertTriangle, urgent: true },
+          { label: 'Vencen en 7d', value: soonCount ?? 0, icon: Clock, orb: '#F59E0B', iconBg: 'bg-amber-500/10', iconText: 'text-amber-400' },
+          { label: 'Vencen próx. mes', value: soonMonthCount ?? 0, icon: CalendarClock, orb: '#EAAD74', iconBg: 'bg-sand/10', iconText: 'text-sand' },
+        ].map(({ label, value, icon: Icon, orb: staticOrb, iconBg: staticIconBg, iconText: staticIconText, urgent }, i) => {
+          const isUrgentActive = urgent && Number(value) > 0
+          const orb = urgent ? (isUrgentActive ? '#EF4444' : null) : staticOrb
+          const iconBg = urgent ? (isUrgentActive ? 'bg-red-500/10' : 'bg-surface-700') : staticIconBg
+          const iconText = urgent ? (isUrgentActive ? 'text-red-400' : 'text-cream-muted') : staticIconText
+          return (
+            <div
+              key={label}
+              className={`card card-glow animate-fade-up ${isUrgentActive ? 'border-red-500/30' : ''}`}
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              {orb && <div className="card-glow-orb opacity-20" style={{ background: orb }} />}
+              <div className={`relative w-11 h-11 rounded-xl flex items-center justify-center mb-3 ${iconBg}`}>
+                <Icon size={19} className={iconText} />
+              </div>
+              <p className={`relative text-3xl font-bold tabular-nums ${isUrgentActive ? 'text-red-400' : 'text-cream'}`}>{value}</p>
+              <p className="relative text-xs text-cream-muted mt-1">{label}</p>
             </div>
-            <p className="text-3xl font-bold tabular-nums text-cream">{value}</p>
-            <p className="text-xs text-cream/80 mt-1">{label}</p>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* NPS Global — hero a todo el ancho, justo debajo de los KPIs (réplica
