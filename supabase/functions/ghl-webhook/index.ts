@@ -10,28 +10,15 @@ function timingSafeEqualStr(a: string, b: string): boolean {
   return result === 0
 }
 
-// Alias de product_access -> slug real en la BD. "Impulso Empresarial" reutiliza
-// el producto `Workshop` (solo se le cambió el título, no el slug, para no romper
-// filtros existentes por slug — ver B20 en PENDIENTES.md). El workflow de GHL
-// manda "impulso", que no coincide con ningún slug real — se traduce aquí.
-const PRODUCT_SLUG_ALIASES: Record<string, string> = {
-  impulso: 'workshop',
-}
-
-function resolveProductSlug(raw: string): string {
-  return PRODUCT_SLUG_ALIASES[raw] ?? raw
-}
-
 // Duración fija por producto (confirmado por Juan 2026-07-02): si GHL no manda
 // access_until, se calcula hoy + duración del producto. Si el día llega a mandarse
 // desde GHL, ese valor siempre tiene prioridad sobre este default.
-// 'workshop' (2026-07-07, Impulso Empresarial): 6 meses puesto como default
-// PROVISIONAL, sin confirmar todavía con Diana — ver PENDIENTES.md, revisar/
-// ajustar cuando se defina el plan real.
+// 'impulso' (Impulso Empresarial): 4 meses, confirmado por Juan 2026-07-14
+// (el 6 puesto el 2026-07-07 era provisional, sin confirmar con Diana todavía).
 const DEFAULT_DURATION_MONTHS: Record<string, number> = {
   desafio: 6,
   sabiduria: 12,
-  workshop: 6,
+  impulso: 4,
 }
 
 function defaultAccessUntil(productSlug: string, fromDate: Date): string | null {
@@ -132,7 +119,7 @@ Deno.serve(async (req) => {
   }
 
   const { email, full_name, product_access, ghl_contact_id, secret } = body
-  const productSlug = resolveProductSlug(product_access)
+  const productSlug = product_access
   // Si GHL manda access_until, ese valor SIEMPRE gana. Si no lo manda, se calcula
   // un default por producto — pero la fecha BASE depende de si es alta nueva
   // (hoy) o renovación de un acceso ya existente (ver más abajo: si renueva

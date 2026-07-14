@@ -1,6 +1,6 @@
 export type UserRole = 'client' | 'admin' | 'owner'
 export type AccessStatus = 'active' | 'inactive' | 'pending'
-export type ProductSlug = 'workshop' | 'desafio' | 'sabiduria'
+export type ProductSlug = 'impulso' | 'desafio' | 'sabiduria'
 export type LessonType = 'video' | 'document' | 'checklist_item'
 export type NpsType = 'mejora_sesion' | 'interes_ascension'
 export type NpsTrigger = 'post_sesion' | 'semanal'

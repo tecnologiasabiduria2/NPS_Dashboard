@@ -33,14 +33,14 @@ CREATE TRIGGER on_auth_user_created
 -- Productos
 CREATE TABLE IF NOT EXISTS products (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  slug        TEXT UNIQUE NOT NULL CHECK (slug IN ('workshop', 'desafio', 'sabiduria')),
+  slug        TEXT UNIQUE NOT NULL CHECK (slug IN ('impulso', 'desafio', 'sabiduria')),
   title       TEXT NOT NULL,
   description TEXT,
   "order"     INT NOT NULL
 );
 
 INSERT INTO products (slug, title, "order") VALUES
-  ('workshop',  'Workshop',  1),
+  ('impulso',   'Impulso Empresarial', 1),
   ('desafio',   'Desafío',   2),
   ('sabiduria', 'Sabiduría', 3)
 ON CONFLICT (slug) DO NOTHING;
