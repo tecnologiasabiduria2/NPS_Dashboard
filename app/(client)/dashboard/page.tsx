@@ -133,8 +133,15 @@ export default async function DashboardPage({
       for (const r of (hfRows ?? []) as { id: string; hiperfoco_nombre?: string | null }[]) {
         if (r.hiperfoco_nombre) hfNombreBySession[r.id] = r.hiperfoco_nombre
       }
+      // Solo el hiperfoco ACTIVO de este mes (2026-07-15, fix punto 6): antes se
+      // traía TODO el historial de hiperfocos del cliente, así que alguien con
+      // varios hiperfocos pasados veía el link de sesión de todos, no solo el
+      // actual. Sala de Gerencia/Entrenamiento Comercial no pasan por este
+      // filtro (son transversales, hiperfoco_nombre queda null para esas).
       const { data: myHfRows } = await supabase
-        .from('user_hiperfoco_mes').select('hiperfocos(title)').eq('user_id', user.id).not('hiperfoco_id', 'is', null)
+        .from('user_hiperfoco_mes').select('hiperfocos(title)')
+        .eq('user_id', user.id).eq('periodo', periodoActual).eq('estado', 'en_curso')
+        .not('hiperfoco_id', 'is', null)
       const myHfNames = new Set<string>(
         ((myHfRows ?? []) as any[])
           .map(r => (Array.isArray(r.hiperfocos) ? r.hiperfocos[0]?.title : r.hiperfocos?.title))

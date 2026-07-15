@@ -66,22 +66,26 @@ export default function BannerCarousel({ banners }: { banners: CarouselBanner[] 
           const img = (
             <picture>
               {b.imageUrlMobile && <source media="(max-width: 640px)" srcSet={b.imageUrlMobile} />}
-              {/* Altura fija responsive + object-cover: la "slide bar" es una
-                  franja controlada, no la imagen a tamaño natural (si no, un
-                  gráfico grande rompe la página). Center-crop de lo que sobre. */}
+              {/* Altura fija responsive + object-contain (2026-07-15, fix): no
+                  todas las imágenes que suben son horizontales — con
+                  object-cover una imagen vertical quedaba recortada de forma
+                  fea (se comía los lados). object-contain siempre muestra la
+                  imagen completa, sin recorte; si no llena el ancho/alto deja
+                  franjas del fondo de la tarjeta (bg-surface-850 del
+                  contenedor), nunca corta contenido. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={b.imageUrl}
                 alt={b.titulo}
-                className="w-full h-44 sm:h-52 lg:h-60 object-cover object-center block select-none"
+                className="w-full h-44 sm:h-52 lg:h-60 object-contain object-center block select-none"
                 draggable={false}
               />
             </picture>
           )
           return (
-            <div key={b.id} className="w-full shrink-0">
+            <div key={b.id} className="w-full shrink-0 flex items-center justify-center bg-surface-850">
               {b.link_url ? (
-                <Link href={b.link_url} target="_blank" rel="noopener noreferrer" className="block">
+                <Link href={b.link_url} target="_blank" rel="noopener noreferrer" className="block w-full">
                   {img}
                 </Link>
               ) : (
