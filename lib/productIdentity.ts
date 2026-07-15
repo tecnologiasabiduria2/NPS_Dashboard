@@ -15,6 +15,7 @@ export function productFullName(title: string | null | undefined): string {
   const t = (title ?? '').toLowerCase()
   if (t.includes('sabiduría') || t.includes('sabiduria')) return 'Sabiduría Empresarial'
   if (t.includes('desafío') || t.includes('desafio')) return 'Desafío Empresa Autogerenciable'
+  if (t.includes('impulso')) return 'Impulso Empresarial'
   return title || 'Comunidad'
 }
 

@@ -28,3 +28,8 @@ out/
 /Brandbook*.pdf
 /scripts/
 /supabase/.temp/
+
+# Copias locales de los templates de correo de Supabase Auth aplicados vía
+# Management API (2026-07-14) — solo para que Diana/Juan los revisen; el
+# original vive en el dashboard de Supabase, no en este repo.
+/supabase/email-templates/

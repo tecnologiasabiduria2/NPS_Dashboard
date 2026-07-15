@@ -11,10 +11,11 @@
 BEGIN;
 
 ALTER TABLE products DROP CONSTRAINT IF EXISTS products_slug_check;
-ALTER TABLE products ADD CONSTRAINT products_slug_check
-  CHECK (slug IN ('impulso', 'desafio', 'sabiduria'));
 
 UPDATE products SET slug = 'impulso' WHERE slug = 'workshop';
+
+ALTER TABLE products ADD CONSTRAINT products_slug_check
+  CHECK (slug IN ('impulso', 'desafio', 'sabiduria'));
 
 UPDATE user_access ua
 SET access_until = (ua.access_started + INTERVAL '4 months')::date,

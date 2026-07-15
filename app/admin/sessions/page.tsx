@@ -2,19 +2,24 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import SessionForm from './SessionForm'
 import SessionsList from './SessionsList'
-import SendNpsEmailsButton from './SendNpsEmailsButton'
 import { Calendar } from 'lucide-react'
-import { countPendingNpsEmails } from '@/lib/npsEmail'
 
 export default async function AdminSessionsPage() {
   const supabase = await createClient()
-  const pendingNps = await countPendingNpsEmails()
+
+  // Pasadas: solo la última semana (2026-07-15, pedido de Juan — el histórico
+  // completo ya no era útil de ver aquí día a día). No se borra nada de la
+  // BD, solo se deja de traer/mostrar en este panel; el resto de la app
+  // (asistencia, NPS, hoja de vida del cliente) sigue consultando la tabla
+  // completa sin este recorte.
+  const weekAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
   const [{ data: products }, { data: sessRows }] = await Promise.all([
     supabase.from('products').select('id, title, slug').order('order'),
     supabase
       .from('live_sessions')
       .select('id, title, tipo, starts_at, ends_at, zoom_url, is_published, product_id')
+      .gte('ends_at', weekAgoIso)
       .order('starts_at', { ascending: true }),
   ])
 
@@ -33,16 +38,17 @@ export default async function AdminSessionsPage() {
   }
 
   // Campos opcionales en consultas aparte (resiliente si la migración no corrió).
+  // Mismo recorte de fecha que arriba para no traer de vuelta todo el histórico.
   const descById: Record<string, string> = {}
-  const { data: descRows } = await supabase.from('live_sessions').select('id, descripcion')
+  const { data: descRows } = await supabase.from('live_sessions').select('id, descripcion').gte('ends_at', weekAgoIso)
   for (const r of (descRows ?? []) as { id: string; descripcion?: string | null }[]) if (r.descripcion) descById[r.id] = r.descripcion
 
   const hfNombreById: Record<string, string> = {}
-  const { data: hfNombreRows } = await supabase.from('live_sessions').select('id, hiperfoco_nombre')
+  const { data: hfNombreRows } = await supabase.from('live_sessions').select('id, hiperfoco_nombre').gte('ends_at', weekAgoIso)
   for (const r of (hfNombreRows ?? []) as { id: string; hiperfoco_nombre?: string | null }[]) if (r.hiperfoco_nombre) hfNombreById[r.id] = r.hiperfoco_nombre
 
   const npsTokenById: Record<string, string> = {}
-  const { data: tokenRows } = await supabase.from('live_sessions').select('id, nps_token')
+  const { data: tokenRows } = await supabase.from('live_sessions').select('id, nps_token').gte('ends_at', weekAgoIso)
   for (const r of (tokenRows ?? []) as { id: string; nps_token?: string | null }[]) if (r.nps_token) npsTokenById[r.id] = r.nps_token
 
   const sessions = ((sessRows ?? []) as any[]).map(s => ({
@@ -67,7 +73,6 @@ export default async function AdminSessionsPage() {
           <Calendar size={22} className="text-brand-400" />
           <h1 className="page-title">Sesiones en vivo</h1>
         </div>
-        <SendNpsEmailsButton initialPending={pendingNps} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">

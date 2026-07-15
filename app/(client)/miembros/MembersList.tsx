@@ -15,6 +15,8 @@ export interface Member {
   phone: string | null
   instagram: string | null
   website: string | null
+  sector: string | null
+  productoServicio: string | null
 }
 
 // Acepta handle ("@negocio"), usuario suelto o URL completa; siempre devuelve
@@ -55,7 +57,9 @@ export default function MembersList({ members }: { members: Member[] }) {
     if (!s) return base
     return base.filter(m =>
       m.name.toLowerCase().includes(s) ||
-      (m.bio ?? '').toLowerCase().includes(s)
+      (m.bio ?? '').toLowerCase().includes(s) ||
+      (m.sector ?? '').toLowerCase().includes(s) ||
+      (m.productoServicio ?? '').toLowerCase().includes(s)
     )
   }, [base, q])
 
@@ -82,7 +86,7 @@ export default function MembersList({ members }: { members: Member[] }) {
           <input
             value={q}
             onChange={e => setQ(e.target.value)}
-            placeholder="Buscar miembro"
+            placeholder="Buscar por nombre, sector o producto"
             className="input pl-9"
           />
         </div>
@@ -119,6 +123,16 @@ export default function MembersList({ members }: { members: Member[] }) {
                 </div>
                 {joinedLabel(m.joined) && (
                   <p className="text-xs text-cream-muted mt-0.5">Unido {joinedLabel(m.joined)}</p>
+                )}
+                {(m.sector || m.productoServicio) && (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {m.sector && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-600/15 text-brand-300 border border-brand-600/25">{m.sector}</span>
+                    )}
+                    {m.productoServicio && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-surface-800 text-cream-dim border border-surface-700">{m.productoServicio}</span>
+                    )}
+                  </div>
                 )}
                 {m.bio && <p className="text-sm text-cream-dim mt-1.5 leading-relaxed">{m.bio}</p>}
               </div>
@@ -157,6 +171,16 @@ export default function MembersList({ members }: { members: Member[] }) {
               </div>
               {joinedLabel(selected.joined) && (
                 <p className="text-xs text-cream-muted mt-1">Unido {joinedLabel(selected.joined)}</p>
+              )}
+              {(selected.sector || selected.productoServicio) && (
+                <div className="flex flex-wrap justify-center gap-1.5 mt-3">
+                  {selected.sector && (
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-600/15 text-brand-300 border border-brand-600/25">{selected.sector}</span>
+                  )}
+                  {selected.productoServicio && (
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-surface-800 text-cream-dim border border-surface-700">{selected.productoServicio}</span>
+                  )}
+                </div>
               )}
               {selected.bio && (
                 <p className="text-sm text-cream-dim mt-3 leading-relaxed">{selected.bio}</p>

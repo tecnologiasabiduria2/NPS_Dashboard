@@ -7,7 +7,8 @@
 CREATE TABLE IF NOT EXISTS banners (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   titulo      TEXT NOT NULL,        -- etiqueta interna/alt text, no se pinta sobre la imagen
-  image_path  TEXT NOT NULL,        -- path dentro del bucket 'banners'
+  image_path  TEXT NOT NULL,        -- path (desktop) dentro del bucket 'banners'
+  image_path_mobile TEXT,           -- path opcional para mobile (ver migracion_banner_mobile.sql)
   link_url    TEXT,                 -- opcional, clic abre en pestaña nueva
   is_active   BOOLEAN NOT NULL DEFAULT true,
   starts_at   DATE,

@@ -19,6 +19,8 @@ export async function POST(req: NextRequest) {
   const bio = String(form.get('bio') ?? '').trim()
   const instagram = String(form.get('instagram') ?? '').trim()
   const website = String(form.get('website') ?? '').trim()
+  const sector = String(form.get('sector') ?? '').trim()
+  const productoServicio = String(form.get('producto_servicio') ?? '').trim()
   const phone = String(form.get('phone') ?? '').trim()
   const file = form.get('avatar')
 
@@ -34,6 +36,8 @@ export async function POST(req: NextRequest) {
   if (bio) update.bio = bio
   if (instagram) update.instagram = instagram
   if (website) update.website = website
+  if (sector) update.sector = sector
+  if (productoServicio) update.producto_servicio = productoServicio
   if (phone) update.phone = phone
 
   if (file && file instanceof File && file.size > 0) {

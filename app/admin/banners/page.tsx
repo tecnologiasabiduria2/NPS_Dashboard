@@ -4,7 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import BannerCrud from './BannerCrud'
 
 // Banners de anuncios (2026-07-09) — admin+owner, ver plan de la sesión.
-// Se muestran apilados en el riel derecho de /dashboard (components/community/BannersRail.tsx).
+// Desde 2026-07-14 se muestran como carrusel arriba de Inicio
+// (components/community/BannersTop.tsx → BannerCarousel.tsx).
 export default async function BannersPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -14,12 +15,15 @@ export default async function BannersPage() {
 
   const { data: bannersRaw } = await supabaseAdmin
     .from('banners')
-    .select('id, titulo, image_path, link_url, is_active, starts_at, ends_at')
+    .select('id, titulo, image_path, image_path_mobile, link_url, is_active, starts_at, ends_at')
     .order('created_at', { ascending: false })
 
   const banners = ((bannersRaw as any[]) ?? []).map(b => ({
     ...b,
     imageUrl: supabaseAdmin.storage.from('banners').getPublicUrl(b.image_path).data.publicUrl,
+    imageUrlMobile: b.image_path_mobile
+      ? supabaseAdmin.storage.from('banners').getPublicUrl(b.image_path_mobile).data.publicUrl
+      : null,
   }))
 
   return (

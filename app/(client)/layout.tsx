@@ -3,7 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import CommunityShell, { type ShellProduct } from '@/components/community/CommunityShell'
 import OnboardingOverlay from '@/components/community/OnboardingOverlay'
-import BannersRail from '@/components/community/BannersRail'
+import MetricasOverlay from '@/components/community/MetricasOverlay'
+import RetosOverlay from '@/components/community/RetosOverlay'
+import { fetchRetoPreguntas } from '@/lib/retosPreguntas'
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -55,16 +57,66 @@ export default async function ClientLayout({ children }: { children: React.React
     avatarUrl = b.avatar_url ?? null
   }
 
+  // Métricas de negocio (punto 9 Fase 2): mostrar el overlay privado si el
+  // cliente aún no registró facturación/objetivo del mes ACTUAL. Resiliente: si
+  // la migración no corrió, la query falla y no se muestra (no bloquea).
+  let needsMetricas = false
+  {
+    const now = new Date()
+    const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    const { data: metRow, error: metErr } = await supabase
+      .from('user_metricas_mes').select('id').eq('user_id', user.id).eq('periodo', periodo).maybeSingle()
+    if (!metErr && !metRow) needsMetricas = true
+  }
+
+  // Retos por módulo (punto 9 Fase 2): si el cliente tiene un hiperfoco en_curso
+  // este mes y aún no respondió sus preguntas de inicio, mostrar el pop-up.
+  // Resiliente si las migraciones no corrieron.
+  let retoHiperfoco: { id: string; title: string } | null = null
+  {
+    const now = new Date()
+    const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    const { data: hfRow, error: hfErr } = await supabase
+      .from('user_hiperfoco_mes')
+      .select('hiperfoco_id, hiperfocos(title)')
+      .eq('user_id', user.id)
+      .eq('periodo', periodo)
+      .eq('estado', 'en_curso')
+      .not('hiperfoco_id', 'is', null)
+      .maybeSingle()
+    if (!hfErr && (hfRow as any)?.hiperfoco_id) {
+      const hfId = (hfRow as any).hiperfoco_id as string
+      const { data: retoRow, error: retoErr } = await supabase
+        .from('user_reto_hiperfoco').select('id')
+        .eq('user_id', user.id).eq('hiperfoco_id', hfId).eq('periodo', periodo).maybeSingle()
+      if (!retoErr && !retoRow) {
+        const hfData = (hfRow as any).hiperfocos
+        const title = Array.isArray(hfData) ? hfData[0]?.title : hfData?.title
+        retoHiperfoco = { id: hfId, title: title ?? 'este módulo' }
+      }
+    }
+  }
+  const retoPreguntas = retoHiperfoco ? await fetchRetoPreguntas(supabase) : null
+
   const displayName = profile?.full_name ?? user.email ?? ''
 
   // NPS: ya NO se auto-muestra dentro de la plataforma (decisión reunión
   // 2026-06-30). Se califica vía link público por sesión (/nps/{token}).
   return (
     <>
-      <CommunityShell userName={displayName} avatarUrl={avatarUrl} products={products} banners={<BannersRail />}>
+      <CommunityShell userName={displayName} avatarUrl={avatarUrl} products={products}>
         {children}
       </CommunityShell>
-      {needsOnboarding && <OnboardingOverlay userName={displayName} />}
+      {/* Un solo overlay a la vez, por prioridad: bienvenida a la comunidad →
+          métricas de negocio → retos del módulo nuevo. Cada uno se descarta con
+          "Ahora no" (sessionStorage) y no bloquea el guardado de datos. */}
+      {needsOnboarding ? (
+        <OnboardingOverlay userName={displayName} />
+      ) : needsMetricas ? (
+        <MetricasOverlay />
+      ) : retoHiperfoco && retoPreguntas ? (
+        <RetosOverlay hiperfocoId={retoHiperfoco.id} hiperfocoTitulo={retoHiperfoco.title} preguntas={retoPreguntas} />
+      ) : null}
     </>
   )
 }

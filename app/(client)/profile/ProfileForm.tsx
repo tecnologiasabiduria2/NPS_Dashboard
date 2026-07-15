@@ -12,6 +12,8 @@ interface Props {
   bio: string
   instagram: string
   website: string
+  sector: string
+  productoServicio: string
   avatarUrl: string | null
 }
 
@@ -19,7 +21,7 @@ interface Props {
 // info... no puedo asignar foto de perfil tampoco"). Reusa el mismo endpoint
 // del onboarding (/api/profile/onboarding, ya soportaba bio/redes/foto — solo
 // le faltaba full_name) en vez de crear uno nuevo.
-export default function ProfileForm({ email, fullName, phone, bio, instagram, website, avatarUrl }: Props) {
+export default function ProfileForm({ email, fullName, phone, bio, instagram, website, sector, productoServicio, avatarUrl }: Props) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(fullName)
@@ -27,6 +29,8 @@ export default function ProfileForm({ email, fullName, phone, bio, instagram, we
   const [b, setB] = useState(bio)
   const [ig, setIg] = useState(instagram)
   const [web, setWeb] = useState(website)
+  const [sec, setSec] = useState(sector)
+  const [prod, setProd] = useState(productoServicio)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -43,6 +47,7 @@ export default function ProfileForm({ email, fullName, phone, bio, instagram, we
 
   function cancel() {
     setName(fullName); setPh(phone); setB(bio); setIg(instagram); setWeb(website)
+    setSec(sector); setProd(productoServicio)
     setFile(null); setPreview(null); setError('')
     setEditing(false)
   }
@@ -56,6 +61,8 @@ export default function ProfileForm({ email, fullName, phone, bio, instagram, we
     fd.set('bio', b)
     fd.set('instagram', ig)
     fd.set('website', web)
+    fd.set('sector', sec)
+    fd.set('producto_servicio', prod)
     fd.set('phone', ph)
     if (file) fd.set('avatar', file)
     const res = await fetch('/api/profile/onboarding', { method: 'POST', body: fd })
@@ -102,6 +109,22 @@ export default function ProfileForm({ email, fullName, phone, bio, instagram, we
             <p className="text-xs text-cream-muted">Teléfono</p>
             <p className="text-cream">{phone || '—'}</p>
           </div>
+          {(sector || productoServicio) && (
+            <div className="flex gap-6">
+              {sector && (
+                <div>
+                  <p className="text-xs text-cream-muted">Sector / nicho</p>
+                  <p className="text-cream">{sector}</p>
+                </div>
+              )}
+              {productoServicio && (
+                <div>
+                  <p className="text-xs text-cream-muted">Producto / servicio</p>
+                  <p className="text-cream">{productoServicio}</p>
+                </div>
+              )}
+            </div>
+          )}
           {(instagram || website) && (
             <div className="flex gap-6">
               {instagram && (
@@ -177,6 +200,16 @@ export default function ProfileForm({ email, fullName, phone, bio, instagram, we
         <div>
           <label className="label">Presentación</label>
           <textarea className="input resize-none" rows={3} value={b} onChange={e => setB(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Sector / nicho</label>
+            <input className="input" value={sec} onChange={e => setSec(e.target.value)} placeholder="Ej: Restaurantes, Servicios legales" />
+          </div>
+          <div>
+            <label className="label">Producto / servicio</label>
+            <input className="input" value={prod} onChange={e => setProd(e.target.value)} placeholder="Ej: Asesoría contable" />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>

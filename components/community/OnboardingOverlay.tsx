@@ -14,6 +14,8 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
   const [bio, setBio] = useState('')
   const [instagram, setInstagram] = useState('')
   const [website, setWebsite] = useState('')
+  const [sector, setSector] = useState('')
+  const [productoServicio, setProductoServicio] = useState('')
   const [phone, setPhone] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -46,6 +48,8 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
     fd.set('bio', bio)
     fd.set('instagram', instagram)
     fd.set('website', website)
+    fd.set('sector', sector)
+    fd.set('producto_servicio', productoServicio)
     fd.set('phone', phone)
     if (file) fd.set('avatar', file)
     const res = await fetch('/api/profile/onboarding', { method: 'POST', body: fd })
@@ -117,6 +121,21 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
           placeholder="Teléfono (opcional) — si lo llenas, con indicativo: +57 300 1234567"
           className="input mt-3"
         />
+
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <input
+            value={sector}
+            onChange={e => setSector(e.target.value)}
+            placeholder="Sector / nicho (ej: Restaurantes)"
+            className="input"
+          />
+          <input
+            value={productoServicio}
+            onChange={e => setProductoServicio(e.target.value)}
+            placeholder="Producto / servicio"
+            className="input"
+          />
+        </div>
 
         <div className="grid grid-cols-2 gap-3 mt-3">
           <input

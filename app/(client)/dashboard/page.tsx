@@ -1,8 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { ArrowRight, Video, Calendar, AlertTriangle, Target, History } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight, Video, Calendar, AlertTriangle, Target, History, TrendingUp } from 'lucide-react'
 import { formatDateOnly, formatMonthLong, formatMonthShort, formatCODateLong, formatCOTime } from '@/lib/format'
 import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
+import { productFullName } from '@/lib/productIdentity'
+import { getConquistas } from '@/lib/conquistas'
+import BannersTop from '@/components/community/BannersTop'
 
 // Metadatos de presentación por estado del hiperfoco (modelo de hiperfoco, B10).
 // Estados de user_hiperfoco_mes: no_elegido | en_curso | cerrado | pausa.
@@ -141,7 +145,14 @@ export default async function DashboardPage({
   }
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Bienvenido'
-  const productTitle = (access as any)?.products?.title ?? ''
+  const productTitle = (access as any)?.products?.title ? productFullName((access as any).products.title) : ''
+
+  // Resumen de progreso para el KPI de Inicio (enlaza a /mi-progreso, 2026-07-14).
+  const conquistas = await getConquistas(supabase, {
+    userId: user.id,
+    productId: access?.product_id ?? null,
+    accessStarted: (access as any)?.access_started,
+  })
 
   // NPS promedio del cliente (todas sus respuestas). El desglose 1 a 1 vive en
   // /mi-ruta; acá solo el numero general, a pedido de Diana (reunion 2026-07-03).
@@ -157,6 +168,11 @@ export default async function DashboardPage({
 
   return (
     <div>
+      {/* Slide bar de anuncios arriba de Inicio (2026-07-14) — antes iba apilado
+          en el riel derecho. Server component: no renderiza nada si no hay
+          banners vigentes. */}
+      <BannersTop />
+
       {/* Aviso de error (ej. sesión no encontrada al unirse al Zoom) */}
       {error === 'session_not_found' && (
         <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
@@ -176,12 +192,6 @@ export default async function DashboardPage({
             <h1 className="text-3xl font-semibold text-cream">Hola, {firstName}</h1>
           </div>
           <div className="flex items-start gap-6 shrink-0">
-            {npsPromedio !== null && (
-              <div className="text-right">
-                <p className="text-xs text-cream-muted">NPS promedio</p>
-                <p className={`text-sm font-medium ${npsColorClass(npsPromedio)}`}>{npsPromedio}</p>
-              </div>
-            )}
             {access?.access_until && (
               <div className="text-right">
                 <p className="text-xs text-cream-muted">Acceso hasta</p>
@@ -275,8 +285,45 @@ export default async function DashboardPage({
         )
       })()}
 
+      {/* Tu progreso — resumen que enlaza a la sección "Mi progreso" (2026-07-14).
+          Va ENCIMA del historial (pedido de Juan). Acento de marca + 3 números. */}
+      <Link
+        href="/mi-progreso"
+        className="group relative block rounded-2xl overflow-hidden bg-surface-850 border border-surface-700 hover:border-brand-600/40 transition-all animate-fade-up mb-6"
+        style={{ animationDelay: nextSession ? '140ms' : '60ms' }}
+      >
+        <div className="absolute left-0 top-0 bottom-0 w-[5px]" style={{ background: 'linear-gradient(180deg, #7E301F, #DA7D41)' }} />
+        <div className="p-6 pl-7">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={15} className="text-sand" />
+              <p className="text-sm font-semibold text-cream">Tu progreso</p>
+            </div>
+            <span className="text-sm text-brand-400 group-hover:text-brand-300 inline-flex items-center gap-1.5 font-medium shrink-0">
+              Ver mi progreso <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            </span>
+          </div>
+          <div className="flex items-center gap-8">
+            <div>
+              <p className="text-3xl font-bold tabular-nums text-cream leading-none">{conquistas.modulosVividos}</p>
+              <p className="text-[11px] text-cream-muted mt-1.5 uppercase tracking-wide">Módulos cursados</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold tabular-nums text-cream leading-none">{conquistas.mesesActivo ?? '—'}</p>
+              <p className="text-[11px] text-cream-muted mt-1.5 uppercase tracking-wide">Meses activo</p>
+            </div>
+            <div>
+              <p className={`text-3xl font-bold tabular-nums leading-none ${conquistas.npsPromedio !== null ? npsColorClass(conquistas.npsPromedio) : 'text-cream'}`}>
+                {conquistas.npsPromedio ?? '—'}
+              </p>
+              <p className="text-[11px] text-cream-muted mt-1.5 uppercase tracking-wide">NPS promedio</p>
+            </div>
+          </div>
+        </div>
+      </Link>
+
       {/* Historial de hiperfocos */}
-      <div className="card mb-6 animate-fade-up" style={{ animationDelay: nextSession ? '140ms' : '60ms' }}>
+      <div className="card mb-6 animate-fade-up" style={{ animationDelay: nextSession ? '160ms' : '80ms' }}>
         <div className="flex items-center gap-2 mb-4">
           <History size={15} className="text-brand-400" />
           <p className="text-sm font-medium text-cream">Mi historial de hiperfocos</p>

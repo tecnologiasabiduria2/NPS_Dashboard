@@ -1,11 +1,24 @@
 import { createClient } from '@/lib/supabase/server'
-import { formatDateOnly, mesesDesde } from '@/lib/format'
-import { Play } from 'lucide-react'
-import Timeline from '@/components/Timeline'
+import { formatDateOnly, formatMonthShort, mesesDesde } from '@/lib/format'
+import { Play, Calendar, User, MessagesSquare, Sparkles } from 'lucide-react'
 import Sparkline from '@/components/Sparkline'
-import { buildTimeline } from '@/lib/timeline'
+import { productFullName } from '@/lib/productIdentity'
 
 const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL ?? ''
+
+// Metadatos por estado del hiperfoco (mismos que el dashboard cliente).
+const ESTADO_META: Record<string, { label: string; chip: string }> = {
+  en_curso:   { label: 'en curso',    chip: 'bg-sky-500/15 text-sky-300' },
+  cerrado:    { label: 'cerrado',     chip: 'bg-emerald-500/15 text-emerald-300' },
+  pausa:      { label: 'descanso',    chip: 'bg-surface-700 text-cream-muted' },
+  no_elegido: { label: 'sin asignar', chip: 'bg-surface-700 text-cream-dim' },
+}
+
+function npsColorClass(score: number) {
+  if (score >= 8) return 'text-emerald-400'
+  if (score >= 6) return 'text-amber-400'
+  return 'text-red-400'
+}
 
 export default async function MiRutaPage() {
   const supabase = await createClient()
@@ -47,29 +60,37 @@ export default async function MiRutaPage() {
   const accessList = (accessRows as any[]) ?? []
   const access = accessList.find(a => a.status === 'active') ?? accessList[0] ?? null
 
-  const productos = accessList
-    .filter(a => a.access_started)
-    .map(a => ({ producto: a.products?.title ?? 'Producto', inicio: a.access_started as string }))
-
-  const timeline = buildTimeline({
-    inicio: (access as any)?.access_started,
-    productos,
-    hiperfocos: ((historial as any[]) ?? []).map(r => ({
-      periodo: r.periodo, title: r.hiperfocos?.title ?? null, estado: r.estado,
-    })),
-    sesiones: ((attendance as any[]) ?? []).map(a => ({
-      date: a.live_sessions?.starts_at, title: a.live_sessions?.title ?? 'Sesión en vivo',
-    })),
-    unoAuno: ((notes as any[]) ?? []).map(n => ({
-      date: n.session_date, content: n.content, fathomShareId: n.fathom_share_id,
-    })),
-    nps: ((nps as any[]) ?? []).map(n => ({
-      date: n.created_at, score: n.score, hiperfoco: n.hiperfocos?.title ?? null,
-    })),
-    // El cliente NO ve banderas ni casos de éxito (interno del CS).
-  })
-
   const unoAuno = (notes as any[]) ?? []
+
+  // Historial de hiperfocos como tabla limpia (2026-07-14, rediseño según
+  // refe.jpeg — reemplaza el timeline mixto que "se veía muy plano"). Mismo
+  // enriquecido que el dashboard: asistió (hubo asistencia ese mes), repitió
+  // (mismo hiperfoco que el mes anterior) y NPS del mes.
+  const npsPorMes = new Map<string, number>()
+  // nps ya viene ordenado ascendente → la última escritura por mes (la más
+  // reciente) gana.
+  for (const n of ((nps as any[]) ?? [])) {
+    npsPorMes.set(String(n.created_at).slice(0, 7), Number(n.score))
+  }
+  const mesesAsistidos = new Set<string>()
+  for (const a of ((attendance as any[]) ?? [])) {
+    const key = (a.live_sessions?.starts_at as string | undefined)?.slice(0, 7)
+    if (key) mesesAsistidos.add(key)
+  }
+  const histRows = (historial as any[]) ?? []
+  const historialView = histRows.map((row, i, arr) => {
+    const mesKey = String(row.periodo).slice(0, 7)
+    const prev = arr[i + 1] // siguiente en orden desc = mes anterior
+    const title = row.hiperfocos?.title ?? null
+    return {
+      periodo: row.periodo as string,
+      estado: row.estado as string,
+      title,
+      asistio: mesesAsistidos.has(mesKey),
+      repitio: Boolean(title) && (prev?.hiperfocos?.title ?? null) === title,
+      nps: npsPorMes.get(mesKey) ?? null,
+    }
+  })
 
   // Panel de estadísticas (derecha) — el promedio es el dato principal (el
   // sparkline solo, con pocos votos, se veía sin sentido — 2026-07-09); ahora
@@ -88,53 +109,147 @@ export default async function MiRutaPage() {
       <div className="mb-8">
         <h1 className="page-title">Mi ruta</h1>
         <p className="page-subtitle">
-          {(access as any)?.products?.title ?? 'Tu proceso'} · tu historial en la plataforma
+          {(access as any)?.products?.title ? productFullName((access as any).products.title) : 'Tu proceso'} · tu historial en la plataforma
         </p>
       </div>
 
       <div className="flex gap-6 items-start">
-        <div className="flex-1 min-w-0">
-          {/* Hoja de vida */}
-          <div className="card mb-6">
-            <p className="section-label">Mi historial</p>
-            <Timeline events={timeline} />
-          </div>
+        <div className="flex-1 min-w-0 space-y-6">
+          {/* Sesiones 1 a 1 — sección propia y prominente, movida ARRIBA del
+              historial (2026-07-14, pedido de Diana: es lo más valioso del
+              acompañamiento y antes quedaba enterrado bajo el timeline). Tarjetas
+              rediseñadas siguiendo refe.jpeg: bloque limpio con acento de marca,
+              notas + resumen destacado + acceso a la grabación. */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <MessagesSquare size={15} className="text-sand" />
+                <p className="text-sm font-semibold text-cream">Mis sesiones 1 a 1</p>
+              </div>
+              {unoAuno.length > 0 && (
+                <span className="text-xs text-cream-muted">
+                  {unoAuno.length} sesión{unoAuno.length !== 1 ? 'es' : ''} de acompañamiento
+                </span>
+              )}
+            </div>
 
-          {/* Mis sesiones 1:1 */}
-          <div className="card">
-            <p className="section-label">Mis sesiones 1:1</p>
             {unoAuno.length > 0 ? (
-              <div className="space-y-3">
-                {unoAuno.map((note: any) => (
-                  <div key={note.id} className="bg-surface-800 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-cream-muted">{formatDateOnly(note.session_date)}</span>
-                      {note.profiles?.full_name && (
-                        <span className="text-xs text-cream-muted">con {note.profiles.full_name}</span>
-                      )}
-                    </div>
-                    <p className="text-sm text-cream-dim whitespace-pre-wrap">{note.content}</p>
-                    {note.summary && (
-                      <div className="mt-3 rounded-lg bg-surface-900/60 border border-surface-700 p-3">
-                        <p className="text-[10px] text-cream-muted uppercase tracking-wide mb-1">Summary</p>
-                        <p className="text-xs text-cream-dim whitespace-pre-wrap">{note.summary}</p>
-                      </div>
-                    )}
-                    {note.fathom_share_id && WORKER_URL && (
-                      <a
-                        href={`${WORKER_URL}/player?id=${note.fathom_share_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-brand-400 hover:text-brand-300 mt-3"
+              // Timeline numerado con conector (2026-07-14, 2ª pasada): la versión
+              // anterior (acento fino a la izquierda) se veía "apenas perceptible".
+              // Ahora cada sesión es un nodo numerado sobre una línea vertical, con
+              // header propio y bloques claros de Notas / Resumen — da la sensación
+              // de recorrido/evolución que pidió Diana.
+              <div className="relative">
+                <div className="absolute left-[19px] top-3 bottom-3 w-px bg-gradient-to-b from-brand-500/60 via-surface-600 to-transparent" />
+                <div className="space-y-5">
+                  {unoAuno.map((note: any, i: number) => {
+                    const numero = unoAuno.length - i // notas en orden desc → la más antigua es la #1
+                    return (
+                      <div
+                        key={note.id}
+                        className="relative pl-14 animate-fade-up"
+                        style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}
                       >
-                        <Play size={12} /> Ver grabación de la sesión
-                      </a>
-                    )}
-                  </div>
-                ))}
+                        {/* Nodo numerado */}
+                        <div
+                          className="absolute left-0 top-1 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-black/40 ring-4 ring-surface-950"
+                          style={{ background: 'linear-gradient(135deg, #7E301F, #DA7D41)' }}
+                        >
+                          {numero}
+                        </div>
+
+                        <div className="rounded-2xl overflow-hidden bg-surface-850 border border-surface-700 hover-lift">
+                          {/* Cabecera de la sesión */}
+                          <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-surface-700 bg-surface-800/40">
+                            <p className="text-sm font-semibold text-cream inline-flex items-center gap-1.5 capitalize">
+                              <Calendar size={13} className="text-sand" /> {formatDateOnly(note.session_date)}
+                            </p>
+                            {note.profiles?.full_name && (
+                              <span className="text-xs text-cream-muted inline-flex items-center gap-1.5 shrink-0">
+                                <User size={12} /> {note.profiles.full_name}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="p-5 space-y-3">
+                            <div>
+                              <p className="section-label !text-[10px] !mb-1">Notas de la sesión</p>
+                              <p className="text-sm text-cream-dim whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                            </div>
+
+                            {note.summary && (
+                              <div className="rounded-xl bg-brand-600/10 border border-brand-600/20 p-3.5">
+                                <p className="text-[10px] text-sand uppercase tracking-wide mb-1.5 font-semibold inline-flex items-center gap-1.5">
+                                  <Sparkles size={11} /> Resumen y plan de acción
+                                </p>
+                                <p className="text-xs text-cream-dim whitespace-pre-wrap leading-relaxed">{note.summary}</p>
+                              </div>
+                            )}
+
+                            {note.fathom_share_id && WORKER_URL && (
+                              <a
+                                href={`${WORKER_URL}/player?id=${note.fathom_share_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs text-brand-400 hover:text-brand-300"
+                              >
+                                <Play size={12} /> Ver grabación de la sesión
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             ) : (
-              <p className="text-sm text-cream-muted">Aún no tienes sesiones 1:1 registradas.</p>
+              <div className="card">
+                <p className="text-sm text-cream-muted">
+                  Aún no tienes sesiones 1 a 1 registradas. Aquí verás las notas, acuerdos y la
+                  grabación de cada sesión con tu acompañante.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Historial de hiperfocos — tabla limpia (rediseño 2026-07-14, estilo
+              refe.jpeg): mes · hiperfoco (con "repitió"/"asistió") · NPS o estado
+              a la derecha. Reemplaza el timeline mixto anterior. */}
+          <div className="card">
+            <p className="section-label">Historial de hiperfocos</p>
+            {historialView.length === 0 ? (
+              <p className="text-sm text-cream-muted">
+                Todavía no hay hiperfocos registrados. Aparecerán aquí mes a mes.
+              </p>
+            ) : (
+              <div className="divide-y divide-surface-700">
+                {historialView.map((row, i) => {
+                  const meta = ESTADO_META[row.estado] ?? ESTADO_META.no_elegido
+                  const conHiperfoco = Boolean(row.title)
+                  return (
+                    <div
+                      key={row.periodo}
+                      className="flex items-center justify-between gap-3 py-3 animate-fade-up"
+                      style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs text-cream-muted capitalize">{formatMonthShort(row.periodo)}</p>
+                        <p className={`text-sm mt-0.5 ${conHiperfoco ? 'text-cream' : 'text-cream-muted'}`}>
+                          {row.title ?? (row.estado === 'pausa' ? 'Pausa' : 'Sin asignar')}
+                          {row.repitio && <span className="text-xs text-cream-muted ml-1.5">· repitió</span>}
+                          {row.asistio && <span className="text-xs text-cream-muted ml-1.5">· asistió ✓</span>}
+                        </p>
+                      </div>
+                      {row.nps !== null ? (
+                        <span className={`text-sm font-medium shrink-0 ${npsColorClass(row.nps)}`}>NPS {row.nps}</span>
+                      ) : (
+                        <span className={`text-xs px-2.5 py-1 rounded-full shrink-0 ${meta.chip}`}>{meta.label}</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
         </div>

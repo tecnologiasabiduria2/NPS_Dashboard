@@ -12,6 +12,7 @@ interface Banner {
   titulo: string
   image_path: string
   imageUrl: string
+  imageUrlMobile: string | null
   link_url: string | null
   is_active: boolean
   starts_at: string | null
@@ -26,9 +27,10 @@ type FormState = {
   starts_at: string
   ends_at: string
   file: File | null
+  fileMobile: File | null
 }
 
-const EMPTY_FORM: FormState = { titulo: '', link_url: '', is_active: true, starts_at: '', ends_at: '', file: null }
+const EMPTY_FORM: FormState = { titulo: '', link_url: '', is_active: true, starts_at: '', ends_at: '', file: null, fileMobile: null }
 
 export default function BannerCrud({ banners }: { banners: Banner[] }) {
   const router = useRouter()
@@ -51,6 +53,7 @@ export default function BannerCrud({ banners }: { banners: Banner[] }) {
       starts_at: b.starts_at ?? '',
       ends_at: b.ends_at ?? '',
       file: null,
+      fileMobile: null,
     })
     setPanel(b.id)
   }
@@ -78,6 +81,7 @@ export default function BannerCrud({ banners }: { banners: Banner[] }) {
     body.set('starts_at', form.starts_at)
     body.set('ends_at', form.ends_at)
     if (form.file) body.set('image', form.file)
+    if (form.fileMobile) body.set('image_mobile', form.fileMobile)
 
     const res = await fetch('/api/admin/banners', { method: 'POST', body })
     setSaving(false)
@@ -209,11 +213,19 @@ function BannerForm({
         <input type="text" className="input" value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })} placeholder="Ej. Evento networking julio" />
       </div>
       <div>
-        <label className="label">Imagen{isNew ? '' : ' (dejar vacío para conservar la actual)'}</label>
+        <label className="label">Imagen desktop (horizontal, ancha){isNew ? '' : ' — dejar vacío para conservar la actual'}</label>
         <input
           type="file" accept="image/*" className="input"
           onChange={e => setForm({ ...form, file: e.target.files?.[0] ?? null })}
         />
+      </div>
+      <div>
+        <label className="label">Imagen mobile (opcional, más vertical){isNew ? '' : ' — dejar vacío para conservar la actual'}</label>
+        <input
+          type="file" accept="image/*" className="input"
+          onChange={e => setForm({ ...form, fileMobile: e.target.files?.[0] ?? null })}
+        />
+        <p className="text-xs text-cream-muted mt-1">Si no la subes, en celular se usa la imagen desktop.</p>
       </div>
       <div>
         <label className="label">Link al hacer clic (opcional)</label>

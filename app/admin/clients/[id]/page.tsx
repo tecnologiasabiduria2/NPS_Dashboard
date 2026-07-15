@@ -1,15 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { formatDateOnly, formatMonthShort, mesesDesde } from '@/lib/format'
 import { notFound } from 'next/navigation'
-import { Flag, Star, Play } from 'lucide-react'
+import { Flag, Star, Play, Settings } from 'lucide-react'
+import Link from 'next/link'
 import BackLink from '@/components/BackLink'
 import Timeline from '@/components/Timeline'
+import { formatMoneda } from '@/lib/monedas'
+import { fetchRetoPreguntas } from '@/lib/retosPreguntas'
 import { buildTimeline } from '@/lib/timeline'
 import EditAccessForm from './EditAccessForm'
 import SesionesUnoAUnoTabs from './SesionesUnoAUnoTabs'
 import AddCsNoteForm from './AddCsNoteForm'
 import HiperfocoActions from './HiperfocoActions'
 import FlagsList from './FlagsList'
+import ClientDetailTabs from './ClientDetailTabs'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -151,6 +156,27 @@ export default async function ClientDetailPage({ params }: Props) {
   const tieneCasoExito = ((flags as any[]) ?? []).some(f => f.type === 'caso_exito')
   const meses = mesesDesde((access as any)?.access_started ?? profile.created_at?.slice(0, 10))
 
+  // Facturación / objetivos del cliente (punto 9 Fase 2). Vía service role: no hay
+  // policy de admin en user_metricas_mes (solo "own"), pero el admin sí puede verlo.
+  // Resiliente si la migración no corrió (data null → lista vacía).
+  const { data: metricasRaw } = await supabaseAdmin
+    .from('user_metricas_mes')
+    .select('periodo, facturacion_real, objetivo, moneda')
+    .eq('user_id', id)
+    .order('periodo', { ascending: false })
+  const metricas = (metricasRaw as any[]) ?? []
+
+  // Retos por módulo (punto 9 Fase 2): respuestas cerradas al iniciar un
+  // hiperfoco (lib/retosPreguntas.ts). Mismo acceso vía service role que
+  // facturación (RLS "own", el cliente no expone policy de admin).
+  const { data: retosRaw } = await supabaseAdmin
+    .from('user_reto_hiperfoco')
+    .select('periodo, respuestas, hiperfocos(title)')
+    .eq('user_id', id)
+    .order('periodo', { ascending: false })
+  const retos = (retosRaw as any[]) ?? []
+  const retoPreguntas = await fetchRetoPreguntas(supabaseAdmin)
+
   return (
     <div className="max-w-3xl">
       <BackLink />
@@ -180,6 +206,8 @@ export default async function ClientDetailPage({ params }: Props) {
         </div>
       </div>
 
+      <ClientDetailTabs
+        resumen={<>
       {/* Control de acceso */}
       <div className="card mb-6">
         <p className="text-xs text-cream-muted uppercase tracking-wider mb-4">Control de acceso</p>
@@ -190,12 +218,6 @@ export default async function ClientDetailPage({ params }: Props) {
           ghlContactId={access?.ghl_contact_id ?? ''}
           status={access?.status ?? 'pending'}
         />
-      </div>
-
-      {/* Hoja de vida (timeline) */}
-      <div className="card mb-6">
-        <p className="text-xs text-cream-muted uppercase tracking-wider mb-5">Hoja de vida</p>
-        <Timeline events={timeline} />
       </div>
 
       {/* Hiperfocos */}
@@ -229,6 +251,88 @@ export default async function ClientDetailPage({ params }: Props) {
         )}
       </div>
 
+      {/* Facturación y objetivos del cliente (punto 9 Fase 2) */}
+      <div className="card mb-6">
+        <p className="text-xs text-cream-muted uppercase tracking-wider mb-4">Facturación y objetivos</p>
+        {metricas.length === 0 ? (
+          <p className="text-sm text-cream-muted">El cliente aún no ha registrado su facturación.</p>
+        ) : (
+          <div className="flex flex-col">
+            {metricas.map((m: any, i: number) => (
+              <div
+                key={m.periodo}
+                className={`grid grid-cols-[80px_1fr_1fr] gap-3 items-center py-2.5 text-sm ${
+                  i < metricas.length - 1 ? 'border-b border-surface-800' : ''
+                }`}
+              >
+                <span className="text-xs text-cream-muted capitalize">{formatMonthShort(m.periodo)}</span>
+                <span className="text-cream tabular-nums">
+                  {m.facturacion_real != null ? formatMoneda(m.facturacion_real, m.moneda) : '—'}
+                  <span className="text-xs text-cream-muted ml-1.5">facturado</span>
+                </span>
+                <span className="text-sand tabular-nums text-right">
+                  {m.objetivo != null ? formatMoneda(m.objetivo, m.moneda) : '—'}
+                  <span className="text-xs text-cream-muted ml-1.5">objetivo</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Retos por módulo (punto 9 Fase 2): respuestas cerradas al iniciar cada
+          hiperfoco. A diferencia de facturación (2 números fijos), acá cada
+          entrada trae hasta 3 respuestas variables — chips con la pregunta y
+          el valor/etiqueta es más legible de un vistazo que una grilla de
+          columnas fijas. */}
+      <div className="card mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs text-cream-muted uppercase tracking-wider">Retos por módulo</p>
+          <Link href="/admin/retos/questions" className="text-cream-muted hover:text-cream" title="Configurar preguntas">
+            <Settings size={14} />
+          </Link>
+        </div>
+        {retos.length === 0 ? (
+          <p className="text-sm text-cream-muted">El cliente aún no ha respondido retos de inicio de módulo.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {retos.map((r: any, i: number) => {
+              const title = Array.isArray(r.hiperfocos) ? r.hiperfocos[0]?.title : r.hiperfocos?.title
+              const respuestas = (r.respuestas ?? {}) as Record<string, number>
+              return (
+                <div
+                  key={`${r.periodo}-${title ?? i}`}
+                  className={i < retos.length - 1 ? 'pb-4 border-b border-surface-800' : ''}
+                >
+                  <p className="text-sm mb-2">
+                    <span className="text-xs text-cream-muted capitalize">{formatMonthShort(r.periodo)}</span>
+                    <span className="text-cream ml-2">{title ?? 'Módulo'}</span>
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {retoPreguntas.map(preg => {
+                      const val = respuestas[preg.id]
+                      if (val == null) return null
+                      const label = preg.opciones.find(o => o.value === val)?.label ?? String(val)
+                      return (
+                        <span
+                          key={preg.id}
+                          title={preg.texto}
+                          className="text-xs px-2.5 py-1 rounded-full bg-surface-800 text-cream-dim"
+                        >
+                          {preg.texto.replace(/^¿|\?$/g, '')}: <span className="text-cream font-medium">{val}/5 · {label}</span>
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+        </>}
+        seguimiento={<>
       {/* Seguimiento CS: banderas abiertas + acciones */}
       <div className="card mb-6">
         <p className="text-xs text-cream-muted uppercase tracking-wider mb-4 inline-flex items-center gap-1.5">
@@ -261,6 +365,8 @@ export default async function ClientDetailPage({ params }: Props) {
         )}
       </div>
 
+        </>}
+        sesiones={<>
       {/* Sesiones 1:1 (notas de coaching — visibles para el cliente según RLS) */}
       <div id="sesiones-1-1" className="card scroll-mt-4">
         <p className="text-xs text-cream-muted uppercase tracking-wider mb-4">Sesiones 1:1</p>
@@ -297,6 +403,14 @@ export default async function ClientDetailPage({ params }: Props) {
           <p className="text-sm text-cream-muted">Sin sesiones 1:1 registradas aún.</p>
         )}
       </div>
+        </>}
+        hojaDeVida={
+          <div className="card mb-6">
+            <p className="text-xs text-cream-muted uppercase tracking-wider mb-5">Hoja de vida</p>
+            <Timeline events={timeline} />
+          </div>
+        }
+      />
     </div>
   )
 }

@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
   const starts_at = startsAtRaw || null
   const ends_at = endsAtRaw || null
   const file = form.get('image')
+  const fileMobile = form.get('image_mobile')
 
   if (!titulo) {
     return NextResponse.json({ error: 'El título es obligatorio' }, { status: 400 })
@@ -33,25 +34,39 @@ export async function POST(req: NextRequest) {
 
   const update: Record<string, unknown> = { titulo, link_url, is_active, starts_at, ends_at, updated_at: new Date().toISOString() }
 
-  if (file && file instanceof File && file.size > 0) {
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'El archivo debe ser una imagen' }, { status: 400 })
+  // Sube una imagen al bucket 'banners' y devuelve su path, con validación de
+  // tipo/tamaño. Reutilizado para la imagen desktop y la mobile.
+  async function uploadImage(f: File): Promise<{ path: string } | { error: NextResponse }> {
+    if (!f.type.startsWith('image/')) {
+      return { error: NextResponse.json({ error: 'El archivo debe ser una imagen' }, { status: 400 }) }
     }
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'La imagen supera 5MB' }, { status: 400 })
+    if (f.size > 5 * 1024 * 1024) {
+      return { error: NextResponse.json({ error: 'La imagen supera 5MB' }, { status: 400 }) }
     }
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+    const ext = (f.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
     const path = `${randomUUID()}.${ext}`
-    const buf = Buffer.from(await file.arrayBuffer())
+    const buf = Buffer.from(await f.arrayBuffer())
     const { error: upErr } = await supabaseAdmin.storage
       .from('banners')
-      .upload(path, buf, { contentType: file.type || 'image/jpeg' })
+      .upload(path, buf, { contentType: f.type || 'image/jpeg' })
     if (upErr) {
-      return NextResponse.json({ error: 'No se pudo subir la imagen: ' + upErr.message }, { status: 400 })
+      return { error: NextResponse.json({ error: 'No se pudo subir la imagen: ' + upErr.message }, { status: 400 }) }
     }
-    update.image_path = path
+    return { path }
+  }
+
+  if (file && file instanceof File && file.size > 0) {
+    const res = await uploadImage(file)
+    if ('error' in res) return res.error
+    update.image_path = res.path
   } else if (!id) {
     return NextResponse.json({ error: 'La imagen es obligatoria para un banner nuevo' }, { status: 400 })
+  }
+
+  if (fileMobile && fileMobile instanceof File && fileMobile.size > 0) {
+    const res = await uploadImage(fileMobile)
+    if ('error' in res) return res.error
+    update.image_path_mobile = res.path
   }
 
   if (id) {

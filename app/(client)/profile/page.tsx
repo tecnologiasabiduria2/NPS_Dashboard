@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { formatDateOnly } from '@/lib/format'
 import { redirect } from 'next/navigation'
 import ProfileForm from './ProfileForm'
+import { productFullName } from '@/lib/productIdentity'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -10,7 +11,7 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, phone, created_at, bio, instagram, website, avatar_url')
+    .select('full_name, phone, created_at, bio, instagram, website, sector, producto_servicio, avatar_url')
     .eq('id', user.id)
     .single()
 
@@ -33,6 +34,8 @@ export default async function ProfilePage() {
         bio={profile?.bio ?? ''}
         instagram={profile?.instagram ?? ''}
         website={profile?.website ?? ''}
+        sector={profile?.sector ?? ''}
+        productoServicio={profile?.producto_servicio ?? ''}
         avatarUrl={profile?.avatar_url ?? null}
       />
 
@@ -41,7 +44,7 @@ export default async function ProfilePage() {
         <div className="space-y-3">
           <div>
             <p className="text-xs text-cream-muted">Programa</p>
-            <p className="text-cream">{(access as any)?.products?.title ?? '—'}</p>
+            <p className="text-cream">{(access as any)?.products?.title ? productFullName((access as any).products.title) : '—'}</p>
           </div>
           <div>
             <p className="text-xs text-cream-muted">Estado</p>

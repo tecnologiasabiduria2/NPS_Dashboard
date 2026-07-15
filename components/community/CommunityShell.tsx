@@ -20,10 +20,6 @@ interface CommunityShellProps {
   avatarUrl?: string | null
   products: ShellProduct[]
   children: React.ReactNode
-  // Server Component (BannersRail) — no se puede importar/renderizar directo
-  // acá porque este archivo es 'use client'; el layout (server component) lo
-  // resuelve y lo pasa como prop, patrón estándar de Next App Router.
-  banners?: React.ReactNode
 }
 
 // Pestañas = navegación primaria (estilo comunidad GHL/Skool). El foro real
@@ -35,11 +31,12 @@ const TABS: { href: string; label: string; match: (p: string) => boolean }[] = [
   { href: '/roadmap',   label: 'Aprendizaje', match: p => p.startsWith('/roadmap') || p.startsWith('/recording') },
   { href: '/sessions',  label: 'Eventos',     match: p => p.startsWith('/sessions') },
   { href: '/mi-ruta',   label: 'Mi ruta',     match: p => p.startsWith('/mi-ruta') },
+  { href: '/mi-progreso', label: 'Mi progreso', match: p => p.startsWith('/mi-progreso') },
   { href: '/miembros',  label: 'Miembros',    match: p => p.startsWith('/miembros') },
   { href: '/acerca',    label: 'Acerca de',   match: p => p.startsWith('/acerca') },
 ]
 
-export default function CommunityShell({ userName, avatarUrl, products, children, banners }: CommunityShellProps) {
+export default function CommunityShell({ userName, avatarUrl, products, children }: CommunityShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -180,7 +177,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
                   <div className="absolute right-0 mt-2 w-56 z-40 bg-surface-850 border border-surface-700 rounded-xl shadow-xl py-1.5">
                     <div className="px-3 py-2 border-b border-surface-700 mb-1">
                       <p className="text-sm font-medium text-cream truncate">{userName}</p>
-                      <p className="text-xs text-cream-muted">{primaryProduct?.title ?? 'Cliente'}</p>
+                      <p className="text-xs text-cream-muted">{primaryProduct ? productFullName(primaryProduct.title) : 'Cliente'}</p>
                     </div>
                     <Link
                       href="/profile"
@@ -229,17 +226,14 @@ export default function CommunityShell({ userName, avatarUrl, products, children
                   )}
                 </div>
                 <div className="p-4">
-                  <p className="text-sm font-semibold text-cream">{primaryProduct!.title}</p>
+                  <p className="text-sm font-semibold text-cream">{productFullName(primaryProduct!.title)}</p>
                   <p className="text-xs text-cream-muted mt-0.5">Comunidad privada</p>
                   <p className="text-xs text-cream-dim mt-3 leading-relaxed">
-                    Tu espacio de la comunidad de {primaryProduct!.title}. Aquí verás tu
+                    Tu espacio de la comunidad de {productFullName(primaryProduct!.title)}. Aquí verás tu
                     aprendizaje, eventos y tu ruta.
                   </p>
                 </div>
               </div>
-              {/* Banners de anuncios (2026-07-09) — apilados debajo, uno por
-                  cada banner vigente. Sin espacio vacío si no hay ninguno. */}
-              {banners}
             </aside>
           )}
         </div>
@@ -276,7 +270,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
                   ? <Image src="/logo-icon.png" alt={primaryProduct!.title} width={16} height={16} className="object-contain" />
                   : <span className="text-xs font-semibold text-brand-300">{productInitial(primaryProduct!.title)}</span>}
               </span>
-              <span className="text-sm text-cream truncate">{primaryProduct!.title}</span>
+              <span className="text-sm text-cream truncate">{productFullName(primaryProduct!.title)}</span>
             </div>
           </div>
         )}

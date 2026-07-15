@@ -3,6 +3,13 @@ import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { SESSION_TIPO_VALUES } from '@/lib/sessionTypes'
 
+// Sala de Gerencia / Entrenamiento Comercial son tipos transversales (los ve
+// cualquier cliente activo, sin importar hiperfoco/producto) — nunca deben
+// quedar atados a un hiperfoco_nombre específico. Guard de defensa: aunque el
+// formulario ya lo maneja bien, esto evita que una llamada directa a la API
+// recree la inconsistencia que tenía la sesión "dsdq" (2026-07-15).
+const TRANSVERSAL_TIPOS = ['sala_gerencia', 'entrenamiento_comercial']
+
 // POST /api/admin/sessions — crea o actualiza una sesión en vivo
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
@@ -21,7 +28,7 @@ export async function POST(req: NextRequest) {
   const descripcion: string = (body?.descripcion ?? '').trim()
   // Hiperfoco por NOMBRE (#8v2): vacío = General (la ven todos). Con valor, la ven
   // solo los clientes con un hiperfoco de ese nombre (cualquier producto).
-  const hiperfoco_nombre: string = (body?.hiperfoco_nombre ?? '').trim()
+  const hiperfoco_nombre: string = TRANSVERSAL_TIPOS.includes(tipo) ? '' : (body?.hiperfoco_nombre ?? '').trim()
   // Link recurrente: si viene, se guarda el link como el fijo de este tipo.
   const save_recurring = !!body?.save_recurring
   // 1:1 agendada (calibración 2026-07-07): audience='individual' + client_user_id.

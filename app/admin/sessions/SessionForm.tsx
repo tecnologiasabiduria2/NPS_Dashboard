@@ -8,6 +8,22 @@ import { coLocalToISO } from '@/lib/format'
 import { toast } from '@/lib/toast'
 import DateField from '@/components/DateField'
 
+// Sala de Gerencia / Entrenamiento Comercial NO son hiperfocos — son tipos
+// transversales (visibles a cualquier cliente activo, sin importar hiperfoco
+// ni producto). Mismo modelo ya usado en admin/content/LessonForm.tsx
+// (TRANSVERSAL_OPTIONS) — antes de este fix (2026-07-15) Sesiones los trataba
+// como un "Tipo de sesión" suelto, desconectado del selector de Hiperfoco,
+// lo que permitía crear una sesión sala_gerencia restringida por error a un
+// hiperfoco específico (pasó en datos reales, sesión "dsdq").
+const TRANSVERSAL_OPTIONS = [
+  { value: 'sala_gerencia', label: 'Sala de Gerencia (todos los productos)' },
+  { value: 'entrenamiento_comercial', label: 'Entrenamiento Comercial (todos los productos)' },
+] as const
+const TRANSVERSAL_VALUES: string[] = TRANSVERSAL_OPTIONS.map(o => o.value)
+// "Tipo de sesión" ya no ofrece los 2 transversales — ahora solo se alcanzan
+// eligiéndolos en el selector de Hiperfoco.
+const SESSION_TIPOS_REDUCIDOS = SESSION_TIPOS.filter(t => !TRANSVERSAL_VALUES.includes(t.value))
+
 // Suma horas a un valor de <input datetime-local> manteniendo la hora de pared.
 function addHoursLocal(localStr: string, hours: number): string {
   if (!localStr) return ''
@@ -70,6 +86,24 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
     setError('')
   }
 
+  const isTransversal = TRANSVERSAL_VALUES.includes(f.hiperfoco_nombre)
+
+  // Elegir Transversal fija el tipo implícito (igual que LessonForm) y oculta
+  // "Tipo de sesión". Salir de Transversal hacia General/un hiperfoco real
+  // resetea el tipo si había quedado en un valor transversal.
+  function changeHiperfoco(value: string) {
+    const nextTipo = TRANSVERSAL_VALUES.includes(value)
+      ? value
+      : (TRANSVERSAL_VALUES.includes(f.tipo) ? 'inmersion_1' : f.tipo)
+    setF(prev => ({
+      ...prev,
+      hiperfoco_nombre: value,
+      tipo: nextTipo,
+      zoom_url: linkMode === 'recurrente' ? (recurringLinks[nextTipo] ?? '') : prev.zoom_url,
+    }))
+    setError('')
+  }
+
   // Cambio de modo de link: recurrente → trae el link del tipo; pendiente → vacío.
   function changeLinkMode(mode: LinkMode) {
     setLinkMode(mode)
@@ -92,16 +126,21 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
     if (!sessionId) { setF({ ...EMPTY }); setLinkMode('unico'); setError(''); return }
     const s = sessions.find(x => x.id === sessionId)
     if (!s) return
+    const tipo = s.tipo || 'inmersion_1'
+    // Si el tipo guardado es transversal, mostrar esa opción en el selector de
+    // Hiperfoco sin importar lo que tenga guardado hiperfoco_nombre — así una
+    // fila inconsistente (tipo transversal + hiperfoco_nombre específico, ej.
+    // la sesión "dsdq") se autocorrige sola al reabrir y reguardar.
     setF({
       sessionId: s.id,
       title: s.title,
-      tipo: s.tipo || 'inmersion_1',
+      tipo,
       starts_at: toLocalInput(s.starts_at),
       ends_at: toLocalInput(s.ends_at),
       zoom_url: s.zoom_url,
       is_published: s.is_published,
       descripcion: s.descripcion ?? '',
-      hiperfoco_nombre: s.hiperfoco_nombre ?? '',
+      hiperfoco_nombre: TRANSVERSAL_VALUES.includes(tipo) ? tipo : (s.hiperfoco_nombre ?? ''),
       product_id: s.product_id ?? '',
     })
     // Inferir el modo de link de la sesión existente.
@@ -122,7 +161,10 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: f.sessionId || undefined,
-        hiperfoco_nombre: f.hiperfoco_nombre,
+        // Transversal se guarda con hiperfoco_nombre vacío (igual que
+        // "General" — así ya funciona la visibilidad para todos); el tipo es
+        // lo que identifica que es Sala de Gerencia/Entrenamiento Comercial.
+        hiperfoco_nombre: isTransversal ? '' : f.hiperfoco_nombre,
         product_id: f.product_id,
         title: f.title,
         tipo: f.tipo,
@@ -187,21 +229,29 @@ export default function SessionForm({ products, hiperfocoNames, sessions, recurr
 
         <div>
           <label className="label">Hiperfoco *</label>
-          <select className="select" value={f.hiperfoco_nombre} onChange={e => set('hiperfoco_nombre', e.target.value)}>
+          <select className="select" value={f.hiperfoco_nombre} onChange={e => changeHiperfoco(e.target.value)}>
             <option value="">General (todos los clientes)</option>
-            {hiperfocoNames.map(n => <option key={n} value={n}>{n}</option>)}
+            <optgroup label="Transversal (todos los productos)">
+              {TRANSVERSAL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </optgroup>
+            <optgroup label="Hiperfocos">
+              {hiperfocoNames.map(n => <option key={n} value={n}>{n}</option>)}
+            </optgroup>
           </select>
           <p className="text-xs text-cream-muted mt-1.5">
-            La sesión llega a todos los clientes con este hiperfoco, sin importar el producto. "General" la ven todos (ej. Sala de Gerencia).
+            La sesión llega a todos los clientes con este hiperfoco, sin importar el producto. "General" y
+            "Transversal" las ve cualquier cliente activo.
           </p>
         </div>
 
-        <div>
-          <label className="label">Tipo de sesión *</label>
-          <select className="select" value={f.tipo} onChange={e => setTipo(e.target.value)} required>
-            {SESSION_TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-        </div>
+        {!isTransversal && (
+          <div>
+            <label className="label">Tipo de sesión *</label>
+            <select className="select" value={f.tipo} onChange={e => setTipo(e.target.value)} required>
+              {SESSION_TIPOS_REDUCIDOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="label">Título</label>
