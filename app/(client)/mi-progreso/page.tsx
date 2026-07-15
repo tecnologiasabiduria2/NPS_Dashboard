@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { Calendar, Layers, Video, Star, CheckCircle2, TrendingUp, DollarSign, Target } from 'lucide-react'
+import { Calendar, Layers, Video, Star, CheckCircle2, TrendingUp, DollarSign, Target, Flame } from 'lucide-react'
+import { clsx } from 'clsx'
 import Sparkline from '@/components/Sparkline'
 import ProgressBar from '@/components/ProgressBar'
-import { getConquistas } from '@/lib/conquistas'
+import { getConquistas, getInsignias } from '@/lib/conquistas'
+import ShareCard from './ShareCard'
 import { getHiperfocoVisual } from '@/lib/hiperfocoVisual'
 import { productFullName } from '@/lib/productIdentity'
 import { formatMoneda } from '@/lib/monedas'
@@ -33,6 +35,7 @@ export default async function MiProgresoPage() {
   })
 
   const productoTitulo = access?.products?.title ? productFullName(access.products.title) : 'Tu proceso'
+  const insignias = getInsignias(conquistas)
 
   // Facturación / objetivos (punto 9 Fase 2). Resiliente: si la migración no
   // corrió, la query falla y se trata como sin datos (no rompe la página).
@@ -48,22 +51,33 @@ export default async function MiProgresoPage() {
   const lastObjRow = [...metricas].reverse().find(m => m.objetivo != null) ?? null
   const objetivoActual = lastObjRow ? Number(lastObjRow.objetivo) : null
 
-  const kpis = [
+  const kpis: { icon: typeof Calendar; label: string; value: string | number; accent?: boolean }[] = [
     { icon: Calendar, label: 'Meses activo', value: conquistas.mesesActivo ?? '—' },
     { icon: Layers, label: 'Módulos cursados', value: conquistas.modulosVividos },
     { icon: Video, label: 'Sesiones', value: conquistas.sesionesTotales },
     { icon: Star, label: 'NPS promedio', value: conquistas.npsPromedio ?? '—' },
+    { icon: Flame, label: 'Racha semanal', value: `${conquistas.rachaSemanas} sem.`, accent: true },
   ]
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="page-title">Mi progreso</h1>
-        <p className="page-subtitle">{productoTitulo} · tus conquistas y evolución</p>
+      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="page-title">Mi progreso</h1>
+          <p className="page-subtitle">{productoTitulo} · tus conquistas y evolución</p>
+        </div>
+        <ShareCard
+          productoTitulo={productoTitulo}
+          mesesActivo={conquistas.mesesActivo}
+          modulosVividos={conquistas.modulosVividos}
+          sesionesTotales={conquistas.sesionesTotales}
+          rachaSemanas={conquistas.rachaSemanas}
+          insignias={insignias.map(i => ({ id: i.id, label: i.label, unlocked: i.unlocked }))}
+        />
       </div>
 
       {/* Hero de conquistas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
         {kpis.map((k, i) => {
           const Icon = k.icon
           return (
@@ -74,7 +88,7 @@ export default async function MiProgresoPage() {
             >
               <div className="glass-card p-5 hover-lift h-full">
                 <div className="flex items-center gap-2 mb-2">
-                  <Icon size={15} className="text-sand" />
+                  <Icon size={15} className={k.accent ? 'text-accent' : 'text-sand'} />
                   <p className="section-label !mb-0 !text-[11px]">{k.label}</p>
                 </div>
                 <p className="text-3xl font-bold tabular-nums text-cream leading-none">{k.value}</p>
@@ -82,6 +96,46 @@ export default async function MiProgresoPage() {
             </div>
           )
         })}
+      </div>
+
+      {/* Insignias/logros (2026-07-15, agrandadas y con más carácter 2026-07-16
+          a pedido de Juan: antes quedaban chicas y apiñadas a la izquierda con
+          medio panel vacío a la derecha, y el look era demasiado tenue para
+          sentirse una insignia real. Ahora: mismo glow-border/glass-card "alta
+          gama" que ya usa el hero de KPIs, medallón con degradado de marca +
+          sombra cuando está desbloqueada, borde punteado cuando no. */}
+      <div className="mb-8">
+        <p className="section-label !mb-3">Insignias</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {insignias.map((ins, i) => {
+            const Icon = ins.icon
+            return (
+              <div key={ins.id} className="glow-border animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
+                <div className="glass-card p-5 flex flex-col items-center text-center gap-2 h-full">
+                  <div
+                    className={clsx(
+                      'w-16 h-16 rounded-full flex items-center justify-center shrink-0',
+                      ins.unlocked
+                        ? 'bg-gradient-to-br from-sand via-accent to-brand-600 text-white shadow-lg shadow-accent/30'
+                        : 'bg-surface-800 text-cream-muted/50 border-2 border-dashed border-surface-600'
+                    )}
+                  >
+                    <Icon size={28} />
+                  </div>
+                  <p className={clsx('text-sm font-semibold leading-tight', ins.unlocked ? 'text-cream' : 'text-cream-dim')}>
+                    {ins.label}
+                  </p>
+                  <p className="text-[11px] text-cream-muted leading-snug">
+                    {ins.unlocked ? '¡Desbloqueada!' : ins.requirement}
+                  </p>
+                  {!ins.unlocked && ins.progressLabel && (
+                    <p className="text-[11px] text-accent font-semibold">{ins.progressLabel}</p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Facturación y objetivos (punto 9 Fase 2) */}

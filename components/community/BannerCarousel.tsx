@@ -63,27 +63,26 @@ export default function BannerCarousel({ banners }: { banners: CarouselBanner[] 
         style={{ transform: `translateX(-${index * 100}%)` }}
       >
         {banners.map(b => {
+          // object-cover simple (2026-07-16): el fondo con blur (2026-07-15)
+          // y antes object-contain se descartaron — la alternativa elegida
+          // fue "normalizar al subir" (ImageCropper en /admin/banners recorta
+          // a 3:1 desktop / 4:5 mobile antes de guardar), así que el carrusel
+          // ya no necesita adivinar en tiempo real qué hacer con una imagen
+          // de proporción rara: siempre llega en la proporción correcta.
           const img = (
             <picture>
               {b.imageUrlMobile && <source media="(max-width: 640px)" srcSet={b.imageUrlMobile} />}
-              {/* Altura fija responsive + object-contain (2026-07-15, fix): no
-                  todas las imágenes que suben son horizontales — con
-                  object-cover una imagen vertical quedaba recortada de forma
-                  fea (se comía los lados). object-contain siempre muestra la
-                  imagen completa, sin recorte; si no llena el ancho/alto deja
-                  franjas del fondo de la tarjeta (bg-surface-850 del
-                  contenedor), nunca corta contenido. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={b.imageUrl}
                 alt={b.titulo}
-                className="w-full h-44 sm:h-52 lg:h-60 object-contain object-center block select-none"
+                className="w-full h-44 sm:h-52 lg:h-60 object-cover object-center block select-none"
                 draggable={false}
               />
             </picture>
           )
           return (
-            <div key={b.id} className="w-full shrink-0 flex items-center justify-center bg-surface-850">
+            <div key={b.id} className="w-full shrink-0 bg-surface-850">
               {b.link_url ? (
                 <Link href={b.link_url} target="_blank" rel="noopener noreferrer" className="block w-full">
                   {img}

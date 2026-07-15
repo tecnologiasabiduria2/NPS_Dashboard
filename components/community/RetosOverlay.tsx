@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Target, X } from 'lucide-react'
 import { clsx } from 'clsx'
@@ -22,16 +22,23 @@ export default function RetosOverlay({
   const router = useRouter()
   // Clave por hiperfoco: descartar uno no descarta los demás.
   const dismissKey = `retos-dismissed-${hiperfocoId}`
-  // Lazy init SÍNCRONO (2026-07-14, fix): el servidor decide mostrar este overlay
-  // en base a la BD (sin respuesta guardada) en CADA carga, sin saber que el
-  // cliente ya lo descartó antes en esta pestaña. Revisar sessionStorage en un
-  // useEffect (después del primer paint) hacía que el overlay apareciera y se
-  // cerrara de inmediato en cada recarga tras el primer descarte — ahora se
-  // decide ANTES de pintar, así nunca llega a mostrarse si ya fue descartado.
-  const [open, setOpen] = useState(() => {
-    if (typeof window === 'undefined') return true
-    return !sessionStorage.getItem(dismissKey)
-  })
+  // 2026-07-16, fix real: el intento anterior de decidir "open" en el lazy init
+  // del useState (leyendo sessionStorage antes de pintar) generaba un mismatch
+  // de hidratación real — el servidor SIEMPRE asume open=true (no conoce el
+  // sessionStorage del cliente), así que en cualquier carga posterior al primer
+  // descarte, el cliente calculaba open=false desde el primer render mientras el
+  // servidor había mandado el modal completo. React no reconciliaba ese árbol
+  // (el botón quedaba con el HTML crudo del servidor, sin fiber de React
+  // adjunto — sin verdaderos listeners), dejando un modal "fantasma" visible
+  // pero muerto: ni "Ahora no" ni la X hacían nada. Fix: arrancar en `false`
+  // (idéntico en servidor y cliente, sin mismatch) y decidir de verdad recién
+  // en un useEffect post-montaje — sin el parpadeo "aparece y se cierra" que
+  // el intento anterior quería evitar, porque acá nunca llega a aparecer si ya
+  // estaba descartado.
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (!sessionStorage.getItem(dismissKey)) setOpen(true)
+  }, [dismissKey])
   const [respuestas, setRespuestas] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)

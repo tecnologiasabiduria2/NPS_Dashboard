@@ -18,13 +18,17 @@ function formatMonto(digits: string): string {
 
 export default function MetricasOverlay() {
   const router = useRouter()
-  // Lazy init SÍNCRONO (2026-07-14, fix): igual que RetosOverlay — decidir en un
-  // useEffect (después del primer paint) hacía que el overlay apareciera y se
-  // cerrara de inmediato en cada recarga tras el primer descarte.
-  const [open, setOpen] = useState(() => {
-    if (typeof window === 'undefined') return true
-    return !sessionStorage.getItem('metricas-dismissed')
-  })
+  // 2026-07-16, fix real (mismo bug que RetosOverlay): el lazy init anterior
+  // decidía open=false en el cliente cuando ya había sessionStorage, mientras
+  // el servidor (que no conoce el sessionStorage del cliente) siempre mandaba
+  // el modal completo — mismatch de hidratación real. React dejaba el modal
+  // como HTML crudo sin fiber adjunto (ni "Ahora no" ni la X funcionaban,
+  // aunque sessionStorage sí se actualizaba). Fix: arrancar en `false` en
+  // ambos lados (sin mismatch) y decidir de verdad en un useEffect post-montaje.
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (!sessionStorage.getItem('metricas-dismissed')) setOpen(true)
+  }, [])
   const [facturacion, setFacturacion] = useState('')
   const [objetivo, setObjetivo] = useState('')
   const [moneda, setMoneda] = useState(MONEDA_DEFAULT)

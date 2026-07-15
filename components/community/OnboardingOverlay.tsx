@@ -10,7 +10,13 @@ import { isValidPhoneWithPrefix } from '@/lib/phone'
 // lo oculta en la sesión de navegador actual.
 export default function OnboardingOverlay({ userName }: { userName: string }) {
   const router = useRouter()
-  const [open, setOpen] = useState(true)
+  // 2026-07-16: antes arrancaba en `true` y un useEffect lo cerraba si ya
+  // estaba descartado — sin mismatch de hidratación (server y cliente
+  // coincidían en `true`), pero con un parpadeo visible "aparece y se cierra"
+  // para quien ya lo había descartado en esta sesión. Mismo fix que
+  // RetosOverlay/MetricasOverlay: arrancar en `false` y decidir de verdad
+  // en el useEffect — nunca llega a aparecer si ya fue descartado.
+  const [open, setOpen] = useState(false)
   const [bio, setBio] = useState('')
   const [instagram, setInstagram] = useState('')
   const [website, setWebsite] = useState('')
@@ -24,7 +30,7 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem('onboarding-dismissed')) setOpen(false)
+    if (!sessionStorage.getItem('onboarding-dismissed')) setOpen(true)
   }, [])
 
   if (!open) return null

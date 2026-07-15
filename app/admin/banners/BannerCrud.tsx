@@ -1,11 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { formatDateOnly } from '@/lib/format'
 import DateField from '@/components/DateField'
+import ImageCropper from '@/components/ImageCropper'
+
+// Proporciones fijas de recorte (2026-07-16): el carrusel ya no adivina en
+// tiempo real qué hacer con imágenes de proporciones raras — se normalizan
+// aquí, una sola vez, al subirlas. 3:1 para desktop (banda ancha), 4:5 para
+// mobile ("más vertical", como ya decía el texto de ayuda de este campo).
+const DESKTOP_RATIO = 3
+const MOBILE_RATIO = 4 / 5
 
 interface Banner {
   id: string
@@ -38,6 +46,10 @@ export default function BannerCrud({ banners }: { banners: Banner[] }) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  // Recorte pendiente: qué slot ('file'/'fileMobile') está esperando que el
+  // admin ajuste el encuadre antes de que el archivo entre al form real.
+  const [cropTarget, setCropTarget] = useState<'file' | 'fileMobile' | null>(null)
+  const [cropSource, setCropSource] = useState<File | null>(null)
 
   function openNew() {
     setForm(EMPTY_FORM)
@@ -129,6 +141,19 @@ export default function BannerCrud({ banners }: { banners: Banner[] }) {
     router.refresh()
   }
 
+  function pickFile(kind: 'file' | 'fileMobile', file: File | null) {
+    if (!file) return
+    setCropSource(file)
+    setCropTarget(kind)
+  }
+
+  function handleCropped(blob: Blob, fileName: string) {
+    const croppedFile = new File([blob], fileName, { type: 'image/jpeg' })
+    setForm({ ...form, [cropTarget as 'file' | 'fileMobile']: croppedFile })
+    setCropTarget(null)
+    setCropSource(null)
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -140,8 +165,17 @@ export default function BannerCrud({ banners }: { banners: Banner[] }) {
         )}
       </div>
 
+      {cropTarget && cropSource && (
+        <ImageCropper
+          file={cropSource}
+          aspectRatio={cropTarget === 'file' ? DESKTOP_RATIO : MOBILE_RATIO}
+          onCancel={() => { setCropTarget(null); setCropSource(null) }}
+          onCropped={handleCropped}
+        />
+      )}
+
       {panel === 'new' && (
-        <BannerForm form={form} setForm={setForm} saving={saving} onSave={submit} onCancel={closePanel} isNew />
+        <BannerForm form={form} setForm={setForm} saving={saving} onSave={submit} onCancel={closePanel} onPickFile={pickFile} isNew />
       )}
 
       {banners.length === 0 && panel === null ? (
@@ -151,7 +185,7 @@ export default function BannerCrud({ banners }: { banners: Banner[] }) {
           {banners.map(b => (
             <div key={b.id} className="card">
               {panel === b.id ? (
-                <BannerForm form={form} setForm={setForm} saving={saving} onSave={submit} onCancel={closePanel} />
+                <BannerForm form={form} setForm={setForm} saving={saving} onSave={submit} onCancel={closePanel} onPickFile={pickFile} />
               ) : (
                 <div className="flex items-center gap-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -191,15 +225,38 @@ export default function BannerCrud({ banners }: { banners: Banner[] }) {
 }
 
 function BannerForm({
-  form, setForm, saving, onSave, onCancel, isNew,
+  form, setForm, saving, onSave, onCancel, onPickFile, isNew,
 }: {
   form: FormState
   setForm: (f: FormState) => void
   saving: boolean
   onSave: () => void
   onCancel: () => void
+  onPickFile: (kind: 'file' | 'fileMobile', file: File | null) => void
   isNew?: boolean
 }) {
+  // Vista previa (2026-07-16, fix de fuga de memoria): antes se llamaba
+  // URL.createObjectURL(form.file) directo en el JSX — cada re-render del
+  // formulario (ej. al escribir el título) creaba una URL de blob nueva sin
+  // liberar la anterior. Ahora se crea una sola vez por archivo y se libera
+  // al cambiar.
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
+  const [fileMobilePreviewUrl, setFileMobilePreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!form.file) { setFilePreviewUrl(null); return }
+    const url = URL.createObjectURL(form.file)
+    setFilePreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [form.file])
+
+  useEffect(() => {
+    if (!form.fileMobile) { setFileMobilePreviewUrl(null); return }
+    const url = URL.createObjectURL(form.fileMobile)
+    setFileMobilePreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [form.fileMobile])
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -213,18 +270,30 @@ function BannerForm({
         <input type="text" className="input" value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })} placeholder="Ej. Evento networking julio" />
       </div>
       <div>
-        <label className="label">Imagen desktop (horizontal, ancha){isNew ? '' : ' — dejar vacío para conservar la actual'}</label>
+        <label className="label">Imagen desktop (horizontal, ancha, 3:1){isNew ? '' : ' — dejar vacío para conservar la actual'}</label>
         <input
+          key={form.file ? 'has-file' : 'no-file'}
           type="file" accept="image/*" className="input"
-          onChange={e => setForm({ ...form, file: e.target.files?.[0] ?? null })}
+          onChange={e => { onPickFile('file', e.target.files?.[0] ?? null); e.target.value = '' }}
         />
+        {/* Vista previa YA recortada (2026-07-16): confirma el encuadre elegido
+            antes de guardar, sin tener que publicar primero para verlo. */}
+        {filePreviewUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={filePreviewUrl} alt="" className="mt-2 w-full max-w-xs rounded-lg border border-surface-700" style={{ aspectRatio: DESKTOP_RATIO }} />
+        )}
       </div>
       <div>
-        <label className="label">Imagen mobile (opcional, más vertical){isNew ? '' : ' — dejar vacío para conservar la actual'}</label>
+        <label className="label">Imagen mobile (opcional, más vertical, 4:5){isNew ? '' : ' — dejar vacío para conservar la actual'}</label>
         <input
+          key={form.fileMobile ? 'has-file' : 'no-file'}
           type="file" accept="image/*" className="input"
-          onChange={e => setForm({ ...form, fileMobile: e.target.files?.[0] ?? null })}
+          onChange={e => { onPickFile('fileMobile', e.target.files?.[0] ?? null); e.target.value = '' }}
         />
+        {fileMobilePreviewUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={fileMobilePreviewUrl} alt="" className="mt-2 w-32 rounded-lg border border-surface-700" style={{ aspectRatio: MOBILE_RATIO }} />
+        )}
         <p className="text-xs text-cream-muted mt-1">Si no la subes, en celular se usa la imagen desktop.</p>
       </div>
       <div>

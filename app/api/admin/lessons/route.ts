@@ -2,8 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { CONTENT_TIPO_VALUES } from '@/lib/sessionTypes'
+import { notifyUsers, getRecordingRecipients } from '@/lib/notifications'
 
 const VALID_FILE_TYPES = ['video', 'document'] as const
+
+// Notificación in-app (2026-07-15, Fase 6): se dispara solo en la transición
+// borrador → publicado, nunca en cada guardado de una grabación ya publicada.
+// Envuelto en try/catch: si notificar falla, no debe tumbar la publicación real.
+async function notifyNewRecording(hiperfocoId: string, tipo: string, title: string) {
+  try {
+    const recipients = await getRecordingRecipients(hiperfocoId, tipo)
+    await notifyUsers({ userIds: recipients, type: 'nueva_grabacion', title: 'Nuevo contenido disponible', body: title, link: '/roadmap' })
+  } catch {
+    // silencioso — no bloquea la publicación
+  }
+}
 
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin()
@@ -97,13 +110,18 @@ export async function POST(req: NextRequest) {
   }
 
   if (id) {
+    const { data: existing } = await supabaseAdmin.from('recordings').select('is_published').eq('id', id).maybeSingle()
+    const wasPublished = Boolean(existing?.is_published)
+
     const { error } = await supabaseAdmin.from('recordings').update(payload).eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    if (is_published && !wasPublished) await notifyNewRecording(hiperfoco_id, tipo, title)
     return NextResponse.json({ ok: true, updated: true })
   }
 
   const { data, error } = await supabaseAdmin.from('recordings').insert(payload).select('id').single()
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (is_published) await notifyNewRecording(hiperfoco_id, tipo, title)
   return NextResponse.json({ ok: true, created: true, id: data.id })
 }
 

@@ -5,9 +5,12 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Home, Bell, Menu, X, User, LogOut, ChevronDown } from 'lucide-react'
+import { Home, Menu, X, User, LogOut, ChevronDown, HelpCircle } from 'lucide-react'
 import { clsx } from 'clsx'
 import { productFullName, productInitial, isSabiduria } from '@/lib/productIdentity'
+import { restartTour } from '@/lib/onboardingTour'
+import OnboardingTour from '@/components/OnboardingTour'
+import NotificationBell from '@/components/NotificationBell'
 
 export interface ShellProduct {
   id: string
@@ -25,14 +28,14 @@ interface CommunityShellProps {
 // Pestañas = navegación primaria (estilo comunidad GHL/Skool). El foro real
 // (Conversación) y Miembros llegan en sub-entregas posteriores: hoy "Inicio"
 // apunta al dashboard y Miembros/Acerca de son placeholders.
-const TABS: { href: string; label: string; match: (p: string) => boolean }[] = [
+const TABS: { href: string; label: string; match: (p: string) => boolean; tour?: string }[] = [
   { href: '/conversacion', label: 'Conversación', match: p => p.startsWith('/conversacion') },
-  { href: '/dashboard', label: 'Inicio',      match: p => p === '/dashboard' },
+  { href: '/dashboard', label: 'Inicio',      match: p => p === '/dashboard', tour: 'tour-inicio' },
   { href: '/roadmap',   label: 'Aprendizaje', match: p => p.startsWith('/roadmap') || p.startsWith('/recording') },
-  { href: '/sessions',  label: 'Eventos',     match: p => p.startsWith('/sessions') },
-  { href: '/mi-ruta',   label: 'Mi ruta',     match: p => p.startsWith('/mi-ruta') },
-  { href: '/mi-progreso', label: 'Mi progreso', match: p => p.startsWith('/mi-progreso') },
-  { href: '/miembros',  label: 'Miembros',    match: p => p.startsWith('/miembros') },
+  { href: '/sessions',  label: 'Eventos',     match: p => p.startsWith('/sessions'), tour: 'tour-eventos' },
+  { href: '/mi-ruta',   label: 'Mi ruta',     match: p => p.startsWith('/mi-ruta'), tour: 'tour-mi-ruta' },
+  { href: '/mi-progreso', label: 'Mi progreso', match: p => p.startsWith('/mi-progreso'), tour: 'tour-mi-progreso' },
+  { href: '/miembros',  label: 'Miembros',    match: p => p.startsWith('/miembros'), tour: 'tour-miembros' },
   { href: '/acerca',    label: 'Acerca de',   match: p => p.startsWith('/acerca') },
 ]
 
@@ -65,6 +68,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
 
   return (
     <div className="relative flex min-h-screen bg-surface-950 overflow-hidden">
+      <OnboardingTour />
       {/* Atmósfera de fondo — mismo recurso que admin y el login (degradado + glows
           borrosos en la paleta de marca), a pedido de Juan (2026-07-05) de que el
           área cliente tenga la misma textura de fondo que ya tiene admin. Valores
@@ -136,7 +140,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
             </button>
             <nav className="hidden lg:flex items-center gap-1">
               {TABS.map(t => (
-                <Link key={t.href} href={t.href} className={tabClass(t.match(pathname))}>
+                <Link key={t.href} href={t.href} data-tour={t.tour} className={tabClass(t.match(pathname))}>
                   {t.label}
                 </Link>
               ))}
@@ -144,15 +148,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Campana — hueco para notificaciones (pendiente) */}
-            <button
-              type="button"
-              disabled
-              aria-label="Notificaciones (próximamente)"
-              className="p-2 rounded-xl text-cream-muted/50 cursor-default"
-            >
-              <Bell size={18} />
-            </button>
+            <NotificationBell />
 
             {/* Avatar + menú */}
             <div className="relative">
@@ -186,6 +182,12 @@ export default function CommunityShell({ userName, avatarUrl, products, children
                     >
                       <User size={15} /> Mi perfil
                     </Link>
+                    <button
+                      onClick={() => { setMenuOpen(false); restartTour() }}
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-cream-dim hover:text-cream hover:bg-surface-800 transition-colors w-full text-left"
+                    >
+                      <HelpCircle size={15} /> ¿Cómo funciona esto?
+                    </button>
                     <button
                       onClick={handleLogout}
                       className="flex items-center gap-2.5 px-3 py-2 text-sm text-cream-muted hover:text-red-400 hover:bg-red-500/10 transition-colors w-full"
