@@ -100,11 +100,17 @@ export default async function ClientLayout({ children }: { children: React.React
 
   const displayName = profile?.full_name ?? user.email ?? ''
 
+  // El tour (OnboardingTour, dentro de CommunityShell) no debe arrancar a la
+  // vez que alguno de estos 3 overlays — mismo problema visual de 2 fondos
+  // oscuros superpuestos (bug reportado 2026-07-16). Le avisamos si ya sabemos
+  // que uno se va a mostrar, para que espere a que se cierre.
+  const hasBlockingOverlay = needsOnboarding || needsMetricas || !!(retoHiperfoco && retoPreguntas)
+
   // NPS: ya NO se auto-muestra dentro de la plataforma (decisión reunión
   // 2026-06-30). Se califica vía link público por sesión (/nps/{token}).
   return (
     <>
-      <CommunityShell userName={displayName} avatarUrl={avatarUrl} products={products}>
+      <CommunityShell userName={displayName} avatarUrl={avatarUrl} products={products} hasBlockingOverlay={hasBlockingOverlay}>
         {children}
       </CommunityShell>
       {/* Un solo overlay a la vez, por prioridad: bienvenida a la comunidad →

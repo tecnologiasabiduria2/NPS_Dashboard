@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, X, TrendingUp } from 'lucide-react'
 import { MONEDAS, MONEDA_DEFAULT } from '@/lib/monedas'
+import { notifyOverlayClosed } from '@/lib/onboardingTour'
 
 // Overlay PRIVADO de métricas de negocio (punto 9 Fase 2, 2026-07-14). Se muestra
 // cuando el cliente aún no ha registrado su facturación/objetivo del mes actual
@@ -48,6 +49,7 @@ export default function MetricasOverlay() {
   function dismiss() {
     try { sessionStorage.setItem('metricas-dismissed', '1') } catch {}
     setOpen(false)
+    notifyOverlayClosed()
   }
 
   async function submit() {
@@ -72,6 +74,7 @@ export default function MetricasOverlay() {
       localStorage.setItem('metricas-moneda', moneda)
     } catch {}
     setOpen(false)
+    notifyOverlayClosed()
     router.refresh()
   }
 

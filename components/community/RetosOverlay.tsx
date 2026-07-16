@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Target, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import type { RetoPregunta } from '@/lib/retosPreguntas'
+import { notifyOverlayClosed } from '@/lib/onboardingTour'
 
 // Pop-up de "retos" al iniciar un hiperfoco/módulo (punto 9 Fase 2, 2026-07-14).
 // Las preguntas llegan como prop (fetchRetoPreguntas en el layout, editables por
@@ -48,6 +49,7 @@ export default function RetosOverlay({
   function dismiss() {
     try { sessionStorage.setItem(dismissKey, '1') } catch {}
     setOpen(false)
+    notifyOverlayClosed()
   }
 
   async function submit() {
@@ -69,6 +71,7 @@ export default function RetosOverlay({
     }
     try { sessionStorage.setItem(dismissKey, '1') } catch {}
     setOpen(false)
+    notifyOverlayClosed()
     router.refresh()
   }
 

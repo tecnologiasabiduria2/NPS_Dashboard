@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Joyride, STATUS, type Step, type EventData } from 'react-joyride'
-import { RESTART_TOUR_EVENT, TOUR_SEEN_STORAGE_KEY } from '@/lib/onboardingTour'
+import { RESTART_TOUR_EVENT, TOUR_SEEN_STORAGE_KEY, OVERLAY_CLOSED_EVENT } from '@/lib/onboardingTour'
 
 // Tour de bienvenida (2026-07-15, sugerencias post-portal): recorrido corto
 // sobre las pestañas ya existentes de CommunityShell.tsx, marcadas con
@@ -44,14 +44,31 @@ const steps: Step[] = [
   },
 ]
 
-export default function OnboardingTour() {
+export default function OnboardingTour({ hasOverlay = false }: { hasOverlay?: boolean }) {
   const [run, setRun] = useState(false)
 
   useEffect(() => {
     const isDesktop = window.matchMedia('(min-width: 1024px)').matches
     const seen = localStorage.getItem(TOUR_SEEN_STORAGE_KEY)
-    if (isDesktop && !seen) setRun(true)
+    if (!isDesktop || seen) return
 
+    // Si ClientLayout ya sabe que va a mostrar un overlay de bienvenida/
+    // métricas/retos en esta carga, esperar a que se cierre (evento disparado
+    // por ese overlay al descartarse o guardar) en vez de arrancar el tour ya
+    // mismo — de lo contrario ambos quedan superpuestos, cada uno con su
+    // propio fondo oscuro, e ilegibles.
+    if (!hasOverlay) {
+      setRun(true)
+      return
+    }
+    function onOverlayClosed() {
+      setRun(true)
+    }
+    window.addEventListener(OVERLAY_CLOSED_EVENT, onOverlayClosed)
+    return () => window.removeEventListener(OVERLAY_CLOSED_EVENT, onOverlayClosed)
+  }, [hasOverlay])
+
+  useEffect(() => {
     function onRestart() {
       setRun(true)
     }

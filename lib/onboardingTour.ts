@@ -11,3 +11,15 @@ export function restartTour() {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent(RESTART_TOUR_EVENT))
 }
+
+// Bug reportado 2026-07-16: el tour arrancaba a la vez que el overlay de
+// bienvenida (foto/bio), ambos con su propio fondo oscuro superpuestos —
+// ilegible. El tour ahora espera este evento (disparado por cada overlay de
+// ClientLayout al descartarse o guardar) antes de arrancar, si al montar ya
+// había uno de esos overlays por mostrarse (ver `hasOverlay` en OnboardingTour).
+export const OVERLAY_CLOSED_EVENT = 'app-onboarding-overlay-closed'
+
+export function notifyOverlayClosed() {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(OVERLAY_CLOSED_EVENT))
+}

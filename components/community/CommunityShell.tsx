@@ -23,6 +23,7 @@ interface CommunityShellProps {
   avatarUrl?: string | null
   products: ShellProduct[]
   children: React.ReactNode
+  hasBlockingOverlay?: boolean
 }
 
 // Pestañas = navegación primaria (estilo comunidad GHL/Skool). El foro real
@@ -39,7 +40,7 @@ const TABS: { href: string; label: string; match: (p: string) => boolean; tour?:
   { href: '/acerca',    label: 'Acerca de',   match: p => p.startsWith('/acerca') },
 ]
 
-export default function CommunityShell({ userName, avatarUrl, products, children }: CommunityShellProps) {
+export default function CommunityShell({ userName, avatarUrl, products, children, hasBlockingOverlay }: CommunityShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -68,7 +69,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
 
   return (
     <div className="relative flex min-h-screen bg-surface-950 overflow-hidden">
-      <OnboardingTour />
+      <OnboardingTour hasOverlay={hasBlockingOverlay} />
       {/* Atmósfera de fondo — mismo recurso que admin y el login (degradado + glows
           borrosos en la paleta de marca), a pedido de Juan (2026-07-05) de que el
           área cliente tenga la misma textura de fondo que ya tiene admin. Valores

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Camera, X } from 'lucide-react'
 import { isValidPhoneWithPrefix } from '@/lib/phone'
+import { notifyOverlayClosed } from '@/lib/onboardingTour'
 
 // Overlay de bienvenida (Bloque 5e): al unirse, el miembro se presenta (bio) y
 // sube foto de perfil. Se muestra mientras el cliente no tenga bio. "Ahora no"
@@ -44,6 +45,7 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
   function dismiss() {
     try { sessionStorage.setItem('onboarding-dismissed', '1') } catch {}
     setOpen(false)
+    notifyOverlayClosed()
   }
 
   async function submit() {
@@ -66,6 +68,7 @@ export default function OnboardingOverlay({ userName }: { userName: string }) {
       return
     }
     setOpen(false)
+    notifyOverlayClosed()
     router.refresh()
   }
 
