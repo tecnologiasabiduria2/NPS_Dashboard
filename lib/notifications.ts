@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 // de confianza (admin/cron, vía supabaseAdmin) — el cliente solo lee/marca
 // como leídas las suyas (RLS de supabase/migracion_notificaciones.sql).
 
-export type NotificationType = 'nueva_grabacion' | 'sesion_proxima'
+export type NotificationType = 'nueva_grabacion' | 'sesion_proxima' | 'foro_like'
 
 interface NotifyInput {
   userIds: string[]
@@ -23,6 +23,53 @@ export async function notifyUsers({ userIds, type, title, body = null, link = nu
   if (ids.length === 0) return
   const rows = ids.map(user_id => ({ user_id, type, title, body, link, dedupe_key: dedupeKey }))
   await supabaseAdmin.from('notifications').upsert(rows, { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true })
+}
+
+interface LikeActor {
+  id: string
+  name: string
+}
+
+function composeLikeTitle(actors: LikeActor[]): string {
+  const names = actors.map(a => a.name || 'Alguien')
+  if (names.length === 1) return `${names[0]} le dio like a tu publicación`
+  if (names.length === 2) return `${names[0]} y ${names[1]} le dieron like a tu publicación`
+  const resto = names.length - 2
+  return `${names[0]}, ${names[1]} y ${resto} persona${resto === 1 ? '' : 's'} más le dieron like a tu publicación`
+}
+
+// Notificación acumulativa de "me gusta" en Conversación (2026-07-17, estilo
+// TikTok): mientras la notificación de un post siga SIN LEER, cada like nuevo
+// se suma a la misma fila (recompone el título, no crea una nueva). En cuanto
+// se marca como leída (solo existe "Marcar todas", global), el siguiente like
+// sobre ese post arranca una fila nueva que puede volver a acumular.
+export async function notifyForoLike(postId: string, postAuthorId: string, liker: LikeActor) {
+  if (liker.id === postAuthorId) return
+  try {
+    const { data: existing } = await supabaseAdmin
+      .from('notifications')
+      .select('id, actors')
+      .eq('user_id', postAuthorId).eq('type', 'foro_like').eq('post_id', postId)
+      .is('read_at', null).maybeSingle()
+
+    const prevActors: LikeActor[] = ((existing as { actors?: LikeActor[] } | null)?.actors as LikeActor[]) ?? []
+    if (prevActors.some(a => a.id === liker.id)) return // ya estaba (doble clic / unlike+like)
+    const actors = [...prevActors, liker]
+    const title = composeLikeTitle(actors)
+
+    if (existing) {
+      await supabaseAdmin.from('notifications')
+        .update({ actors, title, created_at: new Date().toISOString() })
+        .eq('id', (existing as { id: string }).id)
+    } else {
+      await supabaseAdmin.from('notifications').insert({
+        user_id: postAuthorId, type: 'foro_like', title, link: '/conversacion',
+        post_id: postId, actors,
+      })
+    }
+  } catch {
+    // silencioso — no bloquea el like, mismo patrón que notifyNewRecording
+  }
 }
 
 const TRANSVERSAL_TIPOS = ['sala_gerencia', 'entrenamiento_comercial']

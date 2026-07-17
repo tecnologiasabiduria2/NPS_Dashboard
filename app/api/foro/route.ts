@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { notifyForoLike } from '@/lib/notifications'
 
 // Foro/Conversación (Bloque 5f). Todas las escrituras pasan por acá con service
 // role tras validar sesión; las tablas tienen RLS sin policies (el cliente no
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
     if (!post_id) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
     const pid = await activeProductId(user.id)
     if (!pid) return NextResponse.json({ error: 'Sin acceso activo' }, { status: 403 })
-    const { data: post } = await supabaseAdmin.from('foro_posts').select('product_id').eq('id', post_id).maybeSingle()
+    const { data: post } = await supabaseAdmin.from('foro_posts').select('product_id, user_id').eq('id', post_id).maybeSingle()
     if (!post || (post as { product_id?: string }).product_id !== pid) {
       return NextResponse.json({ error: 'Post no encontrado' }, { status: 404 })
     }
@@ -62,6 +63,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, liked: false })
     }
     await supabaseAdmin.from('foro_likes').insert({ post_id, user_id: user.id })
+    const { data: likerProfile } = await supabaseAdmin.from('profiles').select('full_name').eq('id', user.id).maybeSingle()
+    const postAuthorId = (post as { user_id: string }).user_id
+    await notifyForoLike(post_id, postAuthorId, { id: user.id, name: (likerProfile as { full_name?: string } | null)?.full_name ?? 'Alguien' })
     return NextResponse.json({ ok: true, liked: true })
   }
 
