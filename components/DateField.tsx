@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X } from 'lucide-react'
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
   addMonths, subMonths, isSameDay, isSameMonth, isToday, format,
@@ -89,9 +89,22 @@ export default function DateField({
   }
 
   function handleTimeInput(raw: string, kind: 'hh' | 'mm') {
-    const digits = raw.replace(/\D/g, '').slice(0, 2)
+    // Al escribir sobre un valor ya de 2 dígitos (controlado), el DOM entrega
+    // "viejo + nuevo dígito" (ej. "14" + "5" = "145"). Hay que tomar los
+    // últimos 2 dígitos (los más recientes), no los primeros 2 — con
+    // slice(0, 2) el dígito recién tecleado quedaba descartado y el campo
+    // parecía "trabado" sin dejar escribir.
+    const digits = raw.replace(/\D/g, '').slice(-2)
     if (digits === '') return
     const n = clamp(Number(digits), 0, kind === 'hh' ? 23 : 59)
+    const padded = String(n).padStart(2, '0')
+    commitTime(kind === 'hh' ? padded : hh, kind === 'mm' ? padded : mm)
+  }
+
+  function stepTime(kind: 'hh' | 'mm', delta: number) {
+    const max = kind === 'hh' ? 24 : 60
+    const cur = Number(kind === 'hh' ? hh : mm)
+    const n = (cur + delta + max) % max
     const padded = String(n).padStart(2, '0')
     commitTime(kind === 'hh' ? padded : hh, kind === 'mm' ? padded : mm)
   }
@@ -187,19 +200,57 @@ export default function DateField({
           {mode === 'datetime' && (
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-surface-700">
               <span className="text-xs text-cream-muted mr-1">Hora</span>
-              <input
-                type="text" inputMode="numeric" value={hh}
-                onChange={e => handleTimeInput(e.target.value, 'hh')}
-                className="input w-12 text-center py-1.5 px-1"
-                aria-label="Hora"
-              />
+              <div className="flex items-stretch">
+                <input
+                  type="text" inputMode="numeric" value={hh}
+                  onChange={e => handleTimeInput(e.target.value, 'hh')}
+                  onFocus={e => e.target.select()}
+                  className="input w-12 text-center py-1.5 px-1 rounded-r-none border-r-0"
+                  aria-label="Hora"
+                />
+                <div className="flex flex-col rounded-r-xl border border-surface-600 overflow-hidden">
+                  <button
+                    type="button" tabIndex={-1} onClick={() => stepTime('hh', 1)}
+                    className="flex-1 px-1 leading-none text-cream-muted hover:bg-surface-700 hover:text-cream focus:outline-none"
+                    aria-label="Aumentar hora"
+                  >
+                    <ChevronUp size={11} />
+                  </button>
+                  <button
+                    type="button" tabIndex={-1} onClick={() => stepTime('hh', -1)}
+                    className="flex-1 px-1 leading-none text-cream-muted hover:bg-surface-700 hover:text-cream border-t border-surface-600 focus:outline-none"
+                    aria-label="Disminuir hora"
+                  >
+                    <ChevronDown size={11} />
+                  </button>
+                </div>
+              </div>
               <span className="text-cream-muted">:</span>
-              <input
-                type="text" inputMode="numeric" value={mm}
-                onChange={e => handleTimeInput(e.target.value, 'mm')}
-                className="input w-12 text-center py-1.5 px-1"
-                aria-label="Minuto"
-              />
+              <div className="flex items-stretch">
+                <input
+                  type="text" inputMode="numeric" value={mm}
+                  onChange={e => handleTimeInput(e.target.value, 'mm')}
+                  onFocus={e => e.target.select()}
+                  className="input w-12 text-center py-1.5 px-1 rounded-r-none border-r-0"
+                  aria-label="Minuto"
+                />
+                <div className="flex flex-col rounded-r-xl border border-surface-600 overflow-hidden">
+                  <button
+                    type="button" tabIndex={-1} onClick={() => stepTime('mm', 1)}
+                    className="flex-1 px-1 leading-none text-cream-muted hover:bg-surface-700 hover:text-cream focus:outline-none"
+                    aria-label="Aumentar minuto"
+                  >
+                    <ChevronUp size={11} />
+                  </button>
+                  <button
+                    type="button" tabIndex={-1} onClick={() => stepTime('mm', -1)}
+                    className="flex-1 px-1 leading-none text-cream-muted hover:bg-surface-700 hover:text-cream border-t border-surface-600 focus:outline-none"
+                    aria-label="Disminuir minuto"
+                  >
+                    <ChevronDown size={11} />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
