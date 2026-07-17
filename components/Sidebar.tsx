@@ -59,6 +59,7 @@ export default function Sidebar({ role, userName, productTitle, isOwner }: Sideb
   function linkClass(href: string) {
     return clsx(
       'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',
+      'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50',
       isActive(href)
         ? 'bg-brand-600 text-cream'
         : 'text-cream-muted hover:text-cream hover:bg-surface-800'
@@ -75,7 +76,7 @@ export default function Sidebar({ role, userName, productTitle, isOwner }: Sideb
         </div>
         <button
           onClick={() => setMobileOpen(true)}
-          className="p-2 rounded-xl text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors"
+          className="p-2 rounded-xl text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50"
           aria-label="Abrir menú"
         >
           <Menu size={20} />
@@ -115,7 +116,7 @@ export default function Sidebar({ role, userName, productTitle, isOwner }: Sideb
             />
           </div>
           <button
-            className="lg:hidden p-1.5 rounded-lg text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors"
+            className="lg:hidden p-1.5 rounded-lg text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50"
             onClick={() => setMobileOpen(false)}
             aria-label="Cerrar menú"
           >
@@ -163,7 +164,7 @@ export default function Sidebar({ role, userName, productTitle, isOwner }: Sideb
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-cream-muted hover:text-red-400 hover:bg-red-500/10 transition-all w-full"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-cream-muted hover:text-red-400 hover:bg-red-500/10 transition-all w-full focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50"
           >
             <LogOut size={14} />
             Cerrar sesión

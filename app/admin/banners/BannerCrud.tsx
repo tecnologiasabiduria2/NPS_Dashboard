@@ -300,7 +300,7 @@ function BannerForm({
         <label className="label">Link al hacer clic (opcional)</label>
         <input type="url" className="input" value={form.link_url} onChange={e => setForm({ ...form, link_url: e.target.value })} placeholder="https://..." />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="label">Vigente desde (opcional)</label>
           <DateField value={form.starts_at} onChange={v => setForm({ ...form, starts_at: v })} placeholder="Sin definir" />

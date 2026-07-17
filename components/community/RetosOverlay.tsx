@@ -78,7 +78,7 @@ export default function RetosOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={dismiss} />
-      <div className="relative w-full max-w-md card">
+      <div className="relative w-full max-w-md card max-h-[90vh] overflow-y-auto">
         <button onClick={dismiss} className="absolute top-4 right-4 text-cream-muted hover:text-cream" aria-label="Cerrar">
           <X size={18} />
         </button>

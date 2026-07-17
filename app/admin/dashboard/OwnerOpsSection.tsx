@@ -222,7 +222,7 @@ export default async function OwnerOpsSection({
   const insights: { color: string; body: ReactNode }[] = []
   if (sinElegir > 0) {
     insights.push({
-      color: '#888780',
+      color: '#C0AA90', // cream-dim — mismo tono que .badge-pending
       body: (
         <>
           <span className="text-cream font-medium">{sinElegir} empresarios no eligieron hiperfoco</span> este mes
@@ -235,7 +235,7 @@ export default async function OwnerOpsSection({
   const peorNps = distribList.filter(d => d.nps !== null).sort((a, b) => (a.nps! - b.nps!))[0]
   if (peorNps && peorNps.nps! < 7.5) {
     insights.push({
-      color: '#E24B4A',
+      color: '#f87171', // red-400 — mismo tono que .badge-inactive
       body: (
         <>
           <span className="text-cream font-medium">{peorNps.title} tiene el NPS más bajo este mes ({peorNps.nps!.toFixed(1)})</span>.
@@ -248,7 +248,7 @@ export default async function OwnerOpsSection({
   if (masLento && masLento.avg > EXPECTED_MONTHS) {
     const reps = repetidosList.find(r => r.title === masLento.title)?.reps ?? 0
     insights.push({
-      color: '#BA7517',
+      color: '#fbbf24', // amber-400 — mismo tono que .badge-warning
       body: (
         <>
           <span className="text-cream font-medium">{masLento.title} toma {masLento.avg.toFixed(1)} meses en promedio</span> cuando
@@ -339,10 +339,14 @@ export default async function OwnerOpsSection({
             centerValue={totalActivos}
             centerLabel="activos"
             segments={[
-              { label: 'Activos saludables', value: saludables, color: '#1D9E75' },
-              { label: 'Banderas amarillas', value: banderasAmarillas, color: '#BA7517' },
-              { label: 'En riesgo', value: enRiesgo, color: '#E24B4A' },
-              { label: 'En pausa', value: enPausa, color: '#888780' },
+              // Mismos tonos que .badge-active/.badge-warning/.badge-inactive/
+              // .badge-pending en globals.css (antes eran hex sueltos, algo
+              // distintos de los badges que usan estos mismos estados en el
+              // resto de la app — unificado 2026-07-17).
+              { label: 'Activos saludables', value: saludables, color: '#34d399' },
+              { label: 'Banderas amarillas', value: banderasAmarillas, color: '#fbbf24' },
+              { label: 'En riesgo', value: enRiesgo, color: '#f87171' },
+              { label: 'En pausa', value: enPausa, color: '#C0AA90' },
             ]}
           />
         </div>

@@ -68,6 +68,19 @@ body {
   .animate-celebrate-particle {
     animation: celebrate-particle 0.6s ease-out both;
   }
+
+  /* Pop del corazón al dar like en Conversación (2026-07-17) — feedback
+     táctil de una sola vuelta, deliberadamente más discreto que
+     .animate-celebrate-pop (ese sigue siendo el único momento "emocional"
+     de la plataforma; esto es solo confirmar que el clic se registró). */
+  @keyframes heart-pop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.25); }
+    100% { transform: scale(1); }
+  }
+  .animate-heart-pop {
+    animation: heart-pop 0.26s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
 }
 
 @layer components {

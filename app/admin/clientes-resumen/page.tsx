@@ -223,10 +223,10 @@ export default async function ClientesResumenPage({
             </div>
             {clientesSin1x1.map(c => (
               <div key={c.userId} className="grid grid-cols-[1fr_120px_auto] gap-3 text-sm items-center">
-                <Link href={`/admin/clients/${c.userId}`} className="text-cream hover:text-brand-400 transition-colors truncate">
+                <Link href={`/admin/clients/${c.userId}`} className="min-w-0 text-cream hover:text-brand-400 transition-colors truncate">
                   {c.name}
                 </Link>
-                <span className="text-cream-muted text-xs truncate">{c.csName}</span>
+                <span className="min-w-0 text-cream-muted text-xs truncate">{c.csName}</span>
                 <Link
                   href={`/admin/clients/${c.userId}#sesiones-1-1`}
                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-brand-600/15 text-brand-300 hover:bg-brand-600/25 transition-colors whitespace-nowrap"

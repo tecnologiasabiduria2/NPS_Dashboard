@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Bell, CheckCircle2, Loader2 } from 'lucide-react'
+import { Bell, BellOff, CheckCircle2, Loader2 } from 'lucide-react'
 import { clsx } from 'clsx'
 
 // Campana de notificaciones (2026-07-15, Fase 6): reemplaza el placeholder
@@ -96,7 +96,13 @@ export default function NotificationBell() {
             </div>
 
             {items.length === 0 ? (
-              <p className="text-sm text-cream-muted text-center py-6">Sin notificaciones</p>
+              <div className="text-center py-8 px-4">
+                <BellOff size={22} className="text-cream-muted mx-auto mb-2.5" />
+                <p className="text-sm text-cream font-medium">Todo al día</p>
+                <p className="text-xs text-cream-muted mt-1">
+                  Aquí te avisamos de nuevas grabaciones, sesiones próximas y likes en Conversación.
+                </p>
+              </div>
             ) : (
               items.map(n => {
                 const body = (

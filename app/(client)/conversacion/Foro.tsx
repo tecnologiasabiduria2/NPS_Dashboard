@@ -85,6 +85,9 @@ export default function Foro({ posts, community }: { posts: ForoPost[]; communit
   const [posting, setPosting] = useState(false)
   const [openComments, setOpenComments] = useState<Set<string>>(new Set())
   const [channel, setChannel] = useState<string>('all')
+  // Micro-interacción de like: el "pop" del corazón es instantáneo al clic,
+  // sin esperar el router.refresh() que trae likeCount/likedByMe reales.
+  const [poppedId, setPoppedId] = useState<string | null>(null)
 
   const counts = useMemo(() => {
     const m: Record<string, number> = { all: posts.length }
@@ -110,6 +113,8 @@ export default function Foro({ posts, community }: { posts: ForoPost[]; communit
   }
 
   async function like(id: string) {
+    setPoppedId(id)
+    setTimeout(() => setPoppedId(cur => (cur === id ? null : cur)), 260)
     if (await call({ action: 'like', post_id: id })) router.refresh()
   }
 
@@ -233,7 +238,7 @@ export default function Foro({ posts, community }: { posts: ForoPost[]; communit
                             p.likedByMe ? 'text-brand-400 hover:bg-brand-600/10' : 'text-cream-muted hover:text-cream hover:bg-surface-800'
                           )}
                         >
-                          <Heart size={14} fill={p.likedByMe ? 'currentColor' : 'none'} /> {p.likeCount || 'Me gusta'}
+                          <Heart size={14} fill={p.likedByMe ? 'currentColor' : 'none'} className={poppedId === p.id ? 'animate-heart-pop' : ''} /> {p.likeCount || 'Me gusta'}
                         </button>
                         <button
                           onClick={() => toggleComments(p.id)}

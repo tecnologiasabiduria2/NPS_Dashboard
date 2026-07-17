@@ -235,7 +235,7 @@ export default async function ClientDetailPage({ params }: Props) {
                 }`}
               >
                 <span className="text-xs text-cream-muted capitalize">{formatMonthShort(h.periodo)}</span>
-                <span className={h.title ? 'text-cream' : 'text-cream-muted'}>
+                <span className={`min-w-0 ${h.title ? 'text-cream' : 'text-cream-muted'}`}>
                   {h.title ?? (h.estado === 'pausa' ? 'Pausa' : 'Sin asignar')}
                   {h.repitio && <span className="text-xs text-amber-400 ml-2">repitió</span>}
                 </span>

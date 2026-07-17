@@ -61,6 +61,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
     // activa se distingue solo por color pleno vs. atenuado (2026-07-09).
     return clsx(
       'px-3 h-12 inline-flex items-center text-sm font-medium transition-all',
+      'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50 rounded-lg',
       active
         ? 'text-sand'
         : 'text-cream/50 hover:text-cream/80'
@@ -99,7 +100,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
         <Link
           href="/dashboard"
           aria-label="Inicio"
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors"
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50"
         >
           <Home size={18} />
         </Link>
@@ -109,7 +110,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
             key={p.id}
             href="/dashboard"
             title={p.title}
-            className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-850 border border-brand-600/30 ring-2 ring-brand-600/20 hover:ring-brand-600/40 transition-all"
+            className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-850 border border-brand-600/30 ring-2 ring-brand-600/20 hover:ring-brand-600/40 transition-all focus:outline-none focus-visible:ring-brand-600/70"
           >
             {isSabiduria(p.title)
               ? <Image src="/logo-icon.png" alt={p.title} width={22} height={22} className="object-contain" />
@@ -134,7 +135,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
           <div className="flex items-center gap-1 min-w-0 overflow-x-auto overflow-y-hidden">
             <button
               onClick={() => setDrawerOpen(true)}
-              className="lg:hidden p-2 -ml-2 rounded-xl text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors shrink-0"
+              className="lg:hidden p-2 -ml-2 rounded-xl text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50"
               aria-label="Abrir menú"
             >
               <Menu size={20} />
@@ -155,7 +156,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(o => !o)}
-                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-surface-800 transition-colors"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-surface-800 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50"
                 aria-label="Menú de usuario"
               >
                 <span className="w-8 h-8 rounded-full overflow-hidden bg-brand-700/50 border border-brand-600/30 flex items-center justify-center shrink-0">
@@ -179,19 +180,19 @@ export default function CommunityShell({ userName, avatarUrl, products, children
                     <Link
                       href="/profile"
                       onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-cream-dim hover:text-cream hover:bg-surface-800 transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-cream-dim hover:text-cream hover:bg-surface-800 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-brand-600/50"
                     >
                       <User size={15} /> Mi perfil
                     </Link>
                     <button
                       onClick={() => { setMenuOpen(false); restartTour() }}
-                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-cream-dim hover:text-cream hover:bg-surface-800 transition-colors w-full text-left"
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-cream-dim hover:text-cream hover:bg-surface-800 transition-colors w-full text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-brand-600/50"
                     >
                       <HelpCircle size={15} /> ¿Cómo funciona esto?
                     </button>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-cream-muted hover:text-red-400 hover:bg-red-500/10 transition-colors w-full"
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-cream-muted hover:text-red-400 hover:bg-red-500/10 transition-colors w-full focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-brand-600/50"
                     >
                       <LogOut size={15} /> Cerrar sesión
                     </button>
@@ -257,7 +258,7 @@ export default function CommunityShell({ userName, avatarUrl, products, children
           <Image src="/logo-horizontal.png" alt="Sabiduría Empresarial" width={138} height={36} className="object-contain" />
           <button
             onClick={() => setDrawerOpen(false)}
-            className="p-1.5 rounded-lg text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors"
+            className="p-1.5 rounded-lg text-cream-muted hover:text-cream hover:bg-surface-800 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50"
             aria-label="Cerrar menú"
           >
             <X size={18} />
@@ -288,8 +289,15 @@ export default function CommunityShell({ userName, avatarUrl, products, children
                 onClick={() => setDrawerOpen(false)}
                 className={clsx(
                   'block px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                  'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50',
+                  // Mismo tratamiento de "activo" que components/Sidebar.tsx
+                  // (pastilla sólida bg-brand-600) — antes este drawer usaba un
+                  // tercer vocabulario propio (bordeado, brand-400) distinto
+                  // tanto de este mismo componente en escritorio (texto sand,
+                  // sin fondo — intencional ahí, ver tabClass) como del sidebar
+                  // de admin. Unificado 2026-07-17.
                   active
-                    ? 'bg-brand-600/15 text-brand-400 border border-brand-600/25'
+                    ? 'bg-brand-600 text-cream'
                     : 'text-cream-muted hover:text-cream hover:bg-surface-800'
                 )}
               >
@@ -303,13 +311,13 @@ export default function CommunityShell({ userName, avatarUrl, products, children
           <Link
             href="/profile"
             onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-cream-muted hover:text-cream hover:bg-surface-800 transition-all"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-cream-muted hover:text-cream hover:bg-surface-800 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50"
           >
             <User size={15} /> Mi perfil
           </Link>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-cream-muted hover:text-red-400 hover:bg-red-500/10 transition-all w-full"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-cream-muted hover:text-red-400 hover:bg-red-500/10 transition-all w-full focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-600/50"
           >
             <LogOut size={15} /> Cerrar sesión
           </button>
